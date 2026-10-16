@@ -1,0 +1,119 @@
+@import "./fonts.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-paper text-ink font-sans antialiased;
+}
+
+/* Serif defaults for reading surfaces */
+.prose-read {
+  @apply font-serif text-ink;
+  line-height: 1.85;
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+}
+
+/* Tiptap editor + rendered chapter content share these rules */
+.richtext {
+  @apply font-serif;
+  line-height: 1.85;
+  overflow-wrap: break-word;
+}
+.richtext p {
+  margin: 0 0 1.1em;
+}
+.richtext h1,
+.richtext h2,
+.richtext h3 {
+  @apply font-sans font-semibold text-ink;
+  line-height: 1.35;
+  margin: 1.4em 0 0.6em;
+}
+.richtext h1 { font-size: 1.6em; }
+.richtext h2 { font-size: 1.35em; }
+.richtext h3 { font-size: 1.15em; }
+.richtext blockquote {
+  border-left: 3px solid #c28a42;
+  padding-left: 1em;
+  margin: 1.2em 0;
+  color: #4a5a54;
+  font-style: italic;
+}
+.richtext ul,
+.richtext ol {
+  margin: 0 0 1.1em;
+  padding-left: 1.6em;
+}
+.richtext ul { list-style: disc; }
+.richtext ol { list-style: decimal; }
+.richtext li { margin: 0.3em 0; }
+.richtext hr {
+  border: none;
+  border-top: 1px solid #d5e0d5;
+  margin: 2em auto;
+  width: 40%;
+}
+.richtext em { font-style: italic; }
+.richtext strong { font-weight: 700; }
+
+/* Tiptap placeholder */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #7a8a83;
+  pointer-events: none;
+  height: 0;
+}
+.tiptap:focus {
+  outline: none;
+}
+
+/* Visible, consistent focus */
+:focus-visible {
+  outline: 2px solid #285c4b;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Thin elegant scrollbar for horizontal shelves */
+.shelf-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+.shelf-scroll::-webkit-scrollbar-thumb {
+  background: #d5e0d5;
+  border-radius: 999px;
+}
+
+/* Line clamp helpers beyond tailwind defaults */
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
