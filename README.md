@@ -40,6 +40,10 @@ Or sign up a fresh account — it works fully in demo mode.
    - `supabase/migrations/20261016140000_story_views.sql`
    - `supabase/migrations/20261016140001_notification_hardening.sql`
    - `supabase/migrations/20261016140002_story_visibility.sql`
+   - `supabase/migrations/20261016150000_role_guard_bootstrap.sql`
+   - `supabase/migrations/20261016160000_story_is_public_definer.sql`
+   - `supabase/migrations/20261016170000_notify_user_link_recipient_fix.sql`
+   - `supabase/migrations/20261016170001_story_moderator_columns.sql`
    - `supabase/seed.sql` (optional demo content — create the matching auth
      users first; see the header comment in that file)
 2. Authentication → URL Configuration: add your site URL and
@@ -187,18 +191,17 @@ node scripts/qa-browser.mjs         # end-to-end browser checks (see file header
 ## Known limitations (MVP)
 
 - Email confirmation depends on Supabase Auth settings; demo mode skips it.
-- Search uses `ilike` matching (title/summary/tags/author); the GIN full-text
-  indexes in the migration are ready for a `tsvector` column if scale demands.
+- Search uses `ilike` matching (title/summary/tags/author).
 - Cover uploads in demo mode are stored as data URLs in the browser.
 - No realtime updates, paid chapters, recommendations, or mobile apps — all
   listed as later phases in the blueprint. Notifications are in-app only
   (bell polls every 30 s); no email or push.
 - Reading progress saves scroll ratio per chapter; exact "resume at paragraph"
   positioning is approximated by scroll percentage.
-- The `20261016130000_appeals_notifications.sql` migration has been
-  structurally validated (`validate-sql.mjs`) but, like the others, has not
-  been executed against a live Postgres/Supabase project in this
-  environment. The same applies to the three new migrations:
-  `20261016140000_story_views.sql`, `20261016140001_notification_hardening.sql`
-  and `20261016140002_story_visibility.sql` — structurally validated only,
-  never run against live Postgres.
+- The migrations have been executed inside a live Supabase project
+  (2026-10-16/17) — all 11 run cleanly, and the publish gate, view dedup,
+  self-view exclusion, role guard, notification hardening and moderator
+  column restrictions were functionally verified. (An earlier version of the
+  schema migration failed on live Supabase with 42P17 because of GIN
+  expression indexes on `to_tsvector()`/`array_to_string()` — those unused
+  indexes were removed; the app searches with `ilike`.)
