@@ -191,10 +191,20 @@ export function SettingsPage() {
 }
 
 function NotificationPrefsCard() {
-  const { t, dp, profile, refreshSession, isModerator } = useApp();
+  const { t, dp, profile, isModerator } = useApp();
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
-  const prefs = resolveNotificationPrefs(profile?.notification_prefs);
+  const [prefs, setPrefs] = useState<Required<NotificationPrefs> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    dp.getNotificationPrefs()
+      .then((p) => { if (!cancelled) setPrefs(p); })
+      .catch(() => { if (!cancelled) setPrefs(resolveNotificationPrefs(undefined)); });
+    return () => { cancelled = true; };
+  }, [dp]);
+
+  const resolved = prefs ?? resolveNotificationPrefs(undefined);
 
   const rows: { key: keyof Required<NotificationPrefs>; label: string; show: boolean }[] = [
     { key: "new_chapter", label: t("notifications", "prefNewChapter"), show: true },
@@ -204,11 +214,11 @@ function NotificationPrefsCard() {
   ];
 
   async function toggle(key: keyof Required<NotificationPrefs>) {
-    if (!profile || busy) return;
+    if (!profile || busy || !prefs) return;
     setBusy(true);
     try {
-      await dp.updateProfile(profile.id, { notification_prefs: { [key]: !prefs[key] } });
-      await refreshSession();
+      await dp.updateNotificationPrefs({ [key]: !resolved[key] });
+      setPrefs({ ...resolved, [key]: !resolved[key] });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } finally {
@@ -225,17 +235,17 @@ function NotificationPrefsCard() {
             key={r.key}
             type="button"
             role="switch"
-            aria-checked={prefs[r.key]}
+            aria-checked={resolved[r.key]}
             onClick={() => toggle(r.key)}
             className="flex items-center justify-between gap-3 text-left"
           >
             <span className="text-sm">{r.label}</span>
             <span
               aria-hidden
-              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${prefs[r.key] ? "bg-river" : "bg-ink/20"}`}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${resolved[r.key] ? "bg-river" : "bg-ink/20"}`}
             >
               <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${prefs[r.key] ? "left-[22px]" : "left-0.5"}`}
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${resolved[r.key] ? "left-[22px]" : "left-0.5"}`}
               />
             </span>
           </button>

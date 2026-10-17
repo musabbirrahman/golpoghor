@@ -311,7 +311,7 @@ let appealId;
   check("mark all read works", (await dp.getUnreadNotificationCount()) === 0);
 
   // opt-out respected
-  await dp.updateProfile((await dp.getSession()).user.id, { notification_prefs: { new_chapter: false } });
+  await dp.updateNotificationPrefs({ new_chapter: false });
   await dp.signOut();
   await dp.signIn("test@example.com", "secret12");
   const ch3 = await dp.createChapter(storyId, { title: "তৃতীয় অধ্যায়", body: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "শেষ।" }] }] } });
@@ -319,7 +319,7 @@ let appealId;
   await dp.signOut();
   await dp.signIn("intruder@example.com", "secret12");
   check("opt-out suppresses notification", !(await dp.listNotifications()).some((n) => n.type === "new_chapter" && n.data.chapterTitle === "তৃতীয় অধ্যায়"));
-  await dp.updateProfile((await dp.getSession()).user.id, { notification_prefs: { new_chapter: true } });
+  await dp.updateNotificationPrefs({ new_chapter: true });
 
   // report -> moderator notified; resolve -> reporter notified
   const rep2 = await dp.createReport("chapter", ch3.id, "test", "");

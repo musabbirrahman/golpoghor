@@ -78,8 +78,11 @@ export interface DataProvider {
   getProfileByUsername(username: string): Promise<Profile | null>;
   updateProfile(
     id: string,
-    patch: Partial<Pick<Profile, "display_name" | "bio" | "locale" | "notification_prefs">>
+    patch: Partial<Pick<Profile, "display_name" | "bio" | "locale">>
   ): Promise<Profile>;
+  /** Owner-only notification preferences (separate RLS-protected table). */
+  getNotificationPrefs(): Promise<Required<NotificationPrefs>>;
+  updateNotificationPrefs(patch: Partial<NotificationPrefs>): Promise<void>;
 
   // ----------------------------------------------------------- stories
   listStories(filters: StoryFilters): Promise<{ stories: Story[]; total: number }>;
@@ -170,6 +173,8 @@ export interface DataProvider {
   // ----------------------------------------------------------- storage
   uploadCover(file: File): Promise<string>;
   coverUrl(path: string | null): string | null;
+  /** Signed URL for the owner's own cover (works for drafts too). */
+  coverSignedUrl(path: string | null): Promise<string | null>;
 
   // -------------------------------------------------------- moderation ux
   /** Human label + deep link + current status for a report/appeal target (moderators only). */

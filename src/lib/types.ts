@@ -39,7 +39,6 @@ export interface Profile {
   avatar_path: string | null;
   locale: Locale;
   role: Role;
-  notification_prefs: NotificationPrefs;
   created_at: string;
   updated_at: string;
 }

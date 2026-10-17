@@ -211,11 +211,29 @@ export class SupabaseProvider implements DataProvider {
 
   async updateProfile(
     id: string,
-    patch: Partial<Pick<Profile, "display_name" | "bio" | "locale" | "notification_prefs">>
+    patch: Partial<Pick<Profile, "display_name" | "bio" | "locale">>
   ): Promise<Profile> {
     const { data, error } = await this.sb.from("profiles").update(patch).eq("id", id).select().single();
     if (error) throw toAppError(error);
     return data as Profile;
+  }
+
+  async getNotificationPrefs(): Promise<Required<NotificationPrefs>> {
+    const session = await this.getSession();
+    if (!session) return resolveNotificationPrefs(undefined);
+    return this.prefsOf(session.user.id);
+  }
+
+  async updateNotificationPrefs(patch: Partial<NotificationPrefs>): Promise<void> {
+    const session = await this.getSession();
+    if (!session) throw new AppError("signInRequired", "Please sign in to do that.");
+    const current = await this.prefsOf(session.user.id);
+    const merged = { ...current, ...patch };
+    const { error } = await this.sb.from("notification_prefs").upsert(
+      { user_id: session.user.id, prefs: merged, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" }
+    );
+    if (error) throw toAppError(error);
   }
 
   // ----------------------------------------------------------- stories
@@ -673,11 +691,11 @@ export class SupabaseProvider implements DataProvider {
   // ------------------------------------------- notification helpers
   private async prefsOf(userId: string): Promise<Required<NotificationPrefs>> {
     const { data } = await this.sb
-      .from("profiles")
-      .select("notification_prefs")
-      .eq("id", userId)
+      .from("notification_prefs")
+      .select("prefs")
+      .eq("user_id", userId)
       .maybeSingle();
-    return resolveNotificationPrefs((data as { notification_prefs?: NotificationPrefs } | null)?.notification_prefs);
+    return resolveNotificationPrefs((data as { prefs?: NotificationPrefs } | null)?.prefs);
   }
 
   private async pushNotification(
@@ -1143,5 +1161,12 @@ export class SupabaseProvider implements DataProvider {
   coverUrl(path: string | null): string | null {
     if (!path) return null;
     return this.sb.storage.from("covers").getPublicUrl(path).data.publicUrl;
+  }
+
+  async coverSignedUrl(path: string | null): Promise<string | null> {
+    if (!path) return null;
+    const { data, error } = await this.sb.storage.from("covers").createSignedUrl(path, 3600);
+    if (error) throw toAppError(error);
+    return data.signedUrl;
   }
 }

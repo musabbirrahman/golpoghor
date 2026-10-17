@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
@@ -243,7 +243,19 @@ export function StoryFormPage() {
     );
   }
 
-  const coverUrl = story ? dp.coverUrl(story.cover_path) : null;
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (story?.cover_path) {
+      // Signed URL: works for drafts (private) as well as published stories.
+      dp.coverSignedUrl(story.cover_path)
+        .then((url) => { if (!cancelled) setCoverPreview(url); })
+        .catch(() => { if (!cancelled) setCoverPreview(null); });
+    } else {
+      setCoverPreview(null);
+    }
+    return () => { cancelled = true; };
+  }, [dp, story?.cover_path]);
 
   return (
     <RequireAuthor>
@@ -302,8 +314,8 @@ export function StoryFormPage() {
               <div>
                 <Label>{t("write", "coverImage")}</Label>
                 <div className="flex items-center gap-4">
-                  {coverUrl ? (
-                    <img src={coverUrl} alt="" className="h-24 w-18 rounded-lg object-cover" style={{ width: 72 }} />
+                  {coverPreview ? (
+                    <img src={coverPreview} alt="" className="h-24 w-18 rounded-lg object-cover" style={{ width: 72 }} />
                   ) : (
                     <div className="flex h-24 w-[72px] items-center justify-center rounded-lg bg-sage text-ink-faint">—</div>
                   )}

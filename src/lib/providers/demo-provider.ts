@@ -202,7 +202,7 @@ export class DemoProvider implements DataProvider {
           db.appeals ??= [];
           db.notifications ??= [];
           db.storyViews ??= [];
-          for (const p of db.profiles) p.notification_prefs ??= {};
+          for (const p of db.profiles) (p as any).notification_prefs ??= {};
           return db;
         }
       }
@@ -262,7 +262,7 @@ export class DemoProvider implements DataProvider {
     if (this.db.profiles.some((p) => p.username === username)) throw new AppError("usernameTaken", "Username taken");
     const id = uuid();
     this.db.users.push({ id, email, passwordHash: hashPassword(input.password, id) });
-    this.db.profiles.push({
+    const profile = {
       id,
       username,
       display_name: input.displayName.trim() || username,
@@ -270,10 +270,11 @@ export class DemoProvider implements DataProvider {
       avatar_path: null,
       locale: "bn",
       role: "reader",
-      notification_prefs: {},
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    });
+    };
+    (profile as any).notification_prefs = {};
+    this.db.profiles.push(profile as any);
     this.db.sessionUserId = id;
     this.persist();
     this.emit();
@@ -326,7 +327,7 @@ export class DemoProvider implements DataProvider {
 
   async updateProfile(
     id: string,
-    patch: Partial<Pick<Profile, "display_name" | "bio" | "locale" | "notification_prefs">>
+    patch: Partial<Pick<Profile, "display_name" | "bio" | "locale">>
   ): Promise<Profile> {
     const me = await this.requireUid();
     if (me !== id) throw new AppError("notAuthor", "You can only edit your own profile");
@@ -335,13 +336,24 @@ export class DemoProvider implements DataProvider {
     if (patch.display_name !== undefined) p.display_name = patch.display_name.trim().slice(0, 80);
     if (patch.bio !== undefined) p.bio = patch.bio.trim().slice(0, 500);
     if (patch.locale !== undefined) p.locale = patch.locale;
-    if (patch.notification_prefs !== undefined) {
-      const cur = resolveNotificationPrefs(p.notification_prefs);
-      p.notification_prefs = { ...cur, ...patch.notification_prefs };
-    }
     p.updated_at = new Date().toISOString();
     this.persist();
     return { ...p };
+  }
+
+  async getNotificationPrefs(): Promise<Required<NotificationPrefs>> {
+    const me = await this.requireUid();
+    const p = this.db.profiles.find((x) => x.id === me);
+    return resolveNotificationPrefs((p as any)?.notification_prefs);
+  }
+
+  async updateNotificationPrefs(patch: Partial<NotificationPrefs>): Promise<void> {
+    const me = await this.requireUid();
+    const p = this.db.profiles.find((x) => x.id === me);
+    if (!p) throw new AppError("notFound", "Profile not found");
+    const cur = resolveNotificationPrefs((p as any).notification_prefs);
+    (p as any).notification_prefs = { ...cur, ...patch };
+    this.persist();
   }
 
   // ----------------------------------------------------------- stories
@@ -862,7 +874,7 @@ export class DemoProvider implements DataProvider {
   // ----------------------------------------------------- notifications
   private prefsOf(userId: string): Required<NotificationPrefs> {
     const p = this.db.profiles.find((x) => x.id === userId);
-    return resolveNotificationPrefs(p?.notification_prefs);
+    return resolveNotificationPrefs((p as any)?.notification_prefs);
   }
 
   private pushNotification(
@@ -1342,5 +1354,10 @@ export class DemoProvider implements DataProvider {
       return demoCover(decodeURIComponent(title ?? ""), lang === "bn" ? "bn" : "en");
     }
     return path;
+  }
+
+  async coverSignedUrl(path: string | null): Promise<string | null> {
+    // demo has no private storage; same as public URL
+    return this.coverUrl(path);
   }
 }

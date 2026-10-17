@@ -115,6 +115,8 @@ const files = [
   "supabase/migrations/20261016180000_profile_on_signup.sql",
   "supabase/migrations/20261017190000_bangla_slug_check.sql",
   "supabase/migrations/20261017200000_tag_search.sql",
+  "supabase/migrations/20261017210000_notification_prefs_table.sql",
+  "supabase/migrations/20261017210001_cover_privacy.sql",
   "supabase/seed.sql",
 ];
 
