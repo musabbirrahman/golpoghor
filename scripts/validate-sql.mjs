@@ -113,6 +113,8 @@ const files = [
   "supabase/migrations/20261016170000_notify_user_link_recipient_fix.sql",
   "supabase/migrations/20261016170001_story_moderator_columns.sql",
   "supabase/migrations/20261016180000_profile_on_signup.sql",
+  "supabase/migrations/20261017190000_bangla_slug_check.sql",
+  "supabase/migrations/20261017200000_tag_search.sql",
   "supabase/seed.sql",
 ];
 

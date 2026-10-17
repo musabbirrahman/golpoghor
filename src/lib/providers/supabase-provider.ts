@@ -247,6 +247,16 @@ export class SupabaseProvider implements DataProvider {
         const authorIds = (authors ?? []).map((a: any) => a.id);
         const ors = [`title.ilike.%${term}%`, `summary.ilike.%${term}%`];
         if (authorIds.length) ors.push(`author_id.in.(${authorIds.join(",")})`);
+        // tag match: PostgREST can't ILIKE text[] columns, so a DB function
+        // finds public stories with a partially-matching tag (demo parity).
+        // Skipped for owner-draft search (function is public-stories only).
+        if (!f.includeDrafts) {
+          const { data: tagIds } = await this.sb.rpc("story_ids_with_tag", {
+            p_term: term,
+          });
+          const ids = (tagIds ?? []) as string[];
+          if (ids.length) ors.push(`id.in.(${ids.join(",")})`);
+        }
         q = q.or(ors.join(","));
       }
     }
