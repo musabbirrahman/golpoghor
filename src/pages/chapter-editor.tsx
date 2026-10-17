@@ -114,10 +114,12 @@ export function ChapterEditorPage() {
     },
   });
 
-  // Hydrate editor once.
+  // Hydrate editor once, and re-hydrate if fresher server data arrives
+  // while the user has no unsaved edits (never clobber in-progress work).
   useEffect(() => {
-    if (isNew || initialized || !existingQuery.data || !editor) return;
+    if (isNew || !existingQuery.data || !editor) return;
     const c = existingQuery.data;
+    if (initialized && (dirtyRef.current || chapterRef.current?.updated_at === c.updated_at)) return;
     setChapter(c);
     setTitle(c.title);
     editor.commands.setContent(c.body_json);
@@ -140,6 +142,7 @@ export function ChapterEditorPage() {
         const created = await dp.createChapter(story.id, { title: chTitle, body: doc });
         setChapter(created);
         setSavedAt(created.updated_at);
+        queryClient.setQueryData(["chapter", "edit", created.id], created);
         queryClient.invalidateQueries({ queryKey: ["chapters", story.id] });
         // move to the canonical URL without a full reload
         navigate(`/write/chapters/${created.id}`, { replace: true });
@@ -158,6 +161,9 @@ export function ChapterEditorPage() {
         });
         setChapter(updated);
         setSavedAt(updated.updated_at);
+        // Keep the single-chapter cache fresh so reopening the editor
+        // never shows pre-save content.
+        queryClient.setQueryData(["chapter", "edit", cur.id], updated);
         queryClient.invalidateQueries({ queryKey: ["chapters", story.id] });
       }
       setSaveState("saved");
@@ -195,7 +201,15 @@ export function ChapterEditorPage() {
     return () => {
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("beforeunload", onBeforeUnload);
-      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      if (debounceRef.current) {
+        window.clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+      // SPA navigation doesn't blur the window, so flush any pending
+      // autosave here — otherwise the last <1.2s of typing is silently lost.
+      if (dirtyRef.current) {
+        saveNowRef.current();
+      }
     };
   }, [saveNow]);
 

@@ -181,6 +181,8 @@ export function StoryFormPage() {
         await dp.updateStory(id!, input);
         queryClient.invalidateQueries({ queryKey: ["myStories"] });
         queryClient.invalidateQueries({ queryKey: ["story", "edit", id] });
+        // Title/summary/cover edits must reach public shelves + discover too.
+        queryClient.invalidateQueries({ queryKey: ["stories"] });
         setSavedFlash(true);
         setTimeout(() => setSavedFlash(false), 2500);
       }
@@ -200,6 +202,8 @@ export function StoryFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["story", "edit", id] });
       queryClient.invalidateQueries({ queryKey: ["myStories"] });
+      // Visibility changed: public shelves + discover must refresh.
+      queryClient.invalidateQueries({ queryKey: ["stories"] });
       setConfirmAction(null);
     },
     onError: (err) => setError(errText(err)),
@@ -209,6 +213,8 @@ export function StoryFormPage() {
     mutationFn: () => dp.deleteStory(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["myStories"] });
+      // Deleted story must vanish from public shelves + discover immediately.
+      queryClient.invalidateQueries({ queryKey: ["stories"] });
       navigate("/write", { replace: true });
     },
     onError: (err) => setError(errText(err)),
