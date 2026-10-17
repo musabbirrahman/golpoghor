@@ -142,6 +142,21 @@ export function StoryFormPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<null | "delete" | "publish" | "unpublish" | "complete">(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+
+  // Signed cover URL (works for private draft covers too). Hook stays above
+  // the early returns so the hook order never changes between renders.
+  useEffect(() => {
+    let cancelled = false;
+    if (story?.cover_path) {
+      dp.coverSignedUrl(story.cover_path)
+        .then((url) => { if (!cancelled) setCoverPreview(url); })
+        .catch(() => { if (!cancelled) setCoverPreview(null); });
+    } else {
+      setCoverPreview(null);
+    }
+    return () => { cancelled = true; };
+  }, [dp, story?.cover_path]);
 
   // hydrate once
   if (!isNew && story && !initialized) {
@@ -242,20 +257,6 @@ export function StoryFormPage() {
       </RequireAuthor>
     );
   }
-
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    if (story?.cover_path) {
-      // Signed URL: works for drafts (private) as well as published stories.
-      dp.coverSignedUrl(story.cover_path)
-        .then((url) => { if (!cancelled) setCoverPreview(url); })
-        .catch(() => { if (!cancelled) setCoverPreview(null); });
-    } else {
-      setCoverPreview(null);
-    }
-    return () => { cancelled = true; };
-  }, [dp, story?.cover_path]);
 
   return (
     <RequireAuthor>
