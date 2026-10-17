@@ -16,7 +16,12 @@ function AuthCard({ title, children }: { title: string; children: React.ReactNod
 
 function errorText(t: (s: any, k: string) => string, err: unknown): string | null {
   if (!err) return null;
-  if (err instanceof AppError) return t("errors", err.code);
+  if (err instanceof AppError) {
+    const text = t("errors", err.code);
+    // Unknown codes (e.g. raw Supabase messages) fall back to the generic
+    // message instead of showing a cryptic code to the user.
+    return text === err.code ? t("errors", "generic") : text;
+  }
   return t("errors", "generic");
 }
 

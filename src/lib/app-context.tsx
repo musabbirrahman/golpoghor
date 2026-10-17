@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -68,6 +69,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     enabled: !!session,
     staleTime: 60_000,
   });
+
+  // Self-heal: a user who confirmed their email before the profile trigger
+  // existed (or whose profile row is missing for any reason) gets it created
+  // on first load instead of seeing a broken "?" account.
+  const healedRef = useRef(false);
+  useEffect(() => {
+    if (healedRef.current || !session || profileQuery.isLoading || profileQuery.data) return;
+    healedRef.current = true;
+    dp.ensureOwnProfile()
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["profile", session.user.id] });
+      })
+      .catch(() => {
+        healedRef.current = false;
+      });
+  }, [session, profileQuery.data, profileQuery.isLoading, queryClient]);
 
   // Sync profile locale preference on load (profile wins over local default only if never chosen)
   useEffect(() => {

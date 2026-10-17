@@ -68,6 +68,8 @@ export interface DataProvider {
   }): Promise<{ needsEmailConfirmation: boolean }>;
   signIn(email: string, password: string): Promise<void>;
   signOut(): Promise<void>;
+  /** Create the caller's profile row if it is missing (self-heal after signup). */
+  ensureOwnProfile(): Promise<void>;
   resetPassword(email: string): Promise<void>;
   updatePassword(newPassword: string): Promise<void>;
 

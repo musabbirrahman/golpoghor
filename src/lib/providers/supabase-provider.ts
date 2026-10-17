@@ -134,6 +134,8 @@ export class SupabaseProvider implements DataProvider {
     if (error) {
       if (/already registered|already exists/i.test(error.message))
         throw new AppError("emailTaken", error.message);
+      if (/over_email_send_rate_limit|rate limit|too many/i.test(error.message))
+        throw new AppError("emailRateLimit", error.message);
       throw toAppError(error);
     }
     const user = data.user;
@@ -163,6 +165,12 @@ export class SupabaseProvider implements DataProvider {
   async signOut(): Promise<void> {
     const { error } = await this.sb.auth.signOut();
     if (error) throw toAppError(error);
+  }
+
+  async ensureOwnProfile(): Promise<void> {
+    const session = await this.getSession();
+    if (!session) return;
+    await this.ensureProfile(session.user.id, session.user.email ?? "");
   }
 
   async resetPassword(email: string): Promise<void> {

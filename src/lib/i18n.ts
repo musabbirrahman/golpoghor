@@ -418,6 +418,10 @@ const dict = {
       bn: "এই ইমেইলে ইতিমধ্যে অ্যাকাউন্ট আছে।",
       en: "An account with this email already exists.",
     },
+    emailRateLimit: {
+      bn: "এই মুহূর্তে অনেক ইমেইল পাঠানো হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।",
+      en: "Too many emails sent right now. Please try again in a little while.",
+    },
     weakPassword: {
       bn: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।",
       en: "Password must be at least 6 characters.",

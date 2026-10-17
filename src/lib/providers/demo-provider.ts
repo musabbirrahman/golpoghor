@@ -296,6 +296,10 @@ export class DemoProvider implements DataProvider {
     this.emit();
   }
 
+  async ensureOwnProfile(): Promise<void> {
+    // Demo mode creates the profile at signup; nothing to heal.
+  }
+
   async resetPassword(email: string): Promise<void> {
     // Demo: pretend the email was sent. The demo account password is documented.
     const em = email.trim().toLowerCase();

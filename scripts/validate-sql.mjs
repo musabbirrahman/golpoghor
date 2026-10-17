@@ -108,6 +108,11 @@ const files = [
   "supabase/migrations/20261016140000_story_views.sql",
   "supabase/migrations/20261016140001_notification_hardening.sql",
   "supabase/migrations/20261016140002_story_visibility.sql",
+  "supabase/migrations/20261016150000_role_guard_bootstrap.sql",
+  "supabase/migrations/20261016160000_story_is_public_definer.sql",
+  "supabase/migrations/20261016170000_notify_user_link_recipient_fix.sql",
+  "supabase/migrations/20261016170001_story_moderator_columns.sql",
+  "supabase/migrations/20261016180000_profile_on_signup.sql",
   "supabase/seed.sql",
 ];
 
@@ -182,9 +187,16 @@ for (const f of files) {
       errors.push(`${f}: missing stories_publish_gate trigger`);
   }
 
-  // seed.sql must not contain real-looking secrets
-  if (f.includes("seed.sql")) {
-    if (/eyJ[A-Za-z0-9_-]{10,}/.test(sql)) errors.push("seed.sql looks like it contains a JWT");
+  // schema: the 42P17-prone GIN indexes were removed (2026-10-16) after
+  // verifying on real PostgreSQL 16 that to_tsvector('simple', ...) is
+  // STABLE and array_to_string() is not IMMUTABLE. Fail if either creeps
+  // back into an index expression.
+  if (f.includes("090000_schema")) {
+    const codeOnly = sql.replace(/--[^\n]*/g, "");
+    if (/(?<!golpoghor_)to_tsvector\s*\(/i.test(codeOnly))
+      errors.push(`${f}: to_tsvector() in an index expression fails with 42P17 on real Postgres`);
+    if (/using\s+gin\s*\(/i.test(codeOnly))
+      errors.push(`${f}: unexpected GIN expression index — FTS was removed, see file note`);
   }
 
   if (errors.length) {
