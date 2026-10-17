@@ -219,6 +219,8 @@ export function ChapterEditorPage() {
       if (action === "delete") {
         await dp.deleteChapter(chapter.id);
         queryClient.invalidateQueries({ queryKey: ["chapters", story?.id] });
+        // Chapter count on public cards/shelves must update too.
+        queryClient.invalidateQueries({ queryKey: ["stories"] });
         navigate(`/write/stories/${story?.id}`);
         return;
       }
@@ -238,6 +240,9 @@ export function ChapterEditorPage() {
       }
       setConfirmAction(null);
       queryClient.invalidateQueries({ queryKey: ["chapters", story?.id] });
+      // Publishing/unpublishing changes the public chapter count (and can
+      // hide a story that lost its last published chapter) — refresh lists.
+      queryClient.invalidateQueries({ queryKey: ["stories"] });
     } catch (err) {
       setError(err instanceof AppError ? t("errors", err.code) : t("errors", "generic"));
       setConfirmAction(null);
