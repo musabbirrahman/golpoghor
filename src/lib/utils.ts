@@ -13,6 +13,12 @@ export function slugify(title: string): string {
   return s || `untitled-${Date.now().toString(36)}`;
 }
 
+/** True when a chapter slug is still the auto-generated placeholder left by
+ *  autosave (the chapter row was created before the title was typed). */
+export function isPlaceholderChapterSlug(slug: string): boolean {
+  return slug.startsWith("untitled-") || slug === slugify("শিরোনামহীন অধ্যায়");
+}
+
 /** Word count that doesn't assume latin tokenisation. */
 export function countWords(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
