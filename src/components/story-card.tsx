@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Story } from "../lib/types";
 import { useApp } from "../lib/app-context";
@@ -10,7 +11,18 @@ export function storyPath(s: Story): string {
 
 export function Cover({ story, className = "" }: { story: Story; className?: string }) {
   const { dp } = useApp();
-  const url = dp.coverUrl(story.cover_path);
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (story.cover_path) {
+      dp.coverUrl(story.cover_path)
+        .then((u) => { if (!cancelled) setUrl(u); })
+        .catch(() => { if (!cancelled) setUrl(null); });
+    } else {
+      setUrl(null);
+    }
+    return () => { cancelled = true; };
+  }, [dp, story.cover_path]);
   if (!url) {
     return (
       <div className={`flex items-center justify-center bg-river-soft font-serif text-5xl text-river ${className}`} aria-hidden>

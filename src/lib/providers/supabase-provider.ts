@@ -1158,9 +1158,13 @@ export class SupabaseProvider implements DataProvider {
     return path;
   }
 
-  coverUrl(path: string | null): string | null {
+  async coverUrl(path: string | null): Promise<string | null> {
     if (!path) return null;
-    return this.sb.storage.from("covers").getPublicUrl(path).data.publicUrl;
+    // Long-lived signed URL (1 year). RLS is checked at generation time:
+    // only published stories' covers are signable by anonymous users.
+    const { data, error } = await this.sb.storage.from("covers").createSignedUrl(path, 31536000);
+    if (error) return null;
+    return data.signedUrl;
   }
 
   async coverSignedUrl(path: string | null): Promise<string | null> {

@@ -1346,7 +1346,7 @@ export class DemoProvider implements DataProvider {
     return dataUrl; // demo: coverUrl passes data: URLs through
   }
 
-  coverUrl(path: string | null): string | null {
+  async coverUrl(path: string | null): Promise<string | null> {
     if (!path) return null;
     if (path.startsWith("data:")) return path;
     if (path.startsWith("demo:")) {

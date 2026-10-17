@@ -117,6 +117,7 @@ const files = [
   "supabase/migrations/20261017200000_tag_search.sql",
   "supabase/migrations/20261017210000_notification_prefs_table.sql",
   "supabase/migrations/20261017210001_cover_privacy.sql",
+  "supabase/migrations/20261017210002_covers_bucket_private.sql",
   "supabase/seed.sql",
 ];
 

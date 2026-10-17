@@ -172,7 +172,8 @@ export interface DataProvider {
 
   // ----------------------------------------------------------- storage
   uploadCover(file: File): Promise<string>;
-  coverUrl(path: string | null): string | null;
+  /** Public-facing cover URL (signed, long-lived; respects RLS at generation). */
+  coverUrl(path: string | null): Promise<string | null>;
   /** Signed URL for the owner's own cover (works for drafts too). */
   coverSignedUrl(path: string | null): Promise<string | null>;
 
