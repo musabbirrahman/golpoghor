@@ -142,8 +142,8 @@ const dict = {
       en: "Account created! Please sign in.",
     },
     confirmEmail: {
-      bn: "ইমেইলে পাঠানো লিংকে ক্লিক করে অ্যাকাউন্ট নিশ্চিত করুন।",
-      en: "Click the link in your email to confirm your account.",
+      bn: "ইমেইলে পাঠানো লিংকে ক্লিক করে অ্যাকাউন্ট নিশ্চিত করুন। স্প্যাম ফোল্ডারেও খুঁজে দেখুন।",
+      en: "Click the link in your email to confirm your account. Check your spam folder too.",
     },
   },
   write: {
@@ -421,6 +421,10 @@ const dict = {
     emailRateLimit: {
       bn: "এই মুহূর্তে অনেক ইমেইল পাঠানো হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।",
       en: "Too many emails sent right now. Please try again in a little while.",
+    },
+    emailNotConfirmed: {
+      bn: "ইমেইল এখনো নিশ্চিত হয়নি। ইনবক্সে পাঠানো লিংকে ক্লিক করুন।",
+      en: "Email not confirmed yet. Click the link sent to your inbox.",
     },
     weakPassword: {
       bn: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।",

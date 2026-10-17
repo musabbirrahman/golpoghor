@@ -152,7 +152,11 @@ export class SupabaseProvider implements DataProvider {
 
   async signIn(email: string, password: string): Promise<void> {
     const { data, error } = await this.sb.auth.signInWithPassword({ email, password });
-    if (error) throw new AppError("signInFailed", error.message);
+    if (error) {
+      if (/email not confirmed/i.test(error.message))
+        throw new AppError("emailNotConfirmed", error.message);
+      throw new AppError("signInFailed", error.message);
+    }
     if (data.user) {
       try {
         await this.ensureProfile(data.user.id, email);
