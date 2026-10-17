@@ -422,6 +422,10 @@ const dict = {
       bn: "এই মুহূর্তে অনেক ইমেইল পাঠানো হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।",
       en: "Too many emails sent right now. Please try again in a little while.",
     },
+    invalidInput: {
+      bn: "কিছু তথ্য সঠিক নয়। শিরোনাম ও স্লাগ চেক করে আবার চেষ্টা করুন।",
+      en: "Some information isn't valid. Check the title and slug, then try again.",
+    },
     emailNotConfirmed: {
       bn: "ইমেইল এখনো নিশ্চিত হয়নি। ইনবক্সে পাঠানো লিংকে ক্লিক করুন।",
       en: "Email not confirmed yet. Click the link sent to your inbox.",

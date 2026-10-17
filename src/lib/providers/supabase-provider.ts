@@ -62,6 +62,9 @@ function toAppError(e: any, fallbackCode = "generic"): AppError {
     if (/username/i.test(msg)) return new AppError("usernameTaken", msg);
     return new AppError("conflict", msg);
   }
+  // 23514 = CHECK constraint violation (e.g. invalid slug characters).
+  // Never leak the raw Postgres code to the user.
+  if (e?.code === "23514") return new AppError("invalidInput", msg);
   return new AppError(e?.code ?? fallbackCode, msg);
 }
 
