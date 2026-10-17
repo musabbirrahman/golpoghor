@@ -1,9 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import type { ReportTarget } from "../lib/types";
 import { AppError } from "../lib/utils";
-import { Button, FieldError, Input, Label, Modal, Textarea } from "./ui";
+import { Button, FieldError, Input, Label, Modal, Select, Textarea } from "./ui";
+
+const REASON_KEYS = [
+  "reasonSpam",
+  "reasonHarassment",
+  "reasonHateSpeech",
+  "reasonPlagiarism",
+  "reasonSexualContent",
+  "reasonViolence",
+  "reasonOther",
+] as const;
 
 export function ReportDialog({
   open,
@@ -19,9 +29,29 @@ export function ReportDialog({
   targetLabel: string;
 }) {
   const { t, dp, session } = useApp();
-  const [reason, setReason] = useState("");
+  const [reasonKey, setReasonKey] = useState<string>("");
+  const [customReason, setCustomReason] = useState("");
   const [details, setDetails] = useState("");
   const [done, setDone] = useState(false);
+
+  // Reset the form each time the dialog is closed, so reopening starts fresh.
+  useEffect(() => {
+    if (!open) {
+      setReasonKey("");
+      setCustomReason("");
+      setDetails("");
+      setDone(false);
+      mutation.reset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open ]);
+
+  const reason =
+    reasonKey === "reasonOther"
+      ? customReason.trim()
+      : reasonKey
+        ? t("reports", reasonKey)
+        : "";
 
   const mutation = useMutation({
     mutationFn: () => dp.createReport(targetType, targetId, reason, details),
@@ -50,15 +80,32 @@ export function ReportDialog({
         >
           <div>
             <Label htmlFor="report-reason">{t("reports", "reason")}</Label>
-            <Input
+            <Select
               id="report-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder={t("reports", "reasonPlaceholder")}
+              value={reasonKey}
+              onChange={(e) => setReasonKey(e.target.value)}
               required
-              maxLength={120}
-            />
+            >
+              <option value="">{t("reports", "reasons")}</option>
+              {REASON_KEYS.map((k) => (
+                <option key={k} value={k}>
+                  {t("reports", k)}
+                </option>
+              ))}
+            </Select>
           </div>
+          {reasonKey === "reasonOther" && (
+            <div>
+              <Label htmlFor="report-custom-reason">{t("reports", "customReason")}</Label>
+              <Input
+                id="report-custom-reason"
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+                placeholder={t("reports", "reasonPlaceholder")}
+                maxLength={120}
+              />
+            </div>
+          )}
           <div>
             <Label htmlFor="report-details">{t("reports", "details")}</Label>
             <Textarea
