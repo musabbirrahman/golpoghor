@@ -26,7 +26,6 @@ body {
 /* Tiptap editor + rendered chapter content share these rules */
 .richtext {
   @apply font-serif;
-  line-height: 1.85;
   overflow-wrap: break-word;
 }
 .richtext p {

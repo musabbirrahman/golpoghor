@@ -8,7 +8,7 @@ import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
 import { Button, ButtonLink, EmptyState, Modal, Spinner, StatusBadge } from "../components/ui";
 import { ChapterBody } from "./reader";
-import { AppError, countWords, docToText, emptyDoc, timeAgo } from "../lib/utils";
+import { AppError, countWords, docToText, emptyDoc, isPlaceholderChapterSlug, slugify, timeAgo } from "../lib/utils";
 import type { Chapter, Story, TiptapDoc } from "../lib/types";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -105,7 +105,7 @@ export function ChapterEditorPage() {
     ],
     content: emptyDoc(),
     editorProps: {
-      attributes: { class: "tiptap richtext min-h-[320px] rounded-xl border border-ink/15 bg-white px-5 py-4 text-[19px] focus:border-river" },
+      attributes: { class: "tiptap richtext min-h-[320px] rounded-xl border border-ink/15 bg-white px-5 py-4 text-[19px] leading-[1.85] focus:border-river" },
     },
     onUpdate: ({ editor }) => {
       setLiveWords(countWords(docToText(editor.getJSON() as TiptapDoc)));
@@ -144,7 +144,18 @@ export function ChapterEditorPage() {
         // move to the canonical URL without a full reload
         navigate(`/write/chapters/${created.id}`, { replace: true });
       } else {
-        const updated = await dp.updateChapter(chapterRef.current.id, { title: chTitle, body: doc });
+        const cur = chapterRef.current!;
+        // Autosave creates the chapter before the title is typed, so the row
+        // can carry an auto "untitled-chapter" slug while the title is real.
+        // Regenerate the slug from the title once, while it is still a
+        // placeholder. Chapters with real slugs keep their URLs forever.
+        const placeholderSlug = isPlaceholderChapterSlug(cur.slug);
+        const realTitle = chTitle !== "Untitled chapter" && chTitle !== "শিরোনামহীন অধ্যায়";
+        const updated = await dp.updateChapter(cur.id, {
+          title: chTitle,
+          body: doc,
+          ...(placeholderSlug && realTitle ? { slug: slugify(chTitle) } : {}),
+        });
         setChapter(updated);
         setSavedAt(updated.updated_at);
         queryClient.invalidateQueries({ queryKey: ["chapters", story.id] });
@@ -285,7 +296,7 @@ export function ChapterEditorPage() {
         </div>
 
         {preview ? (
-          <div className="mt-4 rounded-2xl border-2 border-dashed border-gold bg-white px-5 py-8 sm:px-10">
+          <div className="mt-4 rounded-2xl border-2 border-dashed border-gold bg-white px-5 py-8 leading-[1.85] sm:px-10">
             <p className="mb-6 text-center text-xs font-semibold uppercase tracking-widest text-gold">
               {t("write", "preview")} — {t("write", "draft")}
             </p>
