@@ -1,7 +1,7 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppProvider, useApp } from "./lib/app-context";
-import { Layout } from "./components/layout";
+import { Layout, ScrollToTopOnNavigate } from "./components/layout";
 import { ButtonLink, EmptyState } from "./components/ui";
 import { HomePage, DiscoverPage, SearchPage } from "./pages/discovery";
 import { StoryPage, AuthorPage } from "./pages/story";
@@ -45,26 +45,41 @@ function ResetPasswordRoute() {
   return isRecovery ? <SetPasswordPage /> : <ResetPasswordPage />;
 }
 
+/** Persistent root: keeps scroll management mounted across navigations. */
+function RootLayout() {
+  return (
+    <>
+      <ScrollToTopOnNavigate />
+      <Outlet />
+    </>
+  );
+}
+
 const router = createBrowserRouter([
-  { path: "/", element: <HomePage /> },
-  { path: "/discover", element: <DiscoverPage /> },
-  { path: "/search", element: <SearchPage /> },
-  { path: "/stories/:username/:slug", element: <StoryPage /> },
-  { path: "/stories/:username/:slug/:chapterSlug", element: <ReaderPage /> },
-  { path: "/authors/:username", element: <AuthorPage /> },
-  { path: "/login", element: <LoginPage /> },
-  { path: "/signup", element: <SignupPage /> },
-  { path: "/reset-password", element: <ResetPasswordRoute /> },
-  { path: "/library", element: <LibraryPage /> },
-  { path: "/inbox", element: <InboxPage /> },
-  { path: "/write", element: <WriteDashboard /> },
-  { path: "/write/stories/new", element: <StoryFormPage /> },
-  { path: "/write/stories/:id", element: <StoryFormPage /> },
-  { path: "/write/stories/:storyId/chapters/new", element: <ChapterEditorPage /> },
-  { path: "/write/chapters/:chapterId", element: <ChapterEditorPage /> },
-  { path: "/settings/profile", element: <SettingsPage /> },
-  { path: "/admin/reports", element: <AdminPage /> },
-  { path: "*", element: <NotFound /> },
+  {
+    element: <RootLayout />,
+    children: [
+      { path: "/", element: <HomePage /> },
+      { path: "/discover", element: <DiscoverPage /> },
+      { path: "/search", element: <SearchPage /> },
+      { path: "/stories/:username/:slug", element: <StoryPage /> },
+      { path: "/stories/:username/:slug/:chapterSlug", element: <ReaderPage /> },
+      { path: "/authors/:username", element: <AuthorPage /> },
+      { path: "/login", element: <LoginPage /> },
+      { path: "/signup", element: <SignupPage /> },
+      { path: "/reset-password", element: <ResetPasswordRoute /> },
+      { path: "/library", element: <LibraryPage /> },
+      { path: "/inbox", element: <InboxPage /> },
+      { path: "/write", element: <WriteDashboard /> },
+      { path: "/write/stories/new", element: <StoryFormPage /> },
+      { path: "/write/stories/:id", element: <StoryFormPage /> },
+      { path: "/write/stories/:storyId/chapters/new", element: <ChapterEditorPage /> },
+      { path: "/write/chapters/:chapterId", element: <ChapterEditorPage /> },
+      { path: "/settings/profile", element: <SettingsPage /> },
+      { path: "/admin/reports", element: <AdminPage /> },
+      { path: "*", element: <NotFound /> },
+    ],
+  },
 ]);
 
 export default function App() {

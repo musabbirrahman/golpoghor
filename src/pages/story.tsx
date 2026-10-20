@@ -323,7 +323,7 @@ export function AuthorPage() {
         {followQuery.data?.count ?? 0} {t("story", "followers")}
       </p>
 
-      <h2 className="mb-4 mt-8 font-serif text-2xl font-bold">{t("write", "myStories")}</h2>
+      <h2 className="mb-4 mt-8 font-serif text-2xl font-bold">{t("story", "stories")}</h2>
       {storiesQuery.isLoading ? <Spinner /> : storiesQuery.data?.stories.length ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {storiesQuery.data.stories.map((s) => (

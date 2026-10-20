@@ -1,7 +1,27 @@
-import { Link, NavLink, useNavigate } from "react-router-dom";
-import { useState, type ReactNode } from "react";
+import { Link, NavLink, useLocation, useNavigate, useNavigationType } from "react-router-dom";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useApp } from "../lib/app-context";
 import { NotificationBell } from "./notifications";
+
+/**
+ * New-page navigations start at the top (e.g. tapping a footer link deep at
+ * the bottom of a long page on mobile). Back/forward (POP) keeps the
+ * browser's own scroll handling. The reader's position restore runs after
+ * this and still lands on the saved paragraph.
+ */
+export function ScrollToTopOnNavigate() {
+  const { pathname, search } = useLocation();
+  const navigationType = useNavigationType();
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    if (navigationType === "PUSH") window.scrollTo({ top: 0 });
+  }, [pathname, search, navigationType]);
+  return null;
+}
 
 function Brand() {
   const { t } = useApp();
