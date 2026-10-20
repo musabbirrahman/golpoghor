@@ -1,0 +1,41 @@
+GolpoGhor: regenerate chapter slug from title when it's still an autosave placeholder.
+Fixes the "untitled-chapter" URL on chapters whose title was typed after
+autosave created the row. Chapters with real slugs keep their URLs forever.
+
+diff --git a/src/lib/utils.ts b/src/lib/utils.ts
+--- a/src/lib/utils.ts
++++ b/src/lib/utils.ts
+@@ -13,5 +13,11 @@
+   return s || `untitled-${Date.now().toString(36)}`;
+ }
+ 
++/** True when a chapter slug is still the auto-generated placeholder left by
++ *  autosave (the chapter row was created before the title was typed). */
++export function isPlaceholderChapterSlug(slug: string): boolean {
++  return slug.startsWith("untitled-") || slug === slugify("শিরোনামহীন অধ্যায়");
++}
++
+ /** Word count that doesn't assume latin tokenisation. */
+ export function countWords(text: string): number {
+   return text.split(/\s+/).filter(Boolean).length;
+diff --git a/src/pages/chapter-editor.tsx b/src/pages/chapter-editor.tsx
+--- a/src/pages/chapter-editor.tsx
++++ b/src/pages/chapter-editor.tsx
+@@ -11,1 +11,1 @@
+-import { AppError, countWords, docToText, emptyDoc, timeAgo } from "../lib/utils";
++import { AppError, countWords, docToText, emptyDoc, isPlaceholderChapterSlug, slugify, timeAgo } from "../lib/utils";
+@@ -146,2 +146,13 @@
+       } else {
+-        const updated = await dp.updateChapter(chapterRef.current.id, { title: chTitle, body: doc });
++        const cur = chapterRef.current!;
++        // Autosave creates the chapter before the title is typed, so the row
++        // can carry an auto "untitled-chapter" slug while the title is real.
++        // Regenerate the slug from the title once, while it is still a
++        // placeholder. Chapters with real slugs keep their URLs forever.
++        const placeholderSlug = isPlaceholderChapterSlug(cur.slug);
++        const realTitle = chTitle !== "Untitled chapter" && chTitle !== "শিরোনামহীন অধ্যায়";
++        const updated = await dp.updateChapter(cur.id, {
++          title: chTitle,
++          body: doc,
++          ...(placeholderSlug && realTitle ? { slug: slugify(chTitle) } : {}),
++        });

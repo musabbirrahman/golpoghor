@@ -179,7 +179,7 @@ export function demoCover(title: string, language: "bn" | "en"): string {
     `<text x='300' y='380' text-anchor='middle' font-family='Georgia, "Noto Serif Bengali", serif' font-size='44' fill='#F7F3E9'>` +
     `${short.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>` +
     `<line x1='220' y1='440' x2='380' y2='440' stroke='${accent}' stroke-width='2'/>` +
-    `<text x='300' y='490' text-anchor='middle' font-family='Georgia, serif' font-size='24' letter-spacing='6' fill='${accent}'>গল্পঘর</text>` +
+    `<text x='300' y='490' text-anchor='middle' font-family='Georgia, serif' font-size='24' letter-spacing='6' fill='${accent}'>গল্পনীড়</text>` +
     `</svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }

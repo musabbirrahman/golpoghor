@@ -58,7 +58,7 @@ export const SEED_AUTHORS: SeedAuthor[] = [
     id: "33333333-3333-4333-8333-333333333333",
     email: "moderator@golpoghor.demo",
     username: "golpoghor_mods",
-    display_name: "GolpoGhor Moderation",
+    display_name: "GolpoNeer Moderation",
     bio: "Community moderation team. Report issues and we will look into them.",
     locale: "bn",
     role: "moderator",

@@ -2,7 +2,7 @@
 import type { Locale } from "./types";
 
 const dict = {
-  brand: { bn: "গল্পঘর", en: "GolpoGhor" },
+  brand: { bn: "গল্পনীড়", en: "GolpoNeer" },
   tagline: {
     bn: "বাংলা ও ইংরেজিতে গল্প পড়ুন ও প্রকাশ করুন।",
     en: "Read and publish stories in Bangla and English.",
@@ -29,7 +29,7 @@ const dict = {
       bn: "ক্লাসিক বিভাগের গল্পগুলো পাবলিক ডোমেইনের সৃষ্টি। নতুন অনুবাদ ও আধুনিক সংস্করণের কৃতিত্ব তাদের নিজ নিজ অনুবাদক ও সম্পাদকের।",
       en: "The classics are public-domain works. New translations and modern editions are credited to their own translators and editors.",
     },
-    rights: { bn: "© ২০২৬ গল্পঘর", en: "© 2026 GolpoGhor" },
+    rights: { bn: "© ২০২৬ গল্পনীড়", en: "© 2026 GolpoNeer" },
   },
   home: {
     heroTitle: {

@@ -26,10 +26,8 @@ export function ScrollToTopOnNavigate() {
 function Brand() {
   const { t } = useApp();
   return (
-    <Link to="/" className="flex items-center gap-2" aria-label="GolpoGhor home">
-      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-river font-serif text-xl text-paper">
-        গ
-      </span>
+    <Link to="/" className="flex items-center gap-2" aria-label="GolpoNeer home">
+      <img src="/logo.png" alt="" className="h-9 w-9 rounded-lg object-cover" />
       <span className="font-serif text-xl font-bold tracking-tight">{t("brand", "brand")}</span>
     </Link>
   );
