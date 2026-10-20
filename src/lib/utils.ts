@@ -134,3 +134,35 @@ export class AppError extends Error {
     this.code = code;
   }
 }
+
+/**
+ * Shrink a user-picked photo to avatar size before upload (max 512×512,
+ * JPEG). Phone photos are several MB — far over the avatars bucket limit —
+ * and an avatar never displays larger than 512px, so resizing client-side
+ * makes any ordinary photo uploadable. Throws AppError("invalidImage")
+ * for files the browser cannot decode (e.g. HEIC in Chrome).
+ */
+export async function fileToAvatarFile(file: File): Promise<File> {
+  let bitmap: ImageBitmap | HTMLImageElement;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new AppError("invalidImage", "That image could not be read");
+  }
+  const scale = Math.min(1, 512 / Math.max(bitmap.width, bitmap.height));
+  const w = Math.max(1, Math.round(bitmap.width * scale));
+  const h = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new AppError("invalidImage", "That image could not be processed");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", 0.85)
+  );
+  if (!blob) throw new AppError("invalidImage", "That image could not be processed");
+  return new File([blob], "avatar.jpg", { type: "image/jpeg" });
+}

@@ -1232,7 +1232,10 @@ export class SupabaseProvider implements DataProvider {
     if (file.size > 1 * 1024 * 1024) throw new AppError("generic", "Image must be under 1 MB");
     const ext = file.type.split("/")[1];
     const path = `${me}/avatar-${Date.now()}.${ext}`;
-    const { error } = await this.sb.storage.from("avatars").upload(path, file, { contentType: file.type, upsert: true });
+    // upsert: false, matching the proven cover-upload path — the filename
+    // is unique per upload, and the storage upsert path applies RLS
+    // differently (it can refuse brand-new objects outright).
+    const { error } = await this.sb.storage.from("avatars").upload(path, file, { contentType: file.type, upsert: false });
     if (error) throw toAppError(error);
     return path;
   }

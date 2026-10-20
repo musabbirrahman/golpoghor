@@ -420,8 +420,8 @@ const dict = {
     account: { bn: "অ্যাকাউন্ট", en: "Account" },
     profilePicture: { bn: "প্রোফাইল ছবি", en: "Profile picture" },
     pictureHint: {
-      bn: "JPG, PNG বা WebP — সর্বোচ্চ ১ MB।",
-      en: "JPG, PNG or WebP — up to 1 MB.",
+      bn: "যেকোনো ছবি — আপলোডের আগে স্বয়ংক্রিয়ভাবে ছোট করা হয়।",
+      en: "Any photo — it's resized automatically before upload.",
     },
     changePassword: { bn: "পাসওয়ার্ড পরিবর্তন", en: "Change password" },
     newPassword: { bn: "নতুন পাসওয়ার্ড", en: "New password" },
@@ -506,6 +506,10 @@ const dict = {
     usernameReserved: {
       bn: "এই ইউজারনেমটি সম্প্রতি ব্যবহৃত হয়েছে এবং এখনো সংরক্ষিত আছে।",
       en: "That username was recently in use and is still reserved.",
+    },
+    invalidImage: {
+      bn: "ছবিটি পড়া যায়নি। JPG বা PNG ছবি ব্যবহার করুন।",
+      en: "That image could not be read. Please use a JPG or PNG photo.",
     },
     rateLimited: {
       bn: "এক ঘণ্টায় অনেক বেশিবার করা হয়েছে। কিছুক্ষণ অপেক্ষা করে আবার চেষ্টা করুন।",

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AppError } from "../lib/utils";
+import { AppError, fileToAvatarFile } from "../lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { resolveNotificationPrefs } from "../lib/data-provider";
@@ -107,6 +107,7 @@ export function LibraryPage() {
 export function SettingsPage() {
   const { t, dp, profile, refreshSession, locale, setLocale } = useApp();
   const [displayName, setDisplayName] = useState(profile?.display_name ?? "");
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [bio, setBio] = useState(profile?.bio ?? "");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -156,14 +157,16 @@ export function SettingsPage() {
                     const file = e.target.files?.[0];
                     if (!file || !profile) return;
                     setBusy(true);
+                    setAvatarError(null);
                     try {
-                      const path = await dp.uploadAvatar(file);
+                      const resized = await fileToAvatarFile(file);
+                      const path = await dp.uploadAvatar(resized);
                       await dp.updateProfile(profile.id, { avatar_path: path });
                       refreshSession();
                       setSaved(true);
                       setTimeout(() => setSaved(false), 3000);
-                    } catch {
-                      /* the provider's message is generic; keep the form usable */
+                    } catch (err) {
+                      setAvatarError(accountErrorText(t, err));
                     } finally {
                       setBusy(false);
                       e.target.value = "";
@@ -171,6 +174,7 @@ export function SettingsPage() {
                   }}
                 />
                 <p className="mt-1 text-xs text-ink-faint">{t("settings", "pictureHint")}</p>
+                {avatarError && <p className="mt-1 text-sm text-red-700" role="alert">{avatarError}</p>}
               </div>
             </div>
             <div>
