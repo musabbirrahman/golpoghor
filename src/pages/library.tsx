@@ -53,7 +53,7 @@ export function LibraryPage() {
           {progressQuery.isLoading ? <Spinner /> : progressQuery.data?.length ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {progressQuery.data.map(({ story, progress }) => (
-                <Link key={story.id} to={storyPath(story)} className="block rounded-xl bg-white p-4 shadow-card hover:shadow-lift">
+                <Link key={story.id} to={storyPath(story)} className="block h-full rounded-xl bg-white p-4 shadow-card hover:shadow-lift">
                   <p className="truncate font-serif text-lg font-semibold">{story.title}</p>
                   <p className="text-sm text-ink-faint">{story.author?.display_name}</p>
                   <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-sage" role="progressbar"

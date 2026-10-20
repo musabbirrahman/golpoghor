@@ -19,6 +19,18 @@ const dict = {
     settings: { bn: "সেটিংস", en: "Settings" },
     admin: { bn: "মডারেশন", en: "Moderation" },
   },
+  footer: {
+    explore: { bn: "ঘুরে দেখুন", en: "Explore" },
+    readWrite: { bn: "পড়া ও লেখা", en: "Read & write" },
+    classics: { bn: "ক্লাসিক গল্প", en: "Classic stories" },
+    classicsBn: { bn: "বাংলা ক্লাসিক", en: "Bangla classics" },
+    classicsEn: { bn: "ইংরেজি ক্লাসিক", en: "English classics" },
+    classicsNote: {
+      bn: "ক্লাসিক বিভাগের গল্পগুলো পাবলিক ডোমেইনের সৃষ্টি। নতুন অনুবাদ ও আধুনিক সংস্করণের কৃতিত্ব তাদের নিজ নিজ অনুবাদক ও সম্পাদকের।",
+      en: "The classics are public-domain works. New translations and modern editions are credited to their own translators and editors.",
+    },
+    rights: { bn: "© ২০২৬ গল্পঘর", en: "© 2026 GolpoGhor" },
+  },
   home: {
     heroTitle: {
       bn: "যে গল্পগুলো ঘরের মতো লাগে।",

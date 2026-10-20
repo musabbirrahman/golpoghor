@@ -35,14 +35,12 @@ export function Cover({ story, className = "" }: { story: Story; className?: str
 
 export function StoryCard({ story }: { story: Story }) {
   const { t, locale } = useApp();
-  const minutes = readingMinutes(
-    (story.chapter_count ?? 0) * 450,
-    story.language
-  );
+  // Shared estimate from the story's real published word count (see utils).
+  const minutes = readingMinutes(story.word_count ?? 0, story.language);
   return (
     <Link
       to={storyPath(story)}
-      className="group flex flex-col overflow-hidden rounded-xl bg-white shadow-card transition-shadow hover:shadow-lift"
+      className="group flex h-full flex-col overflow-hidden rounded-xl bg-white shadow-card transition-shadow hover:shadow-lift"
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-river-soft">
         <Cover story={story} className="h-full w-full transition-transform duration-300 group-hover:scale-[1.03]" />
@@ -63,10 +61,14 @@ export function StoryCard({ story }: { story: Story }) {
           <span>
             {story.chapter_count ?? 0} {t("story", "chapters")}
           </span>
-          <span aria-hidden>·</span>
-          <span>
-            ~{minutes} {t("story", "minRead")}
-          </span>
+          {minutes > 0 && (
+            <>
+              <span aria-hidden>·</span>
+              <span>
+                ~{minutes} {t("story", "minRead")}
+              </span>
+            </>
+          )}
           <span aria-hidden>·</span>
           <span title={`${story.view_count} ${t("story", "views")}`}>
             👁 {formatCount(story.view_count)} {t("story", "views")}
@@ -82,10 +84,11 @@ export function StoryCard({ story }: { story: Story }) {
 
 export function StoryRow({ story }: { story: Story }) {
   const { t, locale } = useApp();
+  const minutes = readingMinutes(story.word_count ?? 0, story.language);
   return (
     <Link
       to={storyPath(story)}
-      className="group flex gap-4 rounded-xl bg-white p-3 shadow-card transition-shadow hover:shadow-lift"
+      className="group flex h-full gap-4 rounded-xl bg-white p-3 shadow-card transition-shadow hover:shadow-lift"
     >
       <Cover story={story} className="h-28 w-20 shrink-0 rounded-lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -102,6 +105,7 @@ export function StoryRow({ story }: { story: Story }) {
         <p className="text-sm text-ink-soft clamp-2">{story.summary}</p>
         <p className="mt-auto text-xs text-ink-faint">
           {story.chapter_count ?? 0} {t("story", "chapters")}
+          {minutes > 0 ? ` · ~${minutes} ${t("story", "minRead")}` : ""}
           {` · 👁 ${formatCount(story.view_count)} ${t("story", "views")}`}
           {story.published_at ? ` · ${timeAgo(story.published_at, locale)}` : ""}
         </p>

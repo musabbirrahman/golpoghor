@@ -63,6 +63,8 @@ export interface Story {
   author?: Profile;
   chapter_count?: number;
   like_count?: number;
+  /** Total words across published chapters, derived at read time (never stored stale). */
+  word_count?: number;
 }
 
 export interface Chapter {
@@ -106,7 +108,18 @@ export interface ReadingProgress {
   story_id: string;
   chapter_id: string | null;
   scroll_ratio: number;
+  /** Index of the topmost visible content block in the chapter (exact resume anchor). */
+  block_index: number | null;
+  /** Fraction (0..1) of the way through that block when it was saved. */
+  block_offset: number | null;
   updated_at: string;
+}
+
+/** A position within a chapter: block anchor preferred, scroll ratio is the fallback. */
+export interface ReadingPosition {
+  scrollRatio: number;
+  blockIndex?: number | null;
+  blockOffset?: number | null;
 }
 
 export interface Comment {

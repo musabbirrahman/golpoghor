@@ -15,6 +15,7 @@ import type {
   NotificationPrefs,
   NotificationType,
   Profile,
+  ReadingPosition,
   ReadingProgress,
   Report,
   ReportStatus,
@@ -299,15 +300,20 @@ export class SupabaseProvider implements DataProvider {
     if (!stories.length) return;
     const ids = stories.map((s) => s.id);
     const [{ data: ch }, { data: likes }] = await Promise.all([
-      this.sb.from("chapters").select("story_id").in("story_id", ids).eq("status", "published"),
+      this.sb.from("chapters").select("story_id, word_count").in("story_id", ids).eq("status", "published"),
       this.sb.from("likes").select("story_id").in("story_id", ids),
     ]);
     const chCount = new Map<string, number>();
-    for (const c of ch ?? []) chCount.set(c.story_id, (chCount.get(c.story_id) ?? 0) + 1);
+    const wordCount = new Map<string, number>();
+    for (const c of ch ?? []) {
+      chCount.set(c.story_id, (chCount.get(c.story_id) ?? 0) + 1);
+      wordCount.set(c.story_id, (wordCount.get(c.story_id) ?? 0) + (c.word_count ?? 0));
+    }
     const likeCount = new Map<string, number>();
     for (const l of likes ?? []) likeCount.set(l.story_id, (likeCount.get(l.story_id) ?? 0) + 1);
     for (const s of stories) {
       s.chapter_count = chCount.get(s.id) ?? 0;
+      s.word_count = wordCount.get(s.id) ?? 0;
       s.like_count = likeCount.get(s.id) ?? 0;
     }
   }
@@ -629,11 +635,20 @@ export class SupabaseProvider implements DataProvider {
     return (data as ReadingProgress) ?? null;
   }
 
-  async saveProgress(storyId: string, chapterId: string | null, scrollRatio: number): Promise<void> {
+  async saveProgress(storyId: string, chapterId: string | null, position: ReadingPosition): Promise<void> {
     const me = await this.getSession();
     if (!me) return; // guests don't get progress
     const { error } = await this.sb.from("reading_progress").upsert(
-      { user_id: me.user.id, story_id: storyId, chapter_id: chapterId, scroll_ratio: Math.min(1, Math.max(0, scrollRatio)), updated_at: new Date().toISOString() },
+      {
+        user_id: me.user.id,
+        story_id: storyId,
+        chapter_id: chapterId,
+        scroll_ratio: Math.min(1, Math.max(0, position.scrollRatio)),
+        block_index: position.blockIndex ?? null,
+        block_offset:
+          position.blockOffset == null ? null : Math.min(1, Math.max(0, position.blockOffset)),
+        updated_at: new Date().toISOString(),
+      },
       { onConflict: "user_id,story_id" }
     );
     if (error) throw toAppError(error);

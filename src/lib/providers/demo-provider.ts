@@ -19,6 +19,7 @@ import type {
   NotificationPrefs,
   NotificationType,
   Profile,
+  ReadingPosition,
   ReadingProgress,
   Report,
   ReportStatus,
@@ -382,7 +383,9 @@ export class DemoProvider implements DataProvider {
 
   private attachCounts(stories: Story[]): void {
     for (const s of stories) {
-      s.chapter_count = this.db.chapters.filter((c) => c.story_id === s.id && c.status === "published").length;
+      const published = this.db.chapters.filter((c) => c.story_id === s.id && c.status === "published");
+      s.chapter_count = published.length;
+      s.word_count = published.reduce((a, c) => a + (c.word_count ?? 0), 0);
       s.like_count = this.db.likes.filter((l) => l.story_id === s.id).length;
     }
   }
@@ -765,17 +768,22 @@ export class DemoProvider implements DataProvider {
     return this.db.progress.find((p) => p.user_id === me && p.story_id === storyId) ?? null;
   }
 
-  async saveProgress(storyId: string, chapterId: string | null, scrollRatio: number): Promise<void> {
+  async saveProgress(storyId: string, chapterId: string | null, position: ReadingPosition): Promise<void> {
     const me = this.sessionSync()?.user.id;
     if (!me) return;
     const now = new Date().toISOString();
+    const ratio = Math.min(1, Math.max(0, position.scrollRatio));
+    const blockIndex = position.blockIndex ?? null;
+    const blockOffset = position.blockOffset == null ? null : Math.min(1, Math.max(0, position.blockOffset));
     const existing = this.db.progress.find((p) => p.user_id === me && p.story_id === storyId);
     if (existing) {
       existing.chapter_id = chapterId;
-      existing.scroll_ratio = Math.min(1, Math.max(0, scrollRatio));
+      existing.scroll_ratio = ratio;
+      existing.block_index = blockIndex;
+      existing.block_offset = blockOffset;
       existing.updated_at = now;
     } else {
-      this.db.progress.push({ user_id: me, story_id: storyId, chapter_id: chapterId, scroll_ratio: scrollRatio, updated_at: now });
+      this.db.progress.push({ user_id: me, story_id: storyId, chapter_id: chapterId, scroll_ratio: ratio, block_index: blockIndex, block_offset: blockOffset, updated_at: now });
     }
     this.persist();
   }

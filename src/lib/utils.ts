@@ -24,10 +24,26 @@ export function countWords(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
 }
 
-/** Estimated reading minutes; Bangla reads a touch slower in our heuristic. */
+/**
+ * Average comfortable silent-reading speeds — ASSUMPTIONS, not exact science:
+ * English ~220 words/minute is the commonly cited adult average. Bangla text
+ * counts words by whitespace (Bangla words are space-separated), but its
+ * conjunct-heavy orthography reads slower, so ~180 words/minute is used.
+ * Change the two constants to retune every estimate on the site at once.
+ */
+export const READING_WPM: Record<"bn" | "en", number> = { en: 220, bn: 180 };
+
+/**
+ * THE shared reading-time estimate, used by story cards, rows, the story
+ * page, the library, and the reader so a story shows the same number
+ * everywhere. Pass the TOTAL word count of the content being estimated
+ * (a whole story = sum of its published chapters' word counts; a chapter =
+ * that chapter's word count). Returns 0 for empty content so callers can
+ * hide the estimate instead of showing a made-up minute.
+ */
 export function readingMinutes(wordCount: number, language: "bn" | "en"): number {
-  const wpm = language === "bn" ? 170 : 200;
-  return Math.max(1, Math.round(wordCount / wpm));
+  if (!wordCount || wordCount <= 0) return 0;
+  return Math.max(1, Math.round(wordCount / READING_WPM[language]));
 }
 
 export function emptyDoc(): TiptapDoc {

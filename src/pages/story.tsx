@@ -97,9 +97,15 @@ export function StoryPage() {
   const resumeChapter = progress?.chapter_id
     ? chapters.find((c) => c.id === progress.chapter_id) ?? chapters[0]
     : chapters[0];
-  const totalMinutes = chapters.reduce((a, c) => a + readingMinutes(c.word_count, story.language), 0);
+  // One shared estimate: total published words through the shared formula,
+  // so the story page always agrees with cards, rows and the library.
+  const totalWords = story.word_count ?? chapters.reduce((a, c) => a + c.word_count, 0);
+  const totalMinutes = readingMinutes(totalWords, story.language);
 
   const chapterUrl = (c: { slug: string }) => `/stories/${username}/${slug}/${c.slug}`;
+  /** Chapter-list links restart the chapter from the top (manual restart);
+   *  only Continue Reading resumes the saved position. */
+  const chapterStartUrl = (c: { slug: string }) => `${chapterUrl(c)}?restart=1`;
 
   return (
     <Layout>
@@ -139,7 +145,7 @@ export function StoryPage() {
 
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-faint">
             <span>{chapters.length} {t("story", "chapters")}</span>
-            <span>~{totalMinutes} {t("story", "minRead")}</span>
+            {totalMinutes > 0 && <span>~{totalMinutes} {t("story", "minRead")}</span>}
             <span>👁 {formatCount(story.view_count)} {t("story", "views")}</span>
             <span>♥ {likeQuery.data?.count ?? story.like_count ?? 0}</span>
             {story.published_at && <span>{t("story", "publishedOn")} {formatDate(story.published_at, locale)}</span>}
@@ -214,12 +220,13 @@ export function StoryPage() {
           <ol className="divide-y divide-ink/10 rounded-xl bg-white shadow-card">
             {chapters.map((c, i) => (
               <li key={c.id}>
-                <Link to={chapterUrl(c)} className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-sage/40">
+                <Link to={chapterStartUrl(c)} className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-sage/40">
                   <span className="w-8 shrink-0 text-center font-serif text-lg text-ink-faint">{i + 1}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{c.title}</span>
                     <span className="text-xs text-ink-faint">
-                      {c.published_at ? timeAgo(c.published_at, locale) : ""} · {readingMinutes(c.word_count, story.language)} {t("story", "minRead")}
+                      {c.published_at ? timeAgo(c.published_at, locale) : ""}
+                      {readingMinutes(c.word_count, story.language) > 0 ? ` · ${readingMinutes(c.word_count, story.language)} ${t("story", "minRead")}` : ""}
                     </span>
                   </span>
                   {progress?.chapter_id === c.id && (
@@ -320,8 +327,8 @@ export function AuthorPage() {
       {storiesQuery.isLoading ? <Spinner /> : storiesQuery.data?.stories.length ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {storiesQuery.data.stories.map((s) => (
-            <Link key={s.id} to={`/stories/${profile.username}/${s.slug}`} className="block">
-              <div className="rounded-xl bg-white p-4 shadow-card hover:shadow-lift">
+            <Link key={s.id} to={`/stories/${profile.username}/${s.slug}`} className="block h-full">
+              <div className="h-full rounded-xl bg-white p-4 shadow-card hover:shadow-lift">
                 <div className="flex items-center gap-2">
                   <LanguageBadge language={s.language} />
                   <StatusBadge status={s.status} />

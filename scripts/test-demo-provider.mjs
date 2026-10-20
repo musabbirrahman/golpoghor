@@ -120,9 +120,10 @@ let storyId, chapterId;
 
 // 6. reading: progress, reading list, like, follow, comment
 {
-  await dp.saveProgress(storyId, chapterId, 0.42);
+  await dp.saveProgress(storyId, chapterId, { scrollRatio: 0.42, blockIndex: 7, blockOffset: 0.25 });
   const prog = await dp.getProgress(storyId);
   check("progress saved", prog?.chapter_id === chapterId && Math.abs((prog?.scroll_ratio ?? 0) - 0.42) < 1e-9);
+  check("progress anchor saved", prog?.block_index === 7 && Math.abs((prog?.block_offset ?? 0) - 0.25) < 1e-9);
   const inprog = await dp.getInProgressStories();
   check("in-progress lists story", inprog.some((x) => x.story.id === storyId));
 

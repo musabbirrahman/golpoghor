@@ -118,6 +118,7 @@ const files = [
   "supabase/migrations/20261017210000_notification_prefs_table.sql",
   "supabase/migrations/20261017210001_cover_privacy.sql",
   "supabase/migrations/20261017210002_covers_bucket_private.sql",
+  "supabase/migrations/20261018090000_progress_anchor.sql",
   "supabase/seed.sql",
 ];
 

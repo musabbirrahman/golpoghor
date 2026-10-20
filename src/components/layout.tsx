@@ -42,7 +42,7 @@ function SearchBox({ mobile = false }: { mobile?: boolean }) {
   return (
     <form
       role="search"
-      className={mobile ? "w-full" : "hidden w-64 md:block lg:w-80"}
+      className={mobile ? "w-full" : "hidden w-64 lg:block lg:w-80"}
       onSubmit={(e) => {
         e.preventDefault();
         navigate(q.trim() ? `/search?q=${encodeURIComponent(q.trim())}` : "/discover");
@@ -153,7 +153,7 @@ export function Header() {
           <AccountMenu />
         </div>
       </div>
-      <div className="border-t border-ink/10 px-4 py-2 md:hidden">
+      <div className="border-t border-ink/10 px-4 py-2 lg:hidden">
         <SearchBox mobile />
       </div>
     </header>
@@ -210,12 +210,70 @@ export function DemoBanner() {
 
 export function Footer() {
   const { t } = useApp();
+  const colTitle = "font-serif text-base font-bold text-ink";
+  const linkCls =
+    "rounded text-sm text-ink-soft underline-offset-4 hover:text-river-dark hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-river";
+  const col = (title: string, links: { to: string; label: string }[]) => (
+    <nav aria-label={title}>
+      <h2 className={colTitle}>{title}</h2>
+      <ul className="mt-3 flex flex-col gap-2">
+        {links.map((l) => (
+          <li key={l.to + l.label}>
+            <Link to={l.to} className={linkCls}>{l.label}</Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
   return (
     <footer className="mt-16 border-t border-ink/10 bg-paper-dark/40">
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 py-8 text-center">
-        <p className="font-serif text-lg font-semibold">{t("brand", "brand")}</p>
-        <p className="max-w-md text-sm text-ink-faint">{t("brand", "tagline")}</p>
-        <p className="text-xs text-ink-faint">© 2026 GolpoGhor · MVP</p>
+      <div className="mx-auto max-w-6xl px-4 py-10">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1.3fr]">
+          <div>
+            <p className="flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-river font-serif text-xl text-paper" aria-hidden>
+                গ
+              </span>
+              <span className="font-serif text-xl font-bold tracking-tight">{t("brand", "brand")}</span>
+            </p>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink-faint">{t("brand", "tagline")}</p>
+            <p className="mt-4 font-serif text-gold" aria-hidden>❦</p>
+          </div>
+
+          {col(t("footer", "explore"), [
+            { to: "/", label: t("nav", "home") },
+            { to: "/discover", label: t("nav", "discover") },
+            { to: "/search", label: t("nav", "search") },
+          ])}
+
+          {col(t("footer", "readWrite"), [
+            { to: "/library", label: t("nav", "library") },
+            { to: "/write", label: t("nav", "write") },
+            { to: "/inbox", label: t("notifications", "inbox") },
+          ])}
+
+          <div>
+            <h2 className={colTitle}>{t("footer", "classics")}</h2>
+            <ul className="mt-3 flex flex-col gap-2">
+              <li>
+                <Link to={`/search?q=${encodeURIComponent("ক্লাসিক")}`} className={linkCls}>
+                  {t("footer", "classicsBn")}
+                </Link>
+              </li>
+              <li>
+                <Link to="/search?q=Classic" className={linkCls}>
+                  {t("footer", "classicsEn")}
+                </Link>
+              </li>
+            </ul>
+            <p className="mt-3 max-w-xs text-xs leading-relaxed text-ink-faint">{t("footer", "classicsNote")}</p>
+          </div>
+        </div>
+
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-2 border-t border-ink/10 pt-4 text-xs text-ink-faint">
+          <p>{t("footer", "rights")}</p>
+          <p aria-hidden>❦</p>
+        </div>
       </div>
     </footer>
   );

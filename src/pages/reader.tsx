@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
 import { Avatar, Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
 import { ReportDialog } from "../components/report-dialog";
 import { readingMinutes, timeAgo, AppError } from "../lib/utils";
-import type { Chapter, TiptapDoc, TiptapNode } from "../lib/types";
+import type { Chapter, ReadingPosition, ReadingProgress, TiptapDoc, TiptapNode } from "../lib/types";
+
+/** Offset below the sticky header so a restored block isn't hidden behind it. */
+const RESTORE_PAD = 88;
 
 /** Render Tiptap JSON as React (reader-safe subset). */
 function renderNode(node: TiptapNode, key: number): React.ReactNode {
@@ -247,10 +250,22 @@ function Comments({ chapterId }: { chapterId: string }) {
 
 export function ReaderPage() {
   const { username = "", slug = "", chapterSlug = "" } = useParams();
+  const [searchParams] = useSearchParams();
+  const restart = searchParams.get("restart") === "1";
   const { t, dp, session } = useApp();
+  const queryClient = useQueryClient();
   const [prefs, setPrefsState] = useState(loadPrefs);
   const [reportOpen, setReportOpen] = useState(false);
   const saveTimer = useRef<number | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  /** Saves are blocked until the restore decision for this chapter has settled,
+   *  so loading/initial state can never overwrite a valid saved position. */
+  const readyRef = useRef(false);
+  const restoredForRef = useRef<string | null>(null);
+  /** Latest position measured while the chapter DOM was alive. Unmount and
+   *  hide handlers persist THIS value — by cleanup time the refs/DOM are
+   *  already gone, so measuring then would save garbage. */
+  const lastPositionRef = useRef<ReadingPosition | null>(null);
 
   const setPrefs = (p: typeof prefs) => {
     setPrefsState(p);
@@ -279,37 +294,161 @@ export function ReaderPage() {
   const storyPath = `/stories/${username}/${slug}`;
   const chapterUrl = (c: { slug: string }) => `${storyPath}/${c.slug}`;
 
+  // The reader's own progress for this story (shared cache with the story page).
+  const progressQuery = useQuery({
+    queryKey: ["progress", story?.id],
+    queryFn: () => dp.getProgress(story!.id),
+    enabled: !!story && !!session,
+  });
+
+  /** Capture the current position: a content-block anchor (preferred) plus the
+   *  whole-document scroll ratio as a fallback. Returns null when the chapter
+   *  body is not live DOM (route transition/teardown) — such measurements are
+   *  garbage and must never be persisted. */
+  const capturePosition = (): ReadingPosition | null => {
+    const root = bodyRef.current;
+    if (!root || !root.isConnected) return null;
+    const el = document.documentElement;
+    const ratio = el.scrollTop / Math.max(1, el.scrollHeight - el.clientHeight);
+    const blocks = root.querySelectorAll(":scope > .richtext > *");
+    let blockIndex: number | null = null;
+    let blockOffset: number | null = null;
+    if (blocks.length) {
+      for (let i = 0; i < blocks.length; i++) {
+        const r = blocks[i].getBoundingClientRect();
+        if (r.bottom > 0) {
+          blockIndex = i;
+          blockOffset = r.height > 0 ? Math.min(1, Math.max(0, -r.top / r.height)) : 0;
+          break;
+        }
+      }
+    }
+    return { scrollRatio: ratio, blockIndex, blockOffset };
+  };
+
+  /** Persist the latest measured position. Blocked until restore has settled.
+   *  Also refreshes the shared progress cache so the story page's
+   *  Continue/Start button reflects the save immediately. */
+  const saveNow = (cap: number) => {
+    if (!story || !chapter || !session || !readyRef.current) return;
+    const pos = lastPositionRef.current;
+    if (!pos) return;
+    const ratio = Math.min(cap, pos.scrollRatio);
+    dp.saveProgress(story.id, chapter.id, { ...pos, scrollRatio: ratio })
+      .then(() => {
+        const nextProgress: ReadingProgress = {
+          user_id: session.user.id,
+          story_id: story.id,
+          chapter_id: chapter.id,
+          scroll_ratio: ratio,
+          block_index: pos.blockIndex ?? null,
+          block_offset: pos.blockOffset ?? null,
+          updated_at: new Date().toISOString(),
+        };
+        queryClient.setQueryData<ReadingProgress | null>(["progress", story.id], nextProgress);
+      })
+      .catch(() => {});
+  };
+
+  // Restore the saved position once this chapter has rendered, or start at
+  // the top when there is nothing to restore (or the user restarted manually).
+  useEffect(() => {
+    if (!story || !chapter) return;
+    if (restoredForRef.current === chapter.id) return;
+    // Wait for the saved position to load before deciding there is none —
+    // otherwise a cold-cache visit would mark the chapter "restored" at the
+    // top and the real restore would never run.
+    if (session && progressQuery.isLoading) return;
+    readyRef.current = false;
+    const progress = progressQuery.data;
+    const canRestore =
+      !!session &&
+      !restart &&
+      progress?.chapter_id === chapter.id &&
+      (progress.block_index != null || progress.scroll_ratio > 0.01);
+    if (!canRestore) {
+      window.scrollTo({ top: 0 });
+      lastPositionRef.current = { scrollRatio: 0, blockIndex: 0, blockOffset: 0 };
+      readyRef.current = true;
+      restoredForRef.current = chapter.id;
+      return;
+    }
+    let cancelled = false;
+    let raf = 0;
+    const restore = () => {
+      if (cancelled) return;
+      const blocks = bodyRef.current?.querySelectorAll(":scope > .richtext > *");
+      const idx = progress.block_index;
+      if (blocks && idx != null && idx >= 0 && idx < blocks.length) {
+        // Block anchor: fraction-based offset survives font-size/layout changes.
+        const block = blocks[idx] as HTMLElement;
+        const r = block.getBoundingClientRect();
+        const frac = Math.min(1, Math.max(0, progress.block_offset ?? 0));
+        const target = r.top + window.scrollY + frac * r.height - RESTORE_PAD;
+        window.scrollTo({ top: Math.max(0, target) });
+      } else {
+        // Fallback: whole-document ratio.
+        const el = document.documentElement;
+        window.scrollTo({ top: Math.max(0, progress.scroll_ratio * (el.scrollHeight - el.clientHeight)) });
+      }
+      readyRef.current = true;
+      restoredForRef.current = chapter.id;
+      lastPositionRef.current = {
+        scrollRatio: progress.scroll_ratio,
+        blockIndex: progress.block_index,
+        blockOffset: progress.block_offset,
+      };
+    };
+    // Wait for layout and fonts so the anchor lands in the right place.
+    const start = () => {
+      raf = requestAnimationFrame(() => requestAnimationFrame(restore));
+    };
+    if (document.fonts?.ready) {
+      Promise.race([document.fonts.ready, new Promise((res) => setTimeout(res, 1200))]).then(start);
+    } else {
+      start();
+    }
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [story?.id, chapter?.id, session, restart, progressQuery.data, progressQuery.isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reading progress: measure on every scroll (cheap), persist throttled;
+  // also persist when the page is hidden or the reader unmounts — using the
+  // last measured position, never a fresh measurement at teardown time.
+  useEffect(() => {
+    if (!story || !chapter || !session) return;
+    const scheduleSave = () => {
+      if (saveTimer.current) window.clearTimeout(saveTimer.current);
+      saveTimer.current = window.setTimeout(() => saveNow(0.99), 800);
+    };
+    const onScroll = () => {
+      if (!readyRef.current) return;
+      const pos = capturePosition();
+      if (!pos) return; // transition/teardown measurement — ignore
+      lastPositionRef.current = pos;
+      scheduleSave();
+    };
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") saveNow(1);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("visibilitychange", onHidden);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("visibilitychange", onHidden);
+      if (saveTimer.current) window.clearTimeout(saveTimer.current);
+      saveNow(1);
+    };
+  }, [story, chapter, session, dp]);
+
   // Count the story view once per reader per day (dedup + exclusions in provider).
   useEffect(() => {
     if (!story || !chapter || !session) return;
     if (session.user.id === story.author_id) return;
     dp.recordStoryView(story.id).catch(() => {});
   }, [story?.id, chapter?.id, session?.user.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reading progress: throttled scroll save + mark chapter read at the end.
-  useEffect(() => {
-    if (!story || !chapter || !session) return;
-    const onScroll = () => {
-      const el = document.documentElement;
-      const ratio = el.scrollTop / Math.max(1, el.scrollHeight - el.clientHeight);
-      if (saveTimer.current) window.clearTimeout(saveTimer.current);
-      saveTimer.current = window.setTimeout(() => {
-        dp.saveProgress(story.id, chapter.id, Math.min(0.99, ratio)).catch(() => {});
-      }, 800);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (saveTimer.current) window.clearTimeout(saveTimer.current);
-      const el = document.documentElement;
-      const ratio = el.scrollTop / Math.max(1, el.scrollHeight - el.clientHeight);
-      dp.saveProgress(story.id, chapter.id, Math.min(1, ratio)).catch(() => {});
-    };
-  }, [story, chapter, session, dp]);
-
-  useEffect(() => {
-    window.scrollTo({ top: 0 });
-  }, [chapterSlug]);
 
   const themeCls =
     prefs.theme === "dark"
@@ -347,12 +486,15 @@ export function ReaderPage() {
             </p>
             <h1 className="mt-2 font-serif text-3xl font-bold sm:text-4xl">{chapter.title}</h1>
             <p className="mt-2 text-sm opacity-60">
-              {t("story", "by")} {story.author?.display_name} · {readingMinutes(chapter.word_count, story.language)} {t("story", "minRead")}
+              {t("story", "by")} {story.author?.display_name}
+              {readingMinutes(chapter.word_count, story.language) > 0
+                ? ` · ${readingMinutes(chapter.word_count, story.language)} ${t("story", "minRead")}`
+                : ""}
             </p>
             <div className="mx-auto mt-4 h-px w-16 bg-gold" aria-hidden />
           </header>
 
-          <div className={`${fontCls} ${leadingCls}`}>
+          <div ref={bodyRef} className={`${fontCls} ${leadingCls}`}>
             <ChapterBody doc={chapter.body_json} />
           </div>
 

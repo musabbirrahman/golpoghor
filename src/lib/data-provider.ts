@@ -14,6 +14,7 @@ import type {
   ModerationEvent,
   NotificationPrefs,
   Profile,
+  ReadingPosition,
   ReadingProgress,
   Report,
   ReportStatus,
@@ -118,7 +119,7 @@ export interface DataProvider {
   getReadingList(): Promise<Story[]>;
 
   getProgress(storyId: string): Promise<ReadingProgress | null>;
-  saveProgress(storyId: string, chapterId: string | null, scrollRatio: number): Promise<void>;
+  saveProgress(storyId: string, chapterId: string | null, position: ReadingPosition): Promise<void>;
   getInProgressStories(): Promise<{ story: Story; progress: ReadingProgress }[]>;
 
   /**

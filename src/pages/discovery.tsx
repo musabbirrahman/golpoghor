@@ -65,7 +65,7 @@ export function HomePage() {
         {bn.isLoading ? <Spinner /> : bn.data?.stories.length ? (
           <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
             {bn.data.stories.map((s) => (
-              <div key={s.id} className="w-40 shrink-0 sm:w-auto"><StoryCard story={s} /></div>
+              <div key={s.id} className="flex w-40 shrink-0 sm:w-auto"><StoryCard story={s} /></div>
             ))}
           </div>
         ) : <EmptyState title={t("discover", "noResults")} />}
@@ -75,7 +75,7 @@ export function HomePage() {
         {en.isLoading ? <Spinner /> : en.data?.stories.length ? (
           <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
             {en.data.stories.map((s) => (
-              <div key={s.id} className="w-40 shrink-0 sm:w-auto"><StoryCard story={s} /></div>
+              <div key={s.id} className="flex w-40 shrink-0 sm:w-auto"><StoryCard story={s} /></div>
             ))}
           </div>
         ) : <EmptyState title={t("discover", "noResults")} />}
