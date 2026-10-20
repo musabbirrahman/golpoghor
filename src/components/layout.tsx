@@ -244,10 +244,10 @@ export function Footer() {
     </nav>
   );
   return (
-    <footer className="mt-16 border-t border-ink/10 bg-paper-dark/40">
-      <div className="mx-auto max-w-6xl px-4 py-10">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1.3fr]">
-          <div>
+    <footer className="mt-10 border-t border-ink/10 bg-paper-dark/40 md:mt-16">
+      <div className="mx-auto max-w-6xl px-4 pt-10 pb-28 md:py-10">
+        <div className="grid grid-cols-2 gap-8 lg:grid-cols-[1.5fr_1fr_1fr_1.3fr] lg:gap-10">
+          <div className="col-span-2 lg:col-span-1">
             <p className="flex items-center gap-2">
               <img src="/logo.png" alt="" className="h-9 w-9 rounded-lg object-cover" aria-hidden />
               <span className="font-serif text-xl font-bold tracking-tight">{t("brand", "brand")}</span>
@@ -268,7 +268,7 @@ export function Footer() {
             { to: "/inbox", label: t("notifications", "inbox") },
           ])}
 
-          <div>
+          <div className="col-span-2 lg:col-span-1">
             <h2 className={colTitle}>{t("footer", "classics")}</h2>
             <ul className="mt-3 flex flex-col gap-2">
               <li>
