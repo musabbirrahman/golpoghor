@@ -249,9 +249,7 @@ export function Footer() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1.3fr]">
           <div>
             <p className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-river font-serif text-xl text-paper" aria-hidden>
-                গ
-              </span>
+              <img src="/logo.png" alt="" className="h-9 w-9 rounded-lg object-cover" aria-hidden />
               <span className="font-serif text-xl font-bold tracking-tight">{t("brand", "brand")}</span>
             </p>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink-faint">{t("brand", "tagline")}</p>

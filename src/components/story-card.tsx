@@ -40,7 +40,7 @@ export function StoryCard({ story }: { story: Story }) {
   return (
     <Link
       to={storyPath(story)}
-      className="group flex h-full flex-col overflow-hidden rounded-xl bg-white shadow-card transition-shadow hover:shadow-lift"
+      className="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl bg-white shadow-card transition-shadow hover:shadow-lift"
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-river-soft">
         <Cover story={story} className="h-full w-full transition-transform duration-300 group-hover:scale-[1.03]" />
@@ -88,7 +88,7 @@ export function StoryRow({ story }: { story: Story }) {
   return (
     <Link
       to={storyPath(story)}
-      className="group flex h-full gap-4 rounded-xl bg-white p-3 shadow-card transition-shadow hover:shadow-lift"
+      className="group flex h-full min-w-0 gap-4 overflow-hidden rounded-xl bg-white p-3 shadow-card transition-shadow hover:shadow-lift"
     >
       <Cover story={story} className="h-28 w-20 shrink-0 rounded-lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
