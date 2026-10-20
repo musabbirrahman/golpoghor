@@ -287,9 +287,18 @@ export function ReaderPage() {
   });
   const chapters = useMemo(() => chaptersQuery.data ?? [], [chaptersQuery.data]);
   const index = chapters.findIndex((c) => c.slug === chapterSlug);
-  const chapter: Chapter | undefined = index >= 0 ? chapters[index] : undefined;
+  const chapterMeta = index >= 0 ? chapters[index] : undefined;
   const prev = index > 0 ? chapters[index - 1] : undefined;
   const next = index >= 0 && index < chapters.length - 1 ? chapters[index + 1] : undefined;
+
+  // The chapter list is light (V4-04) — the open chapter's full body loads
+  // on its own, one chapter at a time.
+  const chapterQuery = useQuery({
+    queryKey: ["chapter", story?.id, chapterSlug],
+    queryFn: () => dp.getChapterBySlug(story!.id, chapterSlug, { publishedOnly: true }),
+    enabled: !!story && !!chapterMeta,
+  });
+  const chapter: Chapter | undefined = chapterQuery.data ?? undefined;
 
   const storyPath = `/stories/${username}/${slug}`;
   const chapterUrl = (c: { slug: string }) => `${storyPath}/${c.slug}`;
@@ -459,7 +468,7 @@ export function ReaderPage() {
   const fontCls = { sm: "text-[17px]", md: "text-[19px]", lg: "text-[21px]", xl: "text-[24px]" }[prefs.fontSize];
   const leadingCls = { normal: "leading-[1.6]", relaxed: "leading-[1.85]", loose: "leading-[2.2]" }[prefs.lineSpacing];
 
-  if (storyQuery.isLoading || chaptersQuery.isLoading) return <Layout><Spinner /></Layout>;
+  if (storyQuery.isLoading || chaptersQuery.isLoading || chapterQuery.isLoading) return <Layout><Spinner /></Layout>;
   if (!story || !chapter) {
     return (
       <Layout>

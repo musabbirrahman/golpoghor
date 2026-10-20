@@ -14,6 +14,7 @@ import type {
   AppealTarget,
   AppNotification,
   Chapter,
+  ChapterListItem,
   Comment,
   ModerationEvent,
   NotificationPrefs,
@@ -562,7 +563,7 @@ export class DemoProvider implements DataProvider {
     return s;
   }
 
-  async listChapters(storyId: string, opts?: { publishedOnly?: boolean }): Promise<Chapter[]> {
+  async listChapters(storyId: string, opts?: { publishedOnly?: boolean }): Promise<ChapterListItem[]> {
     const publishedOnly = opts?.publishedOnly !== false;
     const me = this.sessionSync()?.user.id ?? null;
     const story = this.db.stories.find((s) => s.id === storyId);
@@ -571,7 +572,20 @@ export class DemoProvider implements DataProvider {
     return this.db.chapters
       .filter((c) => c.story_id === storyId && (!publishedOnly || c.status === "published"))
       .sort((a, b) => a.position - b.position)
-      .map((c) => ({ ...c }));
+      // Light list (V4-04): project metadata only, mirroring the Supabase
+      // provider's column select — bodies never travel with a list.
+      .map((c) => ({
+        id: c.id,
+        story_id: c.story_id,
+        title: c.title,
+        slug: c.slug,
+        position: c.position,
+        status: c.status,
+        word_count: c.word_count,
+        published_at: c.published_at,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+      }));
   }
 
   async getChapterBySlug(storyId: string, slug: string, opts?: { publishedOnly?: boolean }): Promise<Chapter | null> {

@@ -10,6 +10,7 @@ import type {
   AppealTarget,
   AppNotification,
   Chapter,
+  ChapterListItem,
   Comment,
   ModerationEvent,
   NotificationPrefs,
@@ -432,12 +433,19 @@ export class SupabaseProvider implements DataProvider {
   }
 
   // ---------------------------------------------------------- chapters
-  async listChapters(storyId: string, opts?: { publishedOnly?: boolean }): Promise<Chapter[]> {
-    let q = this.sb.from("chapters").select("*").eq("story_id", storyId).order("position");
+  async listChapters(storyId: string, opts?: { publishedOnly?: boolean }): Promise<ChapterListItem[]> {
+    // Light list (V4-04): metadata columns only — selecting * here used to
+    // ship every chapter's full body (~1.1 MB for a 46-chapter novel) just
+    // to render a title list. Bodies load per chapter (getChapter*).
+    let q = this.sb
+      .from("chapters")
+      .select("id, story_id, title, slug, position, status, word_count, published_at, created_at, updated_at")
+      .eq("story_id", storyId)
+      .order("position");
     if (opts?.publishedOnly !== false) q = q.eq("status", "published");
     const { data, error } = await q;
     if (error) throw toAppError(error);
-    return (data ?? []) as Chapter[];
+    return (data ?? []) as ChapterListItem[];
   }
 
   async getChapterBySlug(storyId: string, slug: string, opts?: { publishedOnly?: boolean }): Promise<Chapter | null> {

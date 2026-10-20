@@ -235,6 +235,9 @@ const dict = {
       en: "Nothing found. Try a different search.",
     },
     resultsFor: { bn: "ফলাফল", en: "results for" },
+    tagLabel: { bn: "ট্যাগ", en: "Tag" },
+    clearTag: { bn: "ট্যাগ সরান", en: "Clear tag" },
+    loadMore: { bn: "আরও দেখুন", en: "Load more" },
   },
   reports: {
     title: { bn: "রিপোর্ট করুন", en: "Report content" },
@@ -428,6 +431,14 @@ const dict = {
       en: "Something went wrong. Please try again.",
     },
     notFound: { bn: "খুঁজে পাওয়া যায়নি।", en: "Not found." },
+    crashTitle: {
+      bn: "কিছু একটা ভুল হয়েছে",
+      en: "Something went wrong",
+    },
+    crashBody: {
+      bn: "পেজটি লোড করা যায়নি। হোমে ফিরে আবার চেষ্টা করুন।",
+      en: "This page couldn't be loaded. Head back home and try again.",
+    },
     signInFailed: {
       bn: "সাইন ইন ব্যর্থ। ইমেইল ও পাসওয়ার্ড চেক করুন।",
       en: "Sign in failed. Check your email and password.",

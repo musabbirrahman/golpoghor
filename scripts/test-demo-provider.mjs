@@ -50,6 +50,21 @@ const check = (name, cond) => {
   check("draft chapter not fetchable by guest", direct === null);
 }
 
+// 2b. chapter lists are light (V4-04): list fields only, no bodies —
+// the reader/editor load bodies one chapter at a time.
+{
+  const s = (await dp.listStories({ q: "বর্ষার চিঠি" })).stories[0];
+  const ch = await dp.listChapters(s.id, { publishedOnly: true });
+  check("chapter list carries list fields", ch.every((c) =>
+    typeof c.id === "string" && typeof c.title === "string" && typeof c.slug === "string" &&
+    typeof c.position === "number" && typeof c.status === "string" &&
+    typeof c.word_count === "number" && "published_at" in c));
+  check("chapter list has no body_json", ch.every((c) => !("body_json" in c)));
+  check("chapter list has no body_text", ch.every((c) => !("body_text" in c)));
+  const full = await dp.getChapterBySlug(s.id, ch[0].slug, { publishedOnly: true });
+  check("single-chapter fetch still returns the body", !!full?.body_json && typeof full?.body_text === "string");
+}
+
 // 3. search (bn + en + author)
 {
   const r1 = await dp.listStories({ q: "বর্ষা" });

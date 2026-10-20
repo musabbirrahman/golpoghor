@@ -1,17 +1,38 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
-import { ButtonLink, EmptyState, Spinner } from "../components/ui";
+import { Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
 import { StoryCard, StoryRow } from "../components/story-card";
 import type { StoryLanguage } from "../lib/types";
 
-function useStories(filters: import("../lib/data-provider").StoryFilters) {
+const PAGE_SIZE = 24;
+
+/** Paged story list (V4-09): "Load more" over the provider's offset support,
+ *  so results never silently stop at the first page. */
+function useStoryPages(filters: import("../lib/data-provider").StoryFilters, enabled = true) {
   const { dp } = useApp();
-  return useQuery({
-    queryKey: ["stories", filters],
-    queryFn: () => dp.listStories(filters),
+  return useInfiniteQuery({
+    queryKey: ["stories", "paged", filters],
+    queryFn: ({ pageParam }) => dp.listStories({ ...filters, limit: PAGE_SIZE, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((a, p) => a + p.stories.length, 0);
+      return loaded < lastPage.total ? loaded : undefined;
+    },
+    enabled,
   });
+}
+
+function LoadMore({ hasNextPage, isFetching, onClick, label }: { hasNextPage?: boolean; isFetching: boolean; onClick: () => void; label: string }) {
+  if (!hasNextPage) return null;
+  return (
+    <div className="mt-8 text-center">
+      <Button variant="secondary" onClick={onClick} disabled={isFetching}>
+        {label}
+      </Button>
+    </div>
+  );
 }
 
 function Shelf({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
@@ -93,6 +114,7 @@ export function DiscoverPage() {
   const genre = params.get("genre") || "";
   const sort = (params.get("sort") || "newest") as "newest" | "popular" | "most_viewed";
   const q = params.get("q") || "";
+  const tag = params.get("tag") || "";
 
   const genresQuery = useQuery({ queryKey: ["genres"], queryFn: () => dp.listGenres() });
   const genres = genresQuery.data?.length ? genresQuery.data : GENRE_FALLBACK;
@@ -101,10 +123,12 @@ export function DiscoverPage() {
     language: (language || undefined) as StoryLanguage | undefined,
     genre: genre || undefined,
     q: q || undefined,
+    tag: tag || undefined,
     sort,
-    limit: 24,
   };
-  const { data, isLoading } = useStories(filters);
+  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useStoryPages(filters);
+  const stories = data?.pages.flatMap((p) => p.stories) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
 
   const set = (patch: Record<string, string>) => {
     const next = new URLSearchParams(params);
@@ -138,15 +162,33 @@ export function DiscoverPage() {
         </select>
       </div>
 
+      {tag && (
+        <div className="mt-3">
+          <span className="inline-flex items-center gap-2 rounded-full bg-gold-soft px-3 py-1 text-sm font-medium text-ink">
+            {t("discover", "tagLabel")}: #{tag}
+            <button
+              type="button"
+              onClick={() => set({ tag: "" })}
+              aria-label={t("discover", "clearTag")}
+              title={t("discover", "clearTag")}
+              className="text-base font-bold leading-none text-ink-soft hover:text-ink"
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )}
+
       <div className="mt-6">
-        {isLoading ? <Spinner /> : data && data.stories.length ? (
+        {isLoading ? <Spinner /> : stories.length ? (
           <>
             <p className="mb-4 text-sm text-ink-faint">
-              {data.total} {t("discover", "resultsFor")}{q ? ` “${q}”` : ""}
+              {total} {t("discover", "resultsFor")}{q ? ` “${q}”` : ""}
             </p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {data.stories.map((s) => <StoryRow key={s.id} story={s} />)}
+              {stories.map((s) => <StoryRow key={s.id} story={s} />)}
             </div>
+            <LoadMore hasNextPage={hasNextPage} isFetching={isFetchingNextPage} onClick={() => fetchNextPage()} label={t("discover", "loadMore")} />
           </>
         ) : (
           <EmptyState title={t("discover", "noResults")} />
@@ -160,12 +202,8 @@ export function SearchPage() {
   const { t } = useApp();
   const [params] = useSearchParams();
   const q = params.get("q") || "";
-  const { dp } = useApp();
-  const { data, isLoading } = useQuery({
-    queryKey: ["stories", { q }],
-    queryFn: () => dp.listStories({ q, limit: 24 }),
-    enabled: q.trim().length > 0,
-  });
+  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useStoryPages({ q }, q.trim().length > 0);
+  const stories = data?.pages.flatMap((p) => p.stories) ?? [];
 
   return (
     <Layout>
@@ -175,10 +213,13 @@ export function SearchPage() {
       <div className="mt-6">
         {!q.trim() ? (
           <EmptyState title={t("discover", "searchPlaceholder")} />
-        ) : isLoading ? <Spinner /> : data && data.stories.length ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {data.stories.map((s) => <StoryRow key={s.id} story={s} />)}
-          </div>
+        ) : isLoading ? <Spinner /> : stories.length ? (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {stories.map((s) => <StoryRow key={s.id} story={s} />)}
+            </div>
+            <LoadMore hasNextPage={hasNextPage} isFetching={isFetchingNextPage} onClick={() => fetchNextPage()} label={t("discover", "loadMore")} />
+          </>
         ) : (
           <EmptyState title={t("discover", "noResults")} />
         )}

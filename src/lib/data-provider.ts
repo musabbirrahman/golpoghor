@@ -10,6 +10,7 @@ import type {
   AppNotification,
   AuthUser,
   Chapter,
+  ChapterListItem,
   Comment,
   ModerationEvent,
   NotificationPrefs,
@@ -96,8 +97,9 @@ export interface DataProvider {
   listGenres(): Promise<string[]>;
 
   // ---------------------------------------------------------- chapters
-  /** publishedOnly=false is owner-only (dashboard, editor). */
-  listChapters(storyId: string, opts?: { publishedOnly?: boolean }): Promise<Chapter[]>;
+  /** publishedOnly=false is owner-only (dashboard, editor). Lists are light
+   *  (V4-04): metadata only, never chapter bodies. */
+  listChapters(storyId: string, opts?: { publishedOnly?: boolean }): Promise<ChapterListItem[]>;
   getChapterBySlug(storyId: string, slug: string, opts?: { publishedOnly?: boolean }): Promise<Chapter | null>;
   getChapter(id: string): Promise<Chapter | null>;
   createChapter(storyId: string, input: ChapterInput): Promise<Chapter>;

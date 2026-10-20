@@ -84,6 +84,21 @@ export interface Chapter {
   story?: Story;
 }
 
+/** Chapter metadata for lists (V4-04) — never carries body_json/body_text;
+ *  full bodies load one chapter at a time via getChapter/getChapterBySlug. */
+export interface ChapterListItem {
+  id: string;
+  story_id: string;
+  title: string;
+  slug: string;
+  position: number;
+  status: ChapterStatus;
+  word_count: number;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface TiptapDoc {
   type: "doc";
   content: TiptapNode[];
