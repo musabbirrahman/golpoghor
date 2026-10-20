@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Story } from "../lib/types";
 import { useApp } from "../lib/app-context";
+import { genreLabel } from "../lib/genres";
 import { formatCount, formatDate, readingMinutes, timeAgo } from "../lib/utils";
 import { LanguageBadge, StatusBadge } from "./ui";
 
@@ -100,7 +101,7 @@ export function StoryRow({ story }: { story: Story }) {
           {story.title}
         </h3>
         <p className="text-sm text-ink-faint">
-          {t("story", "by")} {story.author?.display_name} · {story.genre}
+          {t("story", "by")} {story.author?.display_name} · {genreLabel(story.genre, locale)}
         </p>
         <p className="text-sm text-ink-soft clamp-2">{story.summary}</p>
         <p className="mt-auto text-xs text-ink-faint">

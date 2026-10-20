@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { AppError } from "../lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { resolveNotificationPrefs } from "../lib/data-provider";
@@ -86,7 +87,7 @@ export function LibraryPage() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {followingQuery.data.map((p) => (
                 <Link key={p.id} to={`/authors/${p.username}`} className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-card hover:shadow-lift">
-                  <Avatar name={p.display_name} />
+                  <Avatar name={p.display_name} src={dp.avatarUrl(p.avatar_path)} />
                   <div className="min-w-0">
                     <p className="truncate font-medium">{p.display_name}</p>
                     <p className="truncate text-sm text-ink-faint">@{p.username}</p>
@@ -140,6 +141,38 @@ export function SettingsPage() {
               }
             }}
           >
+            <div className="flex items-center gap-4">
+              <Avatar name={profile?.display_name ?? "?"} size="lg" src={dp.avatarUrl(profile?.avatar_path ?? null)} />
+              <div>
+                <label className="mb-1 block text-sm font-medium text-ink-soft" htmlFor="set-avatar">
+                  {t("settings", "profilePicture")}
+                </label>
+                <input
+                  id="set-avatar"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="block text-sm"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !profile) return;
+                    setBusy(true);
+                    try {
+                      const path = await dp.uploadAvatar(file);
+                      await dp.updateProfile(profile.id, { avatar_path: path });
+                      refreshSession();
+                      setSaved(true);
+                      setTimeout(() => setSaved(false), 3000);
+                    } catch {
+                      /* the provider's message is generic; keep the form usable */
+                    } finally {
+                      setBusy(false);
+                      e.target.value = "";
+                    }
+                  }}
+                />
+                <p className="mt-1 text-xs text-ink-faint">{t("settings", "pictureHint")}</p>
+              </div>
+            </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-ink-soft" htmlFor="set-name">
                 {t("settings", "displayName")}
@@ -184,6 +217,8 @@ export function SettingsPage() {
           </form>
 
           <NotificationPrefsCard />
+
+          <AccountCard />
         </div>
       </Layout>
     </RequireAuth>
@@ -253,5 +288,181 @@ function NotificationPrefsCard() {
       </div>
       {saved && <p className="mt-3 text-sm text-river" role="status">{t("settings", "saved")}</p>}
     </div>
+  );
+}
+
+function accountErrorText(
+  t: (s: any, k: string) => string,
+  err: unknown
+): string | null {
+  if (!err) return null;
+  if (err instanceof AppError) {
+    const text = t("errors", err.code);
+    return text === err.code ? t("errors", "generic") : text;
+  }
+  return t("errors", "generic");
+}
+
+/** V4-07: change password, change username, delete account. */
+function AccountCard() {
+  const { t, dp, profile, refreshSession, locale } = useApp();
+  const navigate = useNavigate();
+
+  const [pw1, setPw1] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwDone, setPwDone] = useState(false);
+
+  const [name, setName] = useState("");
+  const [nameBusy, setNameBusy] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [nameDone, setNameDone] = useState(false);
+
+  const [confirmName, setConfirmName] = useState("");
+  const [delBusy, setDelBusy] = useState(false);
+  const [delError, setDelError] = useState<string | null>(null);
+
+  if (!profile) return null;
+
+  const changedAt = profile.username_changed_at
+    ? new Date(profile.username_changed_at).getTime()
+    : null;
+  const cooldownUntil =
+    changedAt && changedAt > Date.now() - 30 * 86400000
+      ? new Date(changedAt + 30 * 86400000)
+      : null;
+
+  const inputCls =
+    "w-full rounded-lg border border-ink/15 bg-white px-3 py-2";
+  const labelCls = "mb-1 block text-sm font-medium text-ink-soft";
+
+  return (
+    <>
+      <div className="mt-6 flex flex-col gap-5 rounded-xl bg-white p-6 shadow-card">
+        <h2 className="font-serif text-xl font-bold">{t("settings", "account")}</h2>
+
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setPwError(null);
+            setPwDone(false);
+            if (pw1 !== pw2) {
+              setPwError(t("settings", "passwordMismatch"));
+              return;
+            }
+            setPwBusy(true);
+            try {
+              await dp.updatePassword(pw1);
+              setPw1("");
+              setPw2("");
+              setPwDone(true);
+            } catch (err) {
+              setPwError(accountErrorText(t, err));
+            } finally {
+              setPwBusy(false);
+            }
+          }}
+        >
+          <h3 className="text-sm font-semibold">{t("settings", "changePassword")}</h3>
+          <div>
+            <label className={labelCls} htmlFor="acct-pw1">{t("settings", "newPassword")}</label>
+            <input id="acct-pw1" type="password" autoComplete="new-password" className={inputCls} value={pw1} onChange={(e) => setPw1(e.target.value)} minLength={6} required />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="acct-pw2">{t("settings", "confirmPassword")}</label>
+            <input id="acct-pw2" type="password" autoComplete="new-password" className={inputCls} value={pw2} onChange={(e) => setPw2(e.target.value)} minLength={6} required />
+          </div>
+          {pwError && <p className="text-sm text-red-700" role="alert">{pwError}</p>}
+          {pwDone && <p className="text-sm text-river" role="status">{t("settings", "passwordChanged")}</p>}
+          <div>
+            <button type="submit" disabled={pwBusy} className="rounded-lg bg-river px-4 py-2 text-sm font-medium text-white hover:bg-river-dark disabled:opacity-50">
+              {t("settings", "changePassword")}
+            </button>
+          </div>
+        </form>
+
+        <hr className="border-ink/10" />
+
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setNameError(null);
+            setNameDone(false);
+            setNameBusy(true);
+            try {
+              await dp.changeUsername(name);
+              setName("");
+              setNameDone(true);
+              refreshSession();
+            } catch (err) {
+              setNameError(accountErrorText(t, err));
+            } finally {
+              setNameBusy(false);
+            }
+          }}
+        >
+          <h3 className="text-sm font-semibold">{t("settings", "changeUsername")}</h3>
+          <p className="text-xs text-ink-faint">
+            @{profile.username} · {t("settings", "usernameHelp")}
+          </p>
+          {cooldownUntil ? (
+            <p className="text-sm text-ink-soft" role="status">
+              {t("settings", "canChangeAfter")}
+              {cooldownUntil.toLocaleDateString(locale === "bn" ? "bn-BD" : "en-GB")}
+            </p>
+          ) : (
+            <>
+              <div>
+                <label className={labelCls} htmlFor="acct-username">{t("settings", "changeUsername")}</label>
+                <input id="acct-username" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder={profile.username} autoComplete="off" required />
+              </div>
+              {nameError && <p className="text-sm text-red-700" role="alert">{nameError}</p>}
+              {nameDone && <p className="text-sm text-river" role="status">{t("settings", "usernameChanged")}</p>}
+              <div>
+                <button type="submit" disabled={nameBusy} className="rounded-lg bg-river px-4 py-2 text-sm font-medium text-white hover:bg-river-dark disabled:opacity-50">
+                  {t("settings", "changeUsername")}
+                </button>
+              </div>
+            </>
+          )}
+        </form>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-6">
+        <h2 className="font-serif text-xl font-bold text-red-900">{t("settings", "dangerZone")}</h2>
+        <p className="text-sm text-red-900/80">{t("settings", "deleteBody")}</p>
+        <div>
+          <label className={labelCls} htmlFor="acct-delete-confirm">
+            {t("settings", "deleteConfirmLabel")} (@{profile.username})
+          </label>
+          <input id="acct-delete-confirm" className={inputCls} value={confirmName} onChange={(e) => setConfirmName(e.target.value)} autoComplete="off" />
+        </div>
+        {delError && <p className="text-sm text-red-700" role="alert">{delError}</p>}
+        <div>
+          <button
+            type="button"
+            disabled={delBusy || confirmName !== profile.username}
+            onClick={async () => {
+              setDelError(null);
+              setDelBusy(true);
+              try {
+                await dp.deleteAccount();
+                refreshSession();
+                navigate("/", { replace: true });
+              } catch (err) {
+                setDelError(accountErrorText(t, err));
+                setDelBusy(false);
+              }
+            }}
+            className="rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-50"
+          >
+            {t("settings", "deleteForever")}
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

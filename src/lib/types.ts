@@ -41,6 +41,16 @@ export interface Profile {
   role: Role;
   created_at: string;
   updated_at: string;
+  /** Set when the username was last changed (V4-07); drives the cooldown. */
+  username_changed_at?: string | null;
+}
+
+/** An old handle that still resolves to its owner after a rename (V4-07). */
+export interface UsernameRedirect {
+  old_username: string;
+  user_id: string;
+  new_username: string;
+  expires_at: string;
 }
 
 export interface Story {

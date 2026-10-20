@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
+import { genreLabel } from "../lib/genres";
 import { Layout } from "../components/layout";
 import { Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
 import { StoryCard, StoryRow } from "../components/story-card";
@@ -108,7 +109,7 @@ export function HomePage() {
 const GENRE_FALLBACK = ["general"];
 
 export function DiscoverPage() {
-  const { t, dp } = useApp();
+  const { t, dp, locale } = useApp();
   const [params, setParams] = useSearchParams();
   const language = (params.get("language") || "") as StoryLanguage | "";
   const genre = params.get("genre") || "";
@@ -153,7 +154,7 @@ export function DiscoverPage() {
         </select>
         <select aria-label={t("discover", "genre")} className={selectCls} value={genre} onChange={(e) => set({ genre: e.target.value })}>
           <option value="">{t("discover", "allGenres")}</option>
-          {genres.map((g) => <option key={g} value={g}>{g}</option>)}
+          {genres.map((g) => <option key={g} value={g}>{genreLabel(g, locale)}</option>)}
         </select>
         <select aria-label={t("discover", "sort")} className={selectCls} value={sort} onChange={(e) => set({ sort: e.target.value })}>
           <option value="newest">{t("discover", "newest")}</option>

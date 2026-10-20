@@ -31,6 +31,7 @@ import type {
   StoryInput,
 } from "../data-provider";
 import { resolveNotificationPrefs } from "../data-provider";
+import { genreAliases, normalizeGenre, sortGenres } from "../genres";
 import { AppError, countWords, docToText, slugify } from "../utils";
 
 function mapAppeal(row: any): Appeal {
@@ -60,6 +61,7 @@ function mapEvent(row: any): ModerationEvent {
 
 function toAppError(e: any, fallbackCode = "generic"): AppError {
   const msg = e?.message ?? "Unknown error";
+  if (msg.includes("RATE_LIMITED")) return new AppError("rateLimited", msg);
   if (e?.code === "23505") {
     if (/username/i.test(msg)) return new AppError("usernameTaken", msg);
     return new AppError("conflict", msg);
@@ -194,6 +196,49 @@ export class SupabaseProvider implements DataProvider {
     if (error) throw toAppError(error);
   }
 
+  async changeUsername(newUsername: string): Promise<void> {
+    const { error } = await this.sb.rpc("change_username", {
+      p_new_username: newUsername,
+    });
+    if (error) {
+      // The function raises stable USERNAME_* prefixes; map them to the
+      // i18n error codes the UI renders.
+      const msg = error.message ?? "";
+      if (msg.includes("USERNAME_INVALID")) throw new AppError("usernameInvalid", msg);
+      if (msg.includes("USERNAME_SAME")) throw new AppError("usernameSame", msg);
+      if (msg.includes("USERNAME_COOLDOWN")) throw new AppError("usernameCooldown", msg);
+      if (msg.includes("USERNAME_TAKEN")) throw new AppError("usernameTaken", msg);
+      if (msg.includes("USERNAME_RESERVED")) throw new AppError("usernameReserved", msg);
+      throw toAppError(error);
+    }
+  }
+
+  async deleteAccount(): Promise<void> {
+    const { error } = await this.sb.rpc("delete_my_account");
+    if (error) throw toAppError(error);
+    // The auth user is gone; clear the now-dead local session.
+    await this.sb.auth.signOut().catch(() => {});
+  }
+
+  async resolveUsername(username: string): Promise<string | null> {
+    let current = username.toLowerCase();
+    const seen = new Set<string>([current]);
+    for (let hop = 0; hop < 3; hop++) {
+      const { data, error } = await this.sb
+        .from("username_redirects")
+        .select("new_username, expires_at")
+        .eq("old_username", current)
+        .maybeSingle();
+      if (error) throw toAppError(error);
+      if (!data || new Date(data.expires_at as string).getTime() <= Date.now()) break;
+      const next = (data.new_username as string).toLowerCase();
+      if (seen.has(next)) break;
+      seen.add(next);
+      current = next;
+    }
+    return current !== username.toLowerCase() ? current : null;
+  }
+
   // ---------------------------------------------------------- profiles
   async getProfile(id: string): Promise<Profile | null> {
     const { data, error } = await this.sb.from("profiles").select("*").eq("id", id).maybeSingle();
@@ -213,7 +258,7 @@ export class SupabaseProvider implements DataProvider {
 
   async updateProfile(
     id: string,
-    patch: Partial<Pick<Profile, "display_name" | "bio" | "locale">>
+    patch: Partial<Pick<Profile, "display_name" | "bio" | "locale" | "avatar_path">>
   ): Promise<Profile> {
     const { data, error } = await this.sb.from("profiles").update(patch).eq("id", id).select().single();
     if (error) throw toAppError(error);
@@ -253,7 +298,7 @@ export class SupabaseProvider implements DataProvider {
     }
     if (f.authorId) q = q.eq("author_id", f.authorId);
     if (f.language) q = q.eq("language", f.language);
-    if (f.genre) q = q.eq("genre", f.genre);
+    if (f.genre) q = q.in("genre", genreAliases(normalizeGenre(f.genre)));
     if (f.tag) q = q.contains("tags", [f.tag]);
     if (f.q) {
       const term = f.q.trim().replace(/[%_]/g, "");
@@ -429,7 +474,7 @@ export class SupabaseProvider implements DataProvider {
       .in("status", ["ongoing", "complete"])
       .limit(500);
     if (error) throw toAppError(error);
-    return [...new Set((data ?? []).map((r: any) => r.genre as string))].sort();
+    return sortGenres((data ?? []).map((r: any) => r.genre as string));
   }
 
   // ---------------------------------------------------------- chapters
@@ -1179,6 +1224,22 @@ export class SupabaseProvider implements DataProvider {
     const { error } = await this.sb.storage.from("covers").upload(path, file, { contentType: file.type, upsert: false });
     if (error) throw toAppError(error);
     return path;
+  }
+
+  async uploadAvatar(file: File): Promise<string> {
+    const me = await this.uid();
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new AppError("generic", "Only JPG, PNG or WebP images");
+    if (file.size > 1 * 1024 * 1024) throw new AppError("generic", "Image must be under 1 MB");
+    const ext = file.type.split("/")[1];
+    const path = `${me}/avatar-${Date.now()}.${ext}`;
+    const { error } = await this.sb.storage.from("avatars").upload(path, file, { contentType: file.type, upsert: true });
+    if (error) throw toAppError(error);
+    return path;
+  }
+
+  avatarUrl(path: string | null): string | null {
+    if (!path) return null;
+    return this.sb.storage.from("avatars").getPublicUrl(path).data.publicUrl;
   }
 
   async coverUrl(path: string | null): Promise<string | null> {

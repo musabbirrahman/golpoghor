@@ -30,6 +30,11 @@ const dict = {
       en: "The classics are public-domain works. New translations and modern editions are credited to their own translators and editors.",
     },
     rights: { bn: "© ২০২৬ গল্পনীড়", en: "© 2026 GolpoNeer" },
+    about: { bn: "সম্পর্কে", en: "About" },
+    guidelines: { bn: "নির্দেশিকা", en: "Guidelines" },
+    terms: { bn: "শর্তাবলি", en: "Terms" },
+    privacy: { bn: "গোপনীয়তা", en: "Privacy" },
+    contact: { bn: "যোগাযোগ", en: "Contact" },
   },
   home: {
     heroTitle: {
@@ -261,6 +266,10 @@ const dict = {
       bn: "রিপোর্ট পাঠানো হয়েছে। মডারেশন টিম দেখবে।",
       en: "Report submitted. The moderation team will review it.",
     },
+    guidelinesHint: {
+      bn: "রিপোর্টগুলো আমাদের কমিউনিটি নির্দেশিকা অনুযায়ী পর্যালোচনা করা হয়।",
+      en: "Reports are reviewed against our Community Guidelines.",
+    },
   },
   moderation: {
     title: { bn: "মডারেশন", en: "Moderation" },
@@ -408,6 +417,41 @@ const dict = {
     interfaceLanguage: { bn: "ইন্টারফেসের ভাষা", en: "Interface language" },
     save: { bn: "সংরক্ষণ করুন", en: "Save changes" },
     saved: { bn: "সংরক্ষিত হয়েছে।", en: "Changes saved." },
+    account: { bn: "অ্যাকাউন্ট", en: "Account" },
+    profilePicture: { bn: "প্রোফাইল ছবি", en: "Profile picture" },
+    pictureHint: {
+      bn: "JPG, PNG বা WebP — সর্বোচ্চ ১ MB।",
+      en: "JPG, PNG or WebP — up to 1 MB.",
+    },
+    changePassword: { bn: "পাসওয়ার্ড পরিবর্তন", en: "Change password" },
+    newPassword: { bn: "নতুন পাসওয়ার্ড", en: "New password" },
+    confirmPassword: { bn: "পাসওয়ার্ড আবার লিখুন", en: "Repeat new password" },
+    passwordMismatch: {
+      bn: "দুটো পাসওয়ার্ড মিলছে না।",
+      en: "The two passwords don't match.",
+    },
+    passwordChanged: { bn: "পাসওয়ার্ড বদলে গেছে।", en: "Password changed." },
+    changeUsername: { bn: "ইউজারনেম পরিবর্তন", en: "Change username" },
+    usernameHelp: {
+      bn: "ইউজারনেম বদলালে প্রোফাইলের ঠিকানা বদলে যাবে। পুরনো ঠিকানাটি ৩০ দিন আপনার জন্য সংরক্ষিত থাকবে এবং নতুনটিতে পাঠিয়ে দেবে। আবার বদলাতে ৩০ দিন অপেক্ষা করতে হবে।",
+      en: "Changing your username changes your profile address. Your old address stays reserved for you for 30 days and redirects to the new one. You can change again after 30 days.",
+    },
+    usernameChanged: { bn: "ইউজারনেম বদলে গেছে।", en: "Username changed." },
+    canChangeAfter: {
+      bn: "আবার ইউজারনেম বদলাতে পারবেন: ",
+      en: "You can change your username again after ",
+    },
+    dangerZone: { bn: "বিপজ্জনক অংশ", en: "Danger zone" },
+    deleteAccount: { bn: "অ্যাকাউন্ট মুছে ফেলুন", en: "Delete account" },
+    deleteBody: {
+      bn: "এতে আপনার প্রোফাইল, সব গল্প, অধ্যায়, মন্তব্য এবং পড়ার অগ্রগতি স্থায়ীভাবে মুছে যাবে। এটি ফিরিয়ে আনা যাবে না।",
+      en: "This permanently deletes your profile, all your stories, chapters, comments and reading progress. It cannot be undone.",
+    },
+    deleteConfirmLabel: {
+      bn: "নিশ্চিত করতে আপনার ইউজারনেমটি লিখুন",
+      en: "To confirm, type your username",
+    },
+    deleteForever: { bn: "চিরতরে মুছে ফেলুন", en: "Delete forever" },
   },
   common: {
     cancel: { bn: "বাতিল", en: "Cancel" },
@@ -446,6 +490,26 @@ const dict = {
     usernameTaken: {
       bn: "এই ইউজারনেমটি নেওয়া হয়ে গেছে।",
       en: "This username is taken.",
+    },
+    usernameInvalid: {
+      bn: "ইউজারনেম ৩–৩০ অক্ষরের হতে হবে — শুধু ছোট হাতের ইংরেজি অক্ষর, সংখ্যা ও আন্ডারস্কোর।",
+      en: "Usernames are 3–30 characters of lowercase letters, numbers and underscores.",
+    },
+    usernameSame: {
+      bn: "এটাই আপনার বর্তমান ইউজারনেম।",
+      en: "That is already your username.",
+    },
+    usernameCooldown: {
+      bn: "সম্প্রতি ইউজারনেম বদলেছেন। আবার বদলাতে ৩০ দিন অপেক্ষা করুন।",
+      en: "You changed your username recently. Please wait 30 days between changes.",
+    },
+    usernameReserved: {
+      bn: "এই ইউজারনেমটি সম্প্রতি ব্যবহৃত হয়েছে এবং এখনো সংরক্ষিত আছে।",
+      en: "That username was recently in use and is still reserved.",
+    },
+    rateLimited: {
+      bn: "এক ঘণ্টায় অনেক বেশিবার করা হয়েছে। কিছুক্ষণ অপেক্ষা করে আবার চেষ্টা করুন।",
+      en: "You've done that a lot in the last hour. Please wait a while and try again.",
     },
     emailTaken: {
       bn: "এই ইমেইলে ইতিমধ্যে অ্যাকাউন্ট আছে।",

@@ -120,6 +120,10 @@ const files = [
   "supabase/migrations/20261017210002_covers_bucket_private.sql",
   "supabase/migrations/20261018090000_progress_anchor.sql",
   "supabase/migrations/20261020220000_notify_user_respect_prefs.sql",
+  "supabase/migrations/20261021090000_account_self_service.sql",
+  "supabase/migrations/20261021100000_write_throttles.sql",
+  "supabase/migrations/20261021110000_genre_normalize.sql",
+  "supabase/migrations/20261021120000_avatars_bucket.sql",
   "supabase/seed.sql",
 ];
 

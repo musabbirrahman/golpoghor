@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useUsernameRedirect } from "../lib/use-username-redirect";
+import { genreLabel } from "../lib/genres";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
@@ -80,8 +82,14 @@ export function StoryPage() {
   const listMutation = useMutation({ mutationFn: () => dp.toggleReadingList(story!.id), onSuccess: invalidate });
   const followMutation = useMutation({ mutationFn: () => dp.toggleFollow(story!.author_id), onSuccess: invalidate });
 
+  const storyRedirectPending = useUsernameRedirect(
+    username,
+    !storyQuery.isLoading && !story,
+    (next) => `/stories/${next}/${slug}`
+  );
   if (storyQuery.isLoading) return <Layout><Spinner /></Layout>;
   if (!story) {
+    if (storyRedirectPending) return <Layout><Spinner /></Layout>;
     return (
       <Layout>
         <EmptyState
@@ -116,7 +124,7 @@ export function StoryPage() {
           <div className="flex flex-wrap items-center gap-2">
             <LanguageBadge language={story.language} />
             <StatusBadge status={story.status} />
-            <Badge>{story.genre}</Badge>
+            <Badge>{genreLabel(story.genre, locale)}</Badge>
             {story.tags.map((tag) => (
               <Link key={tag} to={`/discover?tag=${encodeURIComponent(tag)}`}>
                 <Badge tone="gold">#{tag}</Badge>
@@ -130,7 +138,7 @@ export function StoryPage() {
             to={`/authors/${story.author?.username}`}
             className="mt-2 inline-flex items-center gap-2 text-ink-soft hover:text-river-dark"
           >
-            <Avatar name={story.author?.display_name ?? "?"} size="sm" />
+            <Avatar name={story.author?.display_name ?? "?"} size="sm" src={dp.avatarUrl(story.author?.avatar_path ?? null)} />
             <span className="font-medium">{story.author?.display_name}</span>
             <span className="text-sm text-ink-faint">@{story.author?.username}</span>
           </Link>
@@ -285,8 +293,14 @@ export function AuthorPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["follow", profile?.id] }),
   });
 
+  const profileRedirectPending = useUsernameRedirect(
+    username,
+    !profileQuery.isLoading && !profile,
+    (next) => `/authors/${next}`
+  );
   if (profileQuery.isLoading) return <Layout><Spinner /></Layout>;
   if (!profile) {
+    if (profileRedirectPending) return <Layout><Spinner /></Layout>;
     return (
       <Layout>
         <EmptyState title={t("errors", "notFound")} action={<ButtonLink to="/discover">{t("discover", "title")}</ButtonLink>} />
@@ -299,7 +313,7 @@ export function AuthorPage() {
   return (
     <Layout>
       <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-        <Avatar name={profile.display_name} size="lg" />
+        <Avatar name={profile.display_name} size="lg" src={dp.avatarUrl(profile.avatar_path)} />
         <div className="min-w-0 flex-1">
           <h1 className="font-serif text-3xl font-bold">{profile.display_name}</h1>
           <p className="text-ink-faint">@{profile.username}</p>

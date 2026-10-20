@@ -56,6 +56,10 @@ export interface ChapterInput {
   body: TiptapDoc;
 }
 
+/** V4-17 write throttles (per user, trailing hour). Enforced server-side
+ * by triggers (migration 20261021100000) and mirrored by the demo provider. */
+export const WRITE_THROTTLE = { commentsPerHour: 30, reportsPerHour: 10 } as const;
+
 export interface DataProvider {
   readonly kind: "supabase" | "demo";
 
@@ -74,13 +78,28 @@ export interface DataProvider {
   ensureOwnProfile(): Promise<void>;
   resetPassword(email: string): Promise<void>;
   updatePassword(newPassword: string): Promise<void>;
+  /**
+   * Rename the signed-in user (V4-07). Enforces the signup format rules, a
+   * 30-day cooldown, uniqueness, and the old handle's reservation window;
+   * failures surface as AppError codes usernameInvalid / usernameSame /
+   * usernameCooldown / usernameTaken / usernameReserved.
+   */
+  changeUsername(newUsername: string): Promise<void>;
+  /** Permanently delete the signed-in user's account and all their data. */
+  deleteAccount(): Promise<void>;
+  /**
+   * If `username` is a recently-released handle inside its reservation
+   * window, return the owner's current username (following rename chains);
+   * otherwise null.
+   */
+  resolveUsername(username: string): Promise<string | null>;
 
   // ---------------------------------------------------------- profiles
   getProfile(id: string): Promise<Profile | null>;
   getProfileByUsername(username: string): Promise<Profile | null>;
   updateProfile(
     id: string,
-    patch: Partial<Pick<Profile, "display_name" | "bio" | "locale">>
+    patch: Partial<Pick<Profile, "display_name" | "bio" | "locale" | "avatar_path">>
   ): Promise<Profile>;
   /** Owner-only notification preferences (separate RLS-protected table). */
   getNotificationPrefs(): Promise<Required<NotificationPrefs>>;
@@ -175,6 +194,10 @@ export interface DataProvider {
 
   // ----------------------------------------------------------- storage
   uploadCover(file: File): Promise<string>;
+  /** V4-22: upload a profile picture (<= 1 MB JPG/PNG/WebP); returns its storage path. */
+  uploadAvatar(file: File): Promise<string>;
+  /** Public URL for an avatar path (sync: the avatars bucket is public). */
+  avatarUrl(path: string | null): string | null;
   /** Public-facing cover URL (signed, long-lived; respects RLS at generation). */
   coverUrl(path: string | null): Promise<string | null>;
   /** Signed URL for the owner's own cover (works for drafts too). */

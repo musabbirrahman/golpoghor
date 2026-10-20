@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useUsernameRedirect } from "../lib/use-username-redirect";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
@@ -207,7 +208,7 @@ function Comments({ chapterId }: { chapterId: string }) {
           commentsQuery.data.map((c) => (
             <article key={c.id} className="rounded-xl bg-white p-4 shadow-card">
               <div className="flex items-center gap-2">
-                <Avatar name={c.author?.display_name ?? "?"} size="sm" />
+                <Avatar name={c.author?.display_name ?? "?"} size="sm" src={dp.avatarUrl(c.author?.avatar_path ?? null)} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{c.author?.display_name}</p>
                   <p className="text-xs text-ink-faint">{timeAgo(c.created_at, locale)}</p>
@@ -468,8 +469,14 @@ export function ReaderPage() {
   const fontCls = { sm: "text-[17px]", md: "text-[19px]", lg: "text-[21px]", xl: "text-[24px]" }[prefs.fontSize];
   const leadingCls = { normal: "leading-[1.6]", relaxed: "leading-[1.85]", loose: "leading-[2.2]" }[prefs.lineSpacing];
 
+  const storyRedirectPending = useUsernameRedirect(
+    username,
+    !storyQuery.isLoading && !story,
+    (next) => `/stories/${next}/${slug}/${chapterSlug}`
+  );
   if (storyQuery.isLoading || chaptersQuery.isLoading || chapterQuery.isLoading) return <Layout><Spinner /></Layout>;
   if (!story || !chapter) {
+    if (!story && storyRedirectPending) return <Layout><Spinner /></Layout>;
     return (
       <Layout>
         <EmptyState title={t("errors", "notFound")} action={<ButtonLink to="/discover">{t("discover", "title")}</ButtonLink>} />

@@ -9,6 +9,7 @@
  * in the browser. Never use this provider with real user data.
  */
 import type {
+  UsernameRedirect,
   Appeal,
   AppealStatus,
   AppealTarget,
@@ -34,7 +35,8 @@ import type {
   StoryFilters,
   StoryInput,
 } from "../data-provider";
-import { resolveNotificationPrefs } from "../data-provider";
+import { resolveNotificationPrefs, WRITE_THROTTLE } from "../data-provider";
+import { normalizeGenre, sortGenres } from "../genres";
 import { SEED_AUTHORS, SEED_STORIES, DEMO_PASSWORD } from "../demo-content";
 import {
   AppError,
@@ -66,6 +68,7 @@ interface DemoDB {
   appeals: Appeal[];
   notifications: AppNotification[];
   storyViews: { story_id: string; viewer_id: string; viewed_on: string; created_at: string }[];
+  usernameRedirects: UsernameRedirect[];
   sessionUserId: string | null;
 }
 
@@ -163,6 +166,7 @@ function seed(): DemoDB {
     appeals: [],
     notifications: [],
     storyViews: [],
+    usernameRedirects: [],
     sessionUserId: null,
   };
 }
@@ -204,6 +208,7 @@ export class DemoProvider implements DataProvider {
           db.appeals ??= [];
           db.notifications ??= [];
           db.storyViews ??= [];
+          db.usernameRedirects ??= [];
           for (const p of db.profiles) (p as any).notification_prefs ??= {};
           return db;
         }
@@ -262,6 +267,12 @@ export class DemoProvider implements DataProvider {
     const email = input.email.trim().toLowerCase();
     if (this.db.users.some((u) => u.email === email)) throw new AppError("emailTaken", "Email taken");
     if (this.db.profiles.some((p) => p.username === username)) throw new AppError("usernameTaken", "Username taken");
+    if (
+      this.db.usernameRedirects.some(
+        (r) => r.old_username === username && new Date(r.expires_at).getTime() > Date.now()
+      )
+    )
+      throw new AppError("usernameReserved", "That username was recently in use and is still reserved.");
     const id = uuid();
     this.db.users.push({ id, email, passwordHash: hashPassword(input.password, id) });
     const profile = {
@@ -318,6 +329,115 @@ export class DemoProvider implements DataProvider {
     this.persist();
   }
 
+  async changeUsername(newUsername: string): Promise<void> {
+    const s = this.sessionSync();
+    if (!s) throw new AppError("signInRequired", "Sign in required");
+    const profile = this.db.profiles.find((p) => p.id === s.user.id);
+    if (!profile) throw new AppError("generic", "Unknown account");
+    const next = newUsername.trim().toLowerCase();
+    // Same rules, same order as the change_username() Postgres function.
+    if (!/^[a-z0-9_]{3,30}$/.test(next))
+      throw new AppError("usernameInvalid", "Usernames are 3-30 characters of lowercase letters, numbers and underscores.");
+    if (next === profile.username)
+      throw new AppError("usernameSame", "That is already your username.");
+    if (
+      profile.username_changed_at &&
+      new Date(profile.username_changed_at).getTime() > Date.now() - 30 * 86400000
+    )
+      throw new AppError("usernameCooldown", "You changed your username recently; wait 30 days between changes.");
+    if (this.db.profiles.some((p) => p.username === next && p.id !== profile.id))
+      throw new AppError("usernameTaken", "That username is already taken.");
+    if (
+      this.db.usernameRedirects.some(
+        (r) =>
+          r.old_username === next &&
+          r.user_id !== profile.id &&
+          new Date(r.expires_at).getTime() > Date.now()
+      )
+    )
+      throw new AppError("usernameReserved", "That username was recently in use and is still reserved.");
+
+    const now = new Date();
+    const redirect: UsernameRedirect = {
+      old_username: profile.username,
+      user_id: profile.id,
+      new_username: next,
+      expires_at: new Date(now.getTime() + 30 * 86400000).toISOString(),
+    };
+    this.db.usernameRedirects = this.db.usernameRedirects.filter(
+      (r) => r.old_username !== redirect.old_username
+    );
+    this.db.usernameRedirects.push(redirect);
+    // The caller's own earlier reservation of the new name is now moot.
+    this.db.usernameRedirects = this.db.usernameRedirects.filter(
+      (r) => !(r.old_username === next && r.user_id === profile.id)
+    );
+    profile.username = next;
+    profile.username_changed_at = now.toISOString();
+    this.persist();
+    this.emit();
+  }
+
+  async deleteAccount(): Promise<void> {
+    const s = this.sessionSync();
+    if (!s) throw new AppError("signInRequired", "Sign in required");
+    const uid = s.user.id;
+    const myStoryIds = new Set(
+      this.db.stories.filter((st) => st.author_id === uid).map((st) => st.id)
+    );
+    const myChapterIds = new Set(
+      this.db.chapters.filter((c) => myStoryIds.has(c.story_id)).map((c) => c.id)
+    );
+    const myCommentIds = new Set(
+      this.db.comments
+        .filter((c) => c.author_id === uid || myChapterIds.has(c.chapter_id))
+        .map((c) => c.id)
+    );
+    const myTargetIds = new Set([...myStoryIds, ...myChapterIds, ...myCommentIds]);
+    // Mirror the Postgres cascades: everything keyed to the user or to
+    // their stories/chapters goes with the account.
+    this.db.stories = this.db.stories.filter((st) => st.author_id !== uid);
+    this.db.chapters = this.db.chapters.filter((c) => !myStoryIds.has(c.story_id));
+    this.db.comments = this.db.comments.filter(
+      (c) => c.author_id !== uid && !myChapterIds.has(c.chapter_id)
+    );
+    this.db.likes = this.db.likes.filter((l) => l.user_id !== uid && !myStoryIds.has(l.story_id));
+    this.db.readingList = this.db.readingList.filter(
+      (r) => r.user_id !== uid && !myStoryIds.has(r.story_id)
+    );
+    this.db.progress = this.db.progress.filter(
+      (r) => r.user_id !== uid && !myStoryIds.has(r.story_id)
+    );
+    this.db.storyViews = this.db.storyViews.filter(
+      (v) => v.viewer_id !== uid && !myStoryIds.has(v.story_id)
+    );
+    this.db.follows = this.db.follows.filter((f) => f.follower_id !== uid && f.author_id !== uid);
+    this.db.reports = this.db.reports.filter(
+      (r) => r.reporter_id !== uid && !myTargetIds.has(r.target_id)
+    );
+    this.db.appeals = this.db.appeals.filter((a) => a.author_id !== uid);
+    this.db.notifications = this.db.notifications.filter((n) => n.user_id !== uid);
+    this.db.usernameRedirects = this.db.usernameRedirects.filter((r) => r.user_id !== uid);
+    this.db.profiles = this.db.profiles.filter((p) => p.id !== uid);
+    this.db.users = this.db.users.filter((u) => u.id !== uid);
+    this.db.sessionUserId = null;
+    this.persist();
+    this.emit();
+  }
+
+  async resolveUsername(username: string): Promise<string | null> {
+    let current = username.toLowerCase();
+    const seen = new Set<string>([current]);
+    for (let hop = 0; hop < 3; hop++) {
+      const r = this.db.usernameRedirects.find((x) => x.old_username === current);
+      if (!r || new Date(r.expires_at).getTime() <= Date.now()) break;
+      if (seen.has(r.new_username)) break;
+      seen.add(r.new_username);
+      current = r.new_username;
+    }
+    return current !== username.toLowerCase() ? current : null;
+  }
+
   // ---------------------------------------------------------- profiles
   async getProfile(id: string): Promise<Profile | null> {
     return this.db.profiles.find((p) => p.id === id) ?? null;
@@ -329,7 +449,7 @@ export class DemoProvider implements DataProvider {
 
   async updateProfile(
     id: string,
-    patch: Partial<Pick<Profile, "display_name" | "bio" | "locale">>
+    patch: Partial<Pick<Profile, "display_name" | "bio" | "locale" | "avatar_path">>
   ): Promise<Profile> {
     const me = await this.requireUid();
     if (me !== id) throw new AppError("notAuthor", "You can only edit your own profile");
@@ -338,6 +458,7 @@ export class DemoProvider implements DataProvider {
     if (patch.display_name !== undefined) p.display_name = patch.display_name.trim().slice(0, 80);
     if (patch.bio !== undefined) p.bio = patch.bio.trim().slice(0, 500);
     if (patch.locale !== undefined) p.locale = patch.locale;
+    if (patch.avatar_path !== undefined) p.avatar_path = patch.avatar_path;
     p.updated_at = new Date().toISOString();
     this.persist();
     return { ...p };
@@ -402,7 +523,10 @@ export class DemoProvider implements DataProvider {
     }
     if (f.authorId) rows = rows.filter((s) => s.author_id === f.authorId);
     if (f.language) rows = rows.filter((s) => s.language === f.language);
-    if (f.genre) rows = rows.filter((s) => s.genre === f.genre);
+    if (f.genre) {
+      const wanted = normalizeGenre(f.genre);
+      rows = rows.filter((s) => normalizeGenre(s.genre) === wanted);
+    }
     {
       const tag = f.tag;
       if (tag) rows = rows.filter((s) => s.tags.includes(tag));
@@ -549,9 +673,9 @@ export class DemoProvider implements DataProvider {
   async listGenres(): Promise<string[]> {
     const set = new Set<string>();
     for (const s of this.db.stories) {
-      if (this.isPublicStory(s)) set.add(s.genre);
+      if (this.isPublicStory(s)) set.add(normalizeGenre(s.genre));
     }
-    return [...set].sort();
+    return sortGenres(set);
   }
 
   // ---------------------------------------------------------- chapters
@@ -853,6 +977,13 @@ export class DemoProvider implements DataProvider {
 
   async createComment(chapterId: string, body: string): Promise<Comment> {
     const me = await this.requireUid();
+    // V4-17 throttle, mirroring the Postgres trigger.
+    const hourAgo = Date.now() - 3600000;
+    if (
+      this.db.comments.filter((c) => c.author_id === me && new Date(c.created_at).getTime() > hourAgo).length >=
+      WRITE_THROTTLE.commentsPerHour
+    )
+      throw new AppError("rateLimited", "Too many comments in the last hour.");
     const text = body.trim();
     if (!text) throw new AppError("generic", "Comment is empty");
     if (text.length > 2000) throw new AppError("generic", "Comment too long");
@@ -955,6 +1086,13 @@ export class DemoProvider implements DataProvider {
 
   async createReport(targetType: ReportTarget, targetId: string, reason: string, details: string): Promise<Report> {
     const me = await this.requireUid();
+    // V4-17 throttle, mirroring the Postgres trigger.
+    const hourAgo = Date.now() - 3600000;
+    if (
+      this.db.reports.filter((r) => r.reporter_id === me && new Date(r.created_at).getTime() > hourAgo).length >=
+      WRITE_THROTTLE.reportsPerHour
+    )
+      throw new AppError("rateLimited", "Too many reports in the last hour.");
     // verify target exists
     const exists =
       (targetType === "story" && this.db.stories.some((s) => s.id === targetId)) ||
@@ -1366,6 +1504,23 @@ export class DemoProvider implements DataProvider {
       r.readAsDataURL(file);
     });
     return dataUrl; // demo: coverUrl passes data: URLs through
+  }
+
+  async uploadAvatar(file: File): Promise<string> {
+    await this.requireUid();
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new AppError("generic", "Only JPG, PNG or WebP images");
+    if (file.size > 1 * 1024 * 1024) throw new AppError("generic", "Image must be under 1 MB");
+    return new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = () => reject(new Error("read failed"));
+      r.readAsDataURL(file);
+    });
+  }
+
+  avatarUrl(path: string | null): string | null {
+    if (!path) return null;
+    return path.startsWith("data:") ? path : null;
   }
 
   async coverUrl(path: string | null): Promise<string | null> {

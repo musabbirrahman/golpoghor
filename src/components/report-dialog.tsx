@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import type { ReportTarget } from "../lib/types";
@@ -78,6 +79,12 @@ export function ReportDialog({
             if (reason.trim()) mutation.mutate();
           }}
         >
+          <p className="text-xs text-ink-faint">
+            {t("reports", "guidelinesHint")}{" "}
+            <Link to="/guidelines" onClick={onClose} className="text-river hover:underline">
+              {t("footer", "guidelines")}
+            </Link>
+          </p>
           <div>
             <Label htmlFor="report-reason">{t("reports", "reason")}</Label>
             <Select

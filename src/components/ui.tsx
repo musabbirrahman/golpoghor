@@ -164,9 +164,19 @@ export function Modal({
   );
 }
 
-export function Avatar({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg" }) {
+export function Avatar({ name, size = "md", src }: { name: string; size?: "sm" | "md" | "lg"; src?: string | null }) {
   const sizes = { sm: "h-8 w-8 text-xs", md: "h-10 w-10 text-sm", lg: "h-16 w-16 text-xl" };
   const initial = name.trim().charAt(0).toUpperCase() || "?";
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt=""
+        aria-hidden
+        className={`shrink-0 rounded-full object-cover ${sizes[size]}`}
+      />
+    );
+  }
   return (
     <div
       className={`flex shrink-0 items-center justify-center rounded-full bg-river font-serif font-semibold text-paper ${sizes[size]}`}

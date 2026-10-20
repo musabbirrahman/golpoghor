@@ -288,7 +288,13 @@ export function Footer() {
 
         <div className="mt-10 flex flex-wrap items-center justify-between gap-2 border-t border-ink/10 pt-4 text-xs text-ink-faint">
           <p>{t("footer", "rights")}</p>
-          <p aria-hidden>❦</p>
+          <nav className="flex flex-wrap gap-x-4 gap-y-1" aria-label="Legal">
+            <Link to="/about" className={linkCls}>{t("footer", "about")}</Link>
+            <Link to="/guidelines" className={linkCls}>{t("footer", "guidelines")}</Link>
+            <Link to="/terms" className={linkCls}>{t("footer", "terms")}</Link>
+            <Link to="/privacy" className={linkCls}>{t("footer", "privacy")}</Link>
+            <Link to="/contact" className={linkCls}>{t("footer", "contact")}</Link>
+          </nav>
         </div>
       </div>
     </footer>

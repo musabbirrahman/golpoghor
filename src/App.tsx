@@ -4,6 +4,7 @@ import { AppProvider, useApp } from "./lib/app-context";
 import { Layout, ScrollToTopOnNavigate } from "./components/layout";
 import { ButtonLink, EmptyState } from "./components/ui";
 import { HomePage, DiscoverPage, SearchPage } from "./pages/discovery";
+import { LegalPage } from "./pages/legal";
 import { StoryPage, AuthorPage } from "./pages/story";
 import { ReaderPage } from "./pages/reader";
 import { LoginPage, SignupPage, ResetPasswordPage, SetPasswordPage } from "./pages/auth";
@@ -93,6 +94,11 @@ const router = createBrowserRouter([
       { path: "/write/chapters/:chapterId", lazy: () => import("./pages/chapter-editor").then((m) => ({ Component: m.ChapterEditorPage })) },
       { path: "/settings/profile", lazy: () => import("./pages/library").then((m) => ({ Component: m.SettingsPage })) },
       { path: "/admin/reports", lazy: () => import("./pages/admin").then((m) => ({ Component: m.AdminPage })) },
+      { path: "/terms", element: <LegalPage slug="terms" /> },
+      { path: "/privacy", element: <LegalPage slug="privacy" /> },
+      { path: "/guidelines", element: <LegalPage slug="guidelines" /> },
+      { path: "/about", element: <LegalPage slug="about" /> },
+      { path: "/contact", element: <LegalPage slug="contact" /> },
       { path: "*", element: <NotFound /> },
     ],
   },

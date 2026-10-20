@@ -480,6 +480,137 @@ let appealId;
   check("notification explains story now hidden", hn?.data.storyHidden === "true");
 }
 
+// 19. account self-service (V4-07): rename + reservation + cooldown,
+// password change, and full deletion — mirroring the Postgres functions.
+{
+  const code = async (fn) => {
+    try { await fn(); return null; } catch (e) { return e?.code ?? "threw"; }
+  };
+  await dp.signUp({ email: "renamer@example.com", password: "secret12", username: "rename_author", displayName: "Renamer" });
+  const story = await dp.createStory({ title: "Rename Test Story", summary: "x", language: "en", genre: "Mystery", tags: [] });
+  await dp.createChapter(story.id, { title: "One", body: paragraphsToDoc(["Some body text here."]) });
+  await dp.signUp({ email: "other@example.com", password: "secret12", username: "other_handle", displayName: "Other" });
+  await dp.signIn("renamer@example.com", "secret12");
+
+  check("rename: invalid format refused", (await code(() => dp.changeUsername("Bad Name!"))) === "usernameInvalid");
+  check("rename: own current name refused", (await code(() => dp.changeUsername("rename_author"))) === "usernameSame");
+  check("rename: taken name refused", (await code(() => dp.changeUsername("other_handle"))) === "usernameTaken");
+  check("rename: valid free name succeeds", (await code(() => dp.changeUsername("renamed_author"))) === null);
+  check("old handle no longer resolves as a profile", (await dp.getProfileByUsername("rename_author")) === null);
+  check("new handle resolves", (await dp.getProfileByUsername("renamed_author"))?.username === "renamed_author");
+  check("old handle redirects to the new one", (await dp.resolveUsername("rename_author")) === "renamed_author");
+  check("current handle needs no redirect", (await dp.resolveUsername("renamed_author")) === null);
+  check("unknown handle has no redirect", (await dp.resolveUsername("nobody_here")) === null);
+  check("rename: immediate second change hits the cooldown", (await code(() => dp.changeUsername("third_name"))) === "usernameCooldown");
+
+  await dp.signIn("other@example.com", "secret12");
+  check("rename: another user cannot take the reserved handle", (await code(() => dp.changeUsername("rename_author"))) === "usernameReserved");
+  check("signup: a fresh account cannot take the reserved handle",
+    (await code(() => dp.signUp({ email: "third@example.com", password: "secret12", username: "rename_author", displayName: "Third" }))) === "usernameReserved");
+
+  // Backdate the cooldown in the stored DB and reload, as if 31 days passed.
+  const raw = JSON.parse(store.get("golpoghor-demo-v1"));
+  const prof = raw.profiles.find((p) => p.username === "renamed_author");
+  prof.username_changed_at = new Date(Date.now() - 31 * 86400000).toISOString();
+  store.set("golpoghor-demo-v1", JSON.stringify(raw));
+  const dp2 = new DemoProvider();
+  await dp2.signIn("renamer@example.com", "secret12");
+  check("rename: owner reclaims their own old handle after cooldown", (await code(() => dp2.changeUsername("rename_author"))) === null);
+  check("reclaim swaps the redirect", (await dp2.resolveUsername("renamed_author")) === "rename_author");
+
+  check("password: change succeeds in session", (await code(() => dp2.updatePassword("newsecret1"))) === null);
+  await dp2.signOut();
+  check("password: old password no longer signs in", (await code(() => dp2.signIn("renamer@example.com", "secret12"))) === "signInFailed");
+  await dp2.signIn("renamer@example.com", "newsecret1");
+  check("password: new password signs in", !!(await dp2.getSession()));
+
+  const authorId = (await dp2.getSession()).user.id;
+  check("delete: story present before deletion", (await dp2.listStories({ authorId, includeDrafts: true })).stories.some((s) => s.id === story.id));
+  await dp2.deleteAccount();
+  check("delete: session cleared", (await dp2.getSession()) === null);
+  check("delete: profile gone", (await dp2.getProfileByUsername("rename_author")) === null);
+  await dp2.signIn("other@example.com", "secret12");
+  check("delete: stories gone with the account", (await dp2.listStories({ authorId })).stories.length === 0);
+  await dp2.signOut();
+  check("delete: redirects removed with the account", (await dp2.resolveUsername("renamed_author")) === null);
+  check("delete: sign-in no longer possible", (await code(() => dp2.signIn("renamer@example.com", "newsecret1"))) === "signInFailed");
+  check("delete: other users untouched", (await dp2.getProfileByUsername("other_handle"))?.username === "other_handle");
+}
+
+// 20. write throttles (V4-17): rapid-fire comments/reports are refused
+// after the per-hour limit, per user, mirroring the Postgres triggers.
+{
+  const code = async (fn) => {
+    try { await fn(); return null; } catch (e) { return e?.code ?? "threw"; }
+  };
+  await dp.signUp({ email: "spammy@example.com", password: "secret12", username: "spammy", displayName: "Spammy" });
+  const story = (await dp.listStories({ q: "বর্ষার চিঠি" })).stories[0];
+  const chapter = (await dp.listChapters(story.id, { publishedOnly: true }))[0];
+  let commentFails = 0;
+  for (let i = 0; i < 30; i++) {
+    if ((await code(() => dp.createComment(chapter.id, `comment ${i}`))) !== null) commentFails++;
+  }
+  check("throttle: 30 comments in an hour pass", commentFails === 0);
+  check("throttle: the 31st comment is refused", (await code(() => dp.createComment(chapter.id, "one too many"))) === "rateLimited");
+  let reportFails = 0;
+  for (let i = 0; i < 10; i++) {
+    if ((await code(() => dp.createReport("story", story.id, "spam", ""))) !== null) reportFails++;
+  }
+  check("throttle: 10 reports in an hour pass", reportFails === 0);
+  check("throttle: the 11th report is refused", (await code(() => dp.createReport("story", story.id, "spam", ""))) === "rateLimited");
+  await dp.signUp({ email: "calm@example.com", password: "secret12", username: "calm_user", displayName: "Calm" });
+  check("throttle: another user is unaffected", (await code(() => dp.createComment(chapter.id, "hello"))) === null);
+  await dp.signOut();
+}
+
+// 21. genre freeze (V4-14/D6): legacy English values group under the
+// canonical taxonomy; filters accept either spelling.
+{
+  const code = async (fn) => {
+    try { await fn(); return null; } catch (e) { return e?.code ?? "threw"; }
+  };
+  await dp.signUp({ email: "genre@example.com", password: "secret12", username: "genre_writer", displayName: "Genre Writer" });
+  const st = await dp.createStory({ title: "Genre Grouping Tale", summary: "x", language: "en", genre: "Mystery", tags: [] });
+  const ch = await dp.createChapter(st.id, { title: "One", body: paragraphsToDoc(["Mystery body text here."]) });
+  await dp.updateChapter(ch.id, { status: "published" });
+  await dp.updateStory(st.id, { status: "ongoing" });
+  const genres = await dp.listGenres();
+  check("genre: listGenres returns the canonical value", genres.includes("রহস্য"));
+  check("genre: listGenres hides the legacy alias", !genres.includes("Mystery"));
+  check("genre: filter by canonical finds the legacy story",
+    (await dp.listStories({ genre: "রহস্য" })).stories.some((s) => s.id === st.id));
+  check("genre: filter by legacy alias also finds it",
+    (await dp.listStories({ genre: "Mystery" })).stories.some((s) => s.id === st.id));
+  check("genre: unrelated genre filter excludes it",
+    !(await dp.listStories({ genre: "হরর" })).stories.some((s) => s.id === st.id));
+  await dp.signOut();
+}
+
+// 22. avatar upload (V4-22): demo stores a data URL as avatar_path and
+// avatarUrl passes it through; type/size guards match the live provider.
+{
+  const code = async (fn) => {
+    try { await fn(); return null; } catch (e) { return e?.code ?? "threw"; }
+  };
+  globalThis.FileReader = class {
+    readAsDataURL() {
+      this.result = "data:image/png;base64,iVBORw0KGgo=";
+      this.onload?.();
+    }
+  };
+  await dp.signUp({ email: "avatar@example.com", password: "secret12", username: "avatar_user", displayName: "Avatar User" });
+  const me = (await dp.getSession()).user.id;
+  const path = await dp.uploadAvatar({ type: "image/png", size: 2048 });
+  check("avatar: upload returns a data URL in demo", typeof path === "string" && path.startsWith("data:image/png"));
+  await dp.updateProfile(me, { avatar_path: path });
+  check("avatar: profile carries the path", (await dp.getProfile(me))?.avatar_path === path);
+  check("avatar: avatarUrl resolves the data URL", dp.avatarUrl(path) === path);
+  check("avatar: avatarUrl of null is null", dp.avatarUrl(null) === null);
+  check("avatar: non-image refused", (await code(() => dp.uploadAvatar({ type: "text/plain", size: 10 }))) === "generic");
+  check("avatar: oversize refused", (await code(() => dp.uploadAvatar({ type: "image/png", size: 2 * 1024 * 1024 }))) === "generic");
+  await dp.signOut();
+}
+
 console.log("");
 for (const [st, name] of results) console.log(`${st}  ${name}`);
 const fails = results.filter((r) => r[0] === "FAIL").length;

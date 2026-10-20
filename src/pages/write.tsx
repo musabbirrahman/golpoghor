@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
+import { GENRES, genreLabel, normalizeGenre } from "../lib/genres";
 import { Layout } from "../components/layout";
 import {
   Badge, Button, ButtonLink, Card, EmptyState, FieldError, Input, Label, Modal,
@@ -75,7 +76,7 @@ export function WriteDashboard() {
   );
 }
 
-const GENRES = ["general", "সমকালীন", "ছোটগল্প", "রোমান্স", "রহস্য", "ফ্যান্টাসি", "হরর", "ইতিহাস", "কবিতা", "Mystery", "Romance", "Fantasy", "Horror", "History", "Poetry", "Contemporary"];
+// V4-14: the genre list is the frozen taxonomy in lib/genres.ts.
 
 /** Shared published-chapter count (same cache key as ChapterListCard). */
 function usePublishedChapterCount(storyId: string): number | undefined {
@@ -118,7 +119,7 @@ function PublishStoryButton({ storyId, onPublish, label }: { storyId: string; on
 export function StoryFormPage() {
   const { id } = useParams();
   const isNew = !id;
-  const { t, dp } = useApp();
+  const { t, dp, locale } = useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -165,7 +166,7 @@ export function StoryFormPage() {
     setSlugTouched(true);
     setSummary(story.summary);
     setLanguage(story.language);
-    setGenre(story.genre);
+    setGenre(normalizeGenre(story.genre));
     setTags(story.tags.join(", "));
     setNotice(story.content_notice);
     setInitialized(true);
@@ -297,7 +298,7 @@ export function StoryFormPage() {
               <div>
                 <Label htmlFor="sf-genre">{t("write", "genre")}</Label>
                 <Select id="sf-genre" value={genre} onChange={(e) => setGenre(e.target.value)}>
-                  {GENRES.map((g) => <option key={g} value={g}>{g}</option>)}
+                  {GENRES.map((g) => <option key={g.value} value={g.value}>{genreLabel(g.value, locale)}</option>)}
                 </Select>
               </div>
             </div>
