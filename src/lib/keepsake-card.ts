@@ -175,16 +175,18 @@ export async function renderKeepsakeCard(
   canvas.height = CARD_H;
   const ctx = canvas.getContext("2d")!;
   const tpl = CARD_TEMPLATES[input.template];
-  await ensureFonts(input.excerpt + input.title + input.author + (input.echo ?? ""));
+  await ensureFonts(input.excerpt + input.title + input.author + (input.echo ?? "") + "Echo · প্রতিধ্বনি");
 
   const padX = 96;
   const textW = CARD_W - padX * 2;
   const topY = 120;
   const textAreaH = CARD_H - topY - 190 - 40;
   const echoText = input.echo?.trim() ? input.echo.trim() : null;
-  // Echo block: rule gap + up to 6 lines at 30px/1.6. The passage gets
-  // whatever text area remains, so an echo card never clips.
-  const echoAreaH = echoText ? 350 : 0;
+  // Echo block: label line + up to 6 lines at 30px/1.6. The passage
+  // gets whatever text area remains, so an echo card never clips.
+  // The label (not just a rule) marks where the owner's words start,
+  // so a shared PNG can never be misread as the original text.
+  const echoAreaH = echoText ? 356 : 0;
   const passageAreaH = textAreaH - echoAreaH;
 
   // Trim from the end until the floor size fits (no clipping, ever).
@@ -231,7 +233,7 @@ export async function renderKeepsakeCard(
   // without an echo the passage is centred exactly as before.
   const blockH = lay.heights.reduce((a, b) => a + b, 0);
   const echoH = echoHeights.reduce((a, b) => a + b, 0);
-  const totalH = blockH + (echoText ? 60 + echoH : 0);
+  const totalH = blockH + (echoText ? 68 + echoH : 0);
   let y = topY + lay.fontSize + Math.max(0, (textAreaH - totalH) / 2);
   ctx.fillStyle = tpl.ink;
   ctx.font = `400 ${lay.fontSize}px ${SERIF}`;
@@ -241,14 +243,11 @@ export async function renderKeepsakeCard(
     y += lay.heights[i];
   }
   if (echoText) {
-    y += 20;
-    ctx.strokeStyle = tpl.rule;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(padX, y);
-    ctx.lineTo(padX + 72, y);
-    ctx.stroke();
-    y += 40;
+    y += 24;
+    ctx.fillStyle = tpl.accent;
+    ctx.font = `600 26px ${SERIF}`;
+    ctx.fillText("Echo · প্রতিধ্বনি", padX, y);
+    y += 44;
     ctx.fillStyle = tpl.ink;
     ctx.font = `italic 400 30px ${SERIF}`;
     for (let i = 0; i < echoLines.length; i++) {

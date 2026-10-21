@@ -115,7 +115,7 @@ export function KeepsakeViewer({
             </p>
             <Button
               size="sm"
-              variant="ghost"
+              variant="secondary"
               className="mt-2"
               onClick={() => {
                 setEchoEdit(true);
@@ -128,7 +128,7 @@ export function KeepsakeViewer({
         ) : (
           <Button
             size="sm"
-            variant="ghost"
+            variant="secondary"
             className="mt-4"
             onClick={() => {
               setEchoEdit(true);
