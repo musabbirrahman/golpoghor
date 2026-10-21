@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { resolveNotificationPrefs } from "../lib/data-provider";
 import type { Keepsake, NotificationPrefs } from "../lib/types";
-import { downloadKeepsakePNG, renderKeepsakeCard } from "../lib/keepsake-card";
+import { CARD_TEMPLATES, downloadKeepsakePNG, renderKeepsakeCard } from "../lib/keepsake-card";
 import { Layout } from "../components/layout";
 import { Avatar, Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
 import { StoryCard, storyPath } from "../components/story-card";
@@ -157,9 +157,16 @@ export function LibraryPage() {
           <h2 className="mb-4 font-serif text-xl font-bold">{t("keepsakes", "myKeepsakes")}</h2>
           {keepsakesQuery.isLoading ? <Spinner /> : keepsakesQuery.data?.length ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {keepsakesQuery.data.map((k) => (
-                <div key={k.id} className="rounded-xl bg-white p-4 shadow-card">
-                  <p className="whitespace-pre-line font-serif text-base leading-relaxed">
+              {keepsakesQuery.data.map((k) => {
+                const tpl = CARD_TEMPLATES[k.template];
+                return (
+                <div
+                  key={k.id}
+                  className="min-w-0 rounded-xl p-4 shadow-card"
+                  style={{ backgroundColor: tpl.bg, color: tpl.ink }}
+                >
+                  <p aria-hidden className="font-serif text-lg leading-none" style={{ color: tpl.accent }}>❦</p>
+                  <p className="mt-2 whitespace-pre-line break-words font-serif text-base leading-relaxed">
                     {expandedExcerptId === k.id || k.excerpt.length <= 160
                       ? k.excerpt
                       : k.excerpt.slice(0, 160) + "…"}
@@ -167,16 +174,17 @@ export function LibraryPage() {
                   {k.excerpt.length > 160 && (
                     <button
                       type="button"
-                      className="mt-1 text-sm font-medium text-river hover:text-river-dark"
+                      className="mt-1 text-sm font-medium hover:underline"
+                      style={{ color: tpl.accent }}
                       onClick={() => setExpandedExcerptId(expandedExcerptId === k.id ? null : k.id)}
                     >
                       {expandedExcerptId === k.id ? t("keepsakes", "showLess") : t("keepsakes", "showMore")}
                     </button>
                   )}
-                  <p className="mt-3 truncate text-sm text-ink-faint">
+                  <p className="mt-3 truncate text-sm" style={{ color: tpl.faint }}>
                     {t("keepsakes", "sourceLabel")}: {k.source_title} · {k.source_author_name}
                   </p>
-                  <p className="mt-1 text-xs text-ink-faint">
+                  <p className="mt-1 text-xs" style={{ color: tpl.faint }}>
                     {t("keepsakes", `template${k.template.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join("")}`)}
                     {" · "}
                     {k.visibility === "public" ? t("keepsakes", "publicBadge") : t("keepsakes", "privateBadge")}
@@ -203,7 +211,7 @@ export function LibraryPage() {
                       </div>
                     </div>
                   ) : k.echo ? (
-                    <p className="mt-3 whitespace-pre-line border-l-2 border-river-soft pl-3 text-sm italic text-ink-soft">
+                    <p className="mt-3 whitespace-pre-line border-l-2 pl-3 text-sm italic" style={{ borderColor: tpl.accent, color: tpl.faint }}>
                       {k.echo}
                     </p>
                   ) : null}
@@ -214,12 +222,13 @@ export function LibraryPage() {
                     <Button
                       size="sm"
                       variant="ghost"
+                      style={{ color: tpl.ink }}
                       onClick={() => { setEchoEditId(k.id); setEchoDraft(k.echo ?? ""); }}
                     >
                       {k.echo ? t("keepsakes", "editEcho") : t("keepsakes", "addEcho")}
                     </Button>
                     {k.visibility !== "public" && (
-                      <Button size="sm" variant="ghost" onClick={() => publishKeepsake(k)} disabled={keepsakeBusy}>
+                      <Button size="sm" variant="ghost" style={{ color: tpl.ink }} onClick={() => publishKeepsake(k)} disabled={keepsakeBusy}>
                         {t("keepsakes", "publish")}
                       </Button>
                     )}
@@ -227,10 +236,10 @@ export function LibraryPage() {
                       <>
                         {k.slug && (
                           <Link to={`/k/${k.slug}`}>
-                            <Button size="sm" variant="ghost">{t("keepsakes", "viewPublicPage")}</Button>
+                            <Button size="sm" variant="ghost" style={{ color: tpl.ink }}>{t("keepsakes", "viewPublicPage")}</Button>
                           </Link>
                         )}
-                        <Button size="sm" variant="ghost" onClick={() => unpublishKeepsake(k)} disabled={keepsakeBusy}>
+                        <Button size="sm" variant="ghost" style={{ color: tpl.ink }} onClick={() => unpublishKeepsake(k)} disabled={keepsakeBusy}>
                           {t("keepsakes", "unpublish")}
                         </Button>
                       </>
@@ -238,6 +247,7 @@ export function LibraryPage() {
                     <Button
                       size="sm"
                       variant={confirmDeleteId === k.id ? "danger" : "ghost"}
+                      style={confirmDeleteId === k.id ? undefined : { color: tpl.ink }}
                       onClick={() => deleteKeepsake(k)}
                       disabled={keepsakeBusy}
                     >
@@ -245,7 +255,8 @@ export function LibraryPage() {
                     </Button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <EmptyState title={t("keepsakes", "empty")} action={<ButtonLink to="/discover" variant="secondary">{t("discover", "title")}</ButtonLink>} />

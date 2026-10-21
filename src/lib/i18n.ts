@@ -12,6 +12,7 @@ const dict = {
     discover: { bn: "ঘুরে দেখুন", en: "Discover" },
     library: { bn: "লাইব্রেরি", en: "Library" },
     write: { bn: "লিখুন", en: "Write" },
+    keepsakes: { bn: "কিপসেক", en: "Keepsakes" },
     search: { bn: "খুঁজুন", en: "Search" },
     signIn: { bn: "সাইন ইন", en: "Sign in" },
     signOut: { bn: "সাইন আউট", en: "Sign out" },

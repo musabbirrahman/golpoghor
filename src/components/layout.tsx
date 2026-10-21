@@ -150,6 +150,10 @@ function AccountMenu() {
 
 export function Header() {
   const { t, session } = useApp();
+  const { pathname } = useLocation();
+  // The chapter-reading page is immersive: hide the search box there
+  // (story page and everywhere else keep it). Header chrome stays.
+  const isReader = /^\/stories\/[^/]+\/[^/]+\/[^/]+$/.test(pathname);
   const linkCls = ({ isActive }: { isActive: boolean }) =>
     `rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
       isActive ? "bg-sage text-ink" : "text-ink-soft hover:bg-sage/60 hover:text-ink"
@@ -161,19 +165,22 @@ export function Header() {
         <nav className="ml-2 hidden items-center gap-1 md:flex" aria-label="Primary">
           <NavLink to="/" className={linkCls} end>{t("nav", "home")}</NavLink>
           <NavLink to="/discover" className={linkCls}>{t("nav", "discover")}</NavLink>
+          <NavLink to="/keepsakes" className={linkCls}>{t("nav", "keepsakes")}</NavLink>
           {session && <NavLink to="/library" className={linkCls}>{t("nav", "library")}</NavLink>}
           {session && <NavLink to="/write" className={linkCls}>{t("nav", "write")}</NavLink>}
         </nav>
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
-          <SearchBox />
+          {!isReader && <SearchBox />}
           <LocaleToggle />
           <NotificationBell />
           <AccountMenu />
         </div>
       </div>
-      <div className="border-t border-ink/10 px-4 py-2 lg:hidden">
-        <SearchBox mobile />
-      </div>
+      {!isReader && (
+        <div className="border-t border-ink/10 px-4 py-2 lg:hidden">
+          <SearchBox mobile />
+        </div>
+      )}
     </header>
   );
 }
@@ -183,6 +190,7 @@ export function BottomNav() {
   const items = [
     { to: "/", label: t("nav", "home"), icon: "⌂" },
     { to: "/discover", label: t("nav", "discover"), icon: "❦" },
+    { to: "/keepsakes", label: t("nav", "keepsakes"), icon: "✦" },
     ...(session
       ? [
           { to: "/library", label: t("nav", "library"), icon: "▤" },

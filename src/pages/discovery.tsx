@@ -5,6 +5,7 @@ import { genreLabel } from "../lib/genres";
 import { Layout } from "../components/layout";
 import { Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
 import { StoryCard, StoryRow } from "../components/story-card";
+import { CARD_TEMPLATES } from "../lib/keepsake-card";
 import type { StoryLanguage } from "../lib/types";
 
 const PAGE_SIZE = 24;
@@ -53,6 +54,7 @@ export function HomePage() {
   const featured = useQuery({ queryKey: ["stories", { sort: "popular", limit: 4 }], queryFn: () => dp.listStories({ sort: "popular", limit: 4 }) });
   const bn = useQuery({ queryKey: ["stories", { language: "bn", limit: 8 }], queryFn: () => dp.listStories({ language: "bn", limit: 8 }) });
   const en = useQuery({ queryKey: ["stories", { language: "en", limit: 8 }], queryFn: () => dp.listStories({ language: "en", limit: 8 }) });
+  const keepsakes = useQuery({ queryKey: ["public-keepsakes"], queryFn: () => dp.listPublicKeepsakes() });
 
   return (
     <Layout>
@@ -82,6 +84,30 @@ export function HomePage() {
           </div>
         )}
       </Shelf>
+
+      {/* Public keepsakes strip — hidden entirely until something is
+          public, so it never shows an empty box on the home page. */}
+      {!!keepsakes.data?.length && (
+        <Shelf title={t("keepsakes", "shelfTitle")} action={<Link to="/keepsakes" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
+          <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
+            {keepsakes.data.slice(0, 8).map((k) => {
+              const tpl = CARD_TEMPLATES[k.template];
+              const excerpt = k.excerpt.length > 120 ? k.excerpt.slice(0, 120).trimEnd() + "…" : k.excerpt;
+              return (
+                <Link key={k.id} to={`/k/${k.slug}`} className="block w-64 shrink-0 sm:w-auto">
+                  <div className="min-w-0 rounded-xl p-4 shadow-card" style={{ backgroundColor: tpl.bg, color: tpl.ink }}>
+                    <p aria-hidden className="font-serif text-lg leading-none" style={{ color: tpl.accent }}>❦</p>
+                    <p className="mt-2 whitespace-pre-line break-words font-serif text-base leading-relaxed">“{excerpt}”</p>
+                    <p className="mt-3 truncate text-xs" style={{ color: tpl.faint }}>
+                      {t("keepsakes", "keptBy")} {k.keeper_name}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </Shelf>
+      )}
 
       <Shelf title={t("home", "recentBn")} action={<Link to="/discover?language=bn" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
         {bn.isLoading ? <Spinner /> : bn.data?.stories.length ? (
