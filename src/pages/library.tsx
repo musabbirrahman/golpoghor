@@ -82,6 +82,19 @@ export function LibraryPage() {
     }
   };
 
+  const unpublishKeepsake = async (k: Keepsake) => {
+    setKeepsakeBusy(true);
+    setKeepsakeError(null);
+    try {
+      await dp.unpublishKeepsake(k.id);
+      queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
+    } catch (e) {
+      setKeepsakeError(e instanceof AppError ? t("errors", e.code) : t("errors", "generic"));
+    } finally {
+      setKeepsakeBusy(false);
+    }
+  };
+
   const deleteKeepsake = async (k: Keepsake) => {
     if (confirmDeleteId !== k.id) {
       setConfirmDeleteId(k.id);
@@ -209,6 +222,18 @@ export function LibraryPage() {
                       <Button size="sm" variant="ghost" onClick={() => publishKeepsake(k)} disabled={keepsakeBusy}>
                         {t("keepsakes", "publish")}
                       </Button>
+                    )}
+                    {k.visibility === "public" && (
+                      <>
+                        {k.slug && (
+                          <Link to={`/k/${k.slug}`}>
+                            <Button size="sm" variant="ghost">{t("keepsakes", "viewPublicPage")}</Button>
+                          </Link>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => unpublishKeepsake(k)} disabled={keepsakeBusy}>
+                          {t("keepsakes", "unpublish")}
+                        </Button>
+                      </>
                     )}
                     <Button
                       size="sm"

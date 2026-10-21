@@ -31,6 +31,7 @@ import type {
   ReportTarget,
   Session,
   Story,
+  KeepsakeLicence,
 } from "../types";
 import type {
   ChapterInput,
@@ -77,6 +78,8 @@ interface DemoDB {
   storyViews: { story_id: string; viewer_id: string; viewed_on: string; created_at: string }[];
   usernameRedirects: UsernameRedirect[];
   keepsakes: Keepsake[];
+  /** Per-story Sharing Licence acceptances (27c): { story_id, author_id, licence_version, accepted_at, withdrawn_at }. */
+  licences: { story_id: string; author_id: string; licence_version: string; accepted_at: string; withdrawn_at: string | null }[];
   sessionUserId: string | null;
 }
 
@@ -136,7 +139,9 @@ function seed(): DemoDB {
       content_notice: s.content_notice,
       cover_path: `demo:${encodeURIComponent(s.title)}:${s.language}`,
       view_count: 40 + Math.floor(Math.random() * 400),
-      origin_type: "original",
+      origin_type: s.origin_type ?? "original",
+      original_author: s.original_author ?? null,
+      pd_verified: s.pd_verified ?? false,
       created_at: daysAgo(day + 6),
       updated_at: daysAgo(Math.max(day - 2, 1)),
       published_at: published ? daysAgo(day) : null,
@@ -177,6 +182,7 @@ function seed(): DemoDB {
     storyViews: [],
     usernameRedirects: [],
     keepsakes: [],
+    licences: [],
     sessionUserId: null,
   };
 }
@@ -220,6 +226,7 @@ export class DemoProvider implements DataProvider {
           db.storyViews ??= [];
           db.usernameRedirects ??= [];
           db.keepsakes ??= [];
+          db.licences ??= [];
           for (const p of db.profiles) (p as any).notification_prefs ??= {};
           return db;
         }
@@ -1082,6 +1089,7 @@ export class DemoProvider implements DataProvider {
       echo_public: false,
       visibility: "private",
       status: "active",
+      slug: null,
       source_title: story.title,
       source_author_name: author?.display_name ?? "",
       source_original_author: story.original_author ?? null,
@@ -1159,40 +1167,134 @@ export class DemoProvider implements DataProvider {
     const story = this.db.stories.find((s) => s.id === k.story_id);
     if (!story || !this.isPublicStory(story))
       throw new AppError("invalidInput", "The source story is not public");
-    // 27a extent of the K2 matrix: own-story only (see migration comment).
-    if (story.author_id !== me)
-      throw new AppError("keepsakeNotEligible", "Publishing from this story needs a recorded licence or rights determination (V4-28 / 27c)");
+    // Full K2 matrix (mirrors publish_keepsake()).
+    if (k.owner_id === story.author_id) k.eligibility_basis = "own-story";
+    else if (story.pd_verified) k.eligibility_basis = "public-domain";
+    else if (story.origin_type === "original" && this.storyCovered(story.id)) k.eligibility_basis = "licence";
+    else if (story.origin_type === "original")
+      throw new AppError("keepsakeNotEligibleLicence", "This story is not covered by a Keepsake Sharing Licence.");
+    else
+      throw new AppError("keepsakeNotEligibleNotVerified", "This text has no verified public-domain determination.");
+    if (!k.slug) k.slug = `k-${k.id.slice(0, 8)}`;
     k.visibility = "public";
     k.published_at = new Date().toISOString();
-    k.eligibility_basis = "own-story";
     k.updated_at = new Date().toISOString();
     this.persist();
     return { ...k };
   }
 
+  async unpublishKeepsake(id: string): Promise<Keepsake> {
+    const me = await this.requireUid();
+    const k = this.db.keepsakes.find((x) => x.id === id);
+    if (!k) throw new AppError("notFound", "Keepsake not found");
+    if (k.owner_id !== me) throw new AppError("notAuthor", "Only the owner can unpublish a keepsake");
+    k.visibility = "private";
+    k.updated_at = new Date().toISOString();
+    this.persist();
+    return { ...k };
+  }
+
+  private storyCovered(storyId: string): boolean {
+    return this.db.licences.some((l) => l.story_id === storyId && !l.withdrawn_at);
+  }
+
+  async getKeepsakeLicence(storyId: string): Promise<KeepsakeLicence> {
+    const me = await this.requireUid();
+    const row = this.db.licences
+      .filter((l) => l.story_id === storyId && l.author_id === me)
+      .sort((a, b) => b.accepted_at.localeCompare(a.accepted_at))[0];
+    const covered = !!row && !row.withdrawn_at;
+    return { covered, accepted_at: covered ? row!.accepted_at : null };
+  }
+
+  async acceptKeepsakeLicence(storyId: string): Promise<KeepsakeLicence> {
+    const me = await this.requireUid();
+    const story = this.db.stories.find((s) => s.id === storyId);
+    if (!story) throw new AppError("notFound", "Story not found");
+    if (story.author_id !== me) throw new AppError("notAuthor", "Only the story's author can accept the licence");
+    const accepted_at = new Date().toISOString();
+    this.db.licences.push({ story_id: storyId, author_id: me, licence_version: "v1", accepted_at, withdrawn_at: null });
+    this.persist();
+    return { covered: true, accepted_at };
+  }
+
+  async withdrawKeepsakeLicence(storyId: string): Promise<KeepsakeLicence> {
+    const me = await this.requireUid();
+    for (const l of this.db.licences) {
+      if (l.story_id === storyId && l.author_id === me && !l.withdrawn_at) {
+        l.withdrawn_at = new Date().toISOString();
+      }
+    }
+    this.persist();
+    return { covered: false, accepted_at: null };
+  }
+
+  async restrictKeepsake(id: string): Promise<Keepsake> {
+    const me = await this.requireUid();
+    this.requireModerator(me);
+    const k = this.db.keepsakes.find((x) => x.id === id);
+    if (!k) throw new AppError("notFound", "Keepsake not found");
+    k.status = "restricted";
+    k.updated_at = new Date().toISOString();
+    this.persist();
+    return { ...k };
+  }
+
+  async restoreKeepsake(id: string): Promise<Keepsake> {
+    const me = await this.requireUid();
+    this.requireModerator(me);
+    const k = this.db.keepsakes.find((x) => x.id === id);
+    if (!k) throw new AppError("notFound", "Keepsake not found");
+    k.status = "active";
+    k.updated_at = new Date().toISOString();
+    this.persist();
+    return { ...k };
+  }
+
+  private toPublicKeepsake(k: Keepsake): PublicKeepsake | null {
+    const story = this.db.stories.find((s) => s.id === k.story_id);
+    if (!story || !this.isPublicStory(story)) return null;
+    // Read-time re-check with the withdrawal default: licence-basis rows
+    // are grandfathered; own-story and public-domain rows re-check live.
+    const ok =
+      k.owner_id === story.author_id ||
+      !!story.pd_verified ||
+      k.eligibility_basis === "licence";
+    if (!ok) return null;
+    const author = this.db.profiles.find((p) => p.id === story.author_id);
+    return {
+      id: k.id,
+      slug: k.slug ?? `k-${k.id.slice(0, 8)}`,
+      excerpt: k.excerpt,
+      template: k.template,
+      echo: k.echo_public ? k.echo : null,
+      source_title: k.source_title,
+      source_author_name: k.source_author_name,
+      source_original_author: k.source_original_author,
+      source_original_title: k.source_original_title,
+      source_translator_name: k.source_translator_name,
+      source_adapter_name: k.source_adapter_name,
+      source_edition: k.source_edition,
+      source_slug: story.slug,
+      source_author_username: author?.username ?? "",
+      published_at: k.published_at,
+      created_at: k.created_at,
+    };
+  }
+
+  async getPublicKeepsake(slug: string): Promise<PublicKeepsake | null> {
+    const k = this.db.keepsakes.find(
+      (x) => x.visibility === "public" && x.status === "active" && (x.slug === slug || `k-${x.id.slice(0, 8)}` === slug)
+    );
+    return k ? this.toPublicKeepsake(k) : null;
+  }
+
   async listPublicKeepsakes(): Promise<PublicKeepsake[]> {
     return this.db.keepsakes
-      .filter((k) => {
-        if (k.visibility !== "public" || k.status !== "active") return false;
-        const story = this.db.stories.find((s) => s.id === k.story_id);
-        return !!story && this.isPublicStory(story);
-      })
+      .filter((k) => k.visibility === "public" && k.status === "active")
       .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""))
-      .map((k) => ({
-        id: k.id,
-        excerpt: k.excerpt,
-        template: k.template,
-        echo: k.echo_public ? k.echo : null,
-        source_title: k.source_title,
-        source_author_name: k.source_author_name,
-        source_original_author: k.source_original_author,
-        source_original_title: k.source_original_title,
-        source_translator_name: k.source_translator_name,
-        source_adapter_name: k.source_adapter_name,
-        source_edition: k.source_edition,
-        published_at: k.published_at,
-        created_at: k.created_at,
-      }));
+      .map((k) => this.toPublicKeepsake(k))
+      .filter((k): k is PublicKeepsake => k !== null);
   }
 
   // ----------------------------------------------------------- reports
@@ -1277,7 +1379,8 @@ export class DemoProvider implements DataProvider {
       (targetType === "story" && this.db.stories.some((s) => s.id === targetId)) ||
       (targetType === "chapter" && this.db.chapters.some((c) => c.id === targetId)) ||
       (targetType === "comment" && this.db.comments.some((c) => c.id === targetId)) ||
-      (targetType === "profile" && this.db.profiles.some((p) => p.id === targetId));
+      (targetType === "profile" && this.db.profiles.some((p) => p.id === targetId)) ||
+      (targetType === "keepsake" && this.db.keepsakes.some((k) => k.id === targetId));
     if (!exists) throw new AppError("notFound", "Reported item not found");
     const now = new Date().toISOString();
     const r: Report = {
@@ -1664,6 +1767,15 @@ export class DemoProvider implements DataProvider {
         label: `Comment${context}: ${cm.body.slice(0, 80)}`,
         url: s && c && a ? `/stories/${a.username}/${s.slug}/${c.slug}` : null,
         status: cm.status,
+      };
+    }
+    if (targetType === "keepsake") {
+      const k = this.db.keepsakes.find((x) => x.id === targetId);
+      if (!k) return null;
+      return {
+        label: `Keepsake: ${k.excerpt.slice(0, 80)}`,
+        url: k.visibility === "public" && k.slug ? `/k/${k.slug}` : null,
+        status: k.status,
       };
     }
     const p = this.db.profiles.find((x) => x.id === targetId);

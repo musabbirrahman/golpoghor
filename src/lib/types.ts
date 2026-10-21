@@ -6,7 +6,7 @@ export type StoryStatus = "draft" | "ongoing" | "complete" | "hidden";
 export type ChapterStatus = "draft" | "published" | "unpublished" | "hidden";
 export type Role = "reader" | "moderator" | "admin";
 export type CommentStatus = "visible" | "hidden" | "removed";
-export type ReportTarget = "story" | "chapter" | "comment" | "profile";
+export type ReportTarget = "story" | "chapter" | "comment" | "profile" | "keepsake";
 export type ReportStatus = "open" | "in_review" | "resolved" | "dismissed";
 export type AppealStatus = "pending" | "approved" | "declined";
 export type AppealTarget = "story" | "chapter";
@@ -73,6 +73,7 @@ export interface Story {
   published_at: string | null;
   /** V4-28 attribution metadata (nullable; absent renders as absent). */
   origin_type?: OriginType | null;
+  pd_verified?: boolean;
   original_author?: string | null;
   original_title?: string | null;
   translator_name?: string | null;
@@ -192,6 +193,8 @@ export interface Keepsake {
   echo_public: boolean;
   visibility: "private" | "public";
   status: "active" | "restricted";
+  /** Public share slug ('k-…'), set at publish time. */
+  slug: string | null;
   source_title: string;
   source_author_name: string;
   source_original_author: string | null;
@@ -208,6 +211,7 @@ export interface Keepsake {
 /** V4-27a: approved fields only, as served by keepsakes_public(). */
 export interface PublicKeepsake {
   id: string;
+  slug: string;
   excerpt: string;
   template: KeepsakeTemplate;
   echo: string | null;
@@ -218,8 +222,17 @@ export interface PublicKeepsake {
   source_translator_name: string | null;
   source_adapter_name: string | null;
   source_edition: string | null;
+  /** Source story link fields — present only when the source is public. */
+  source_slug: string;
+  source_author_username: string;
   published_at: string | null;
   created_at: string;
+}
+
+/** Per-story Keepsake Sharing Licence coverage (V4-27c). */
+export interface KeepsakeLicence {
+  covered: boolean;
+  accepted_at: string | null;
 }
 
 export interface Report {

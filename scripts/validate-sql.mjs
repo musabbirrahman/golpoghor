@@ -124,6 +124,9 @@ const files = [
   "supabase/migrations/20261021100000_write_throttles.sql",
   "supabase/migrations/20261021110000_genre_normalize.sql",
   "supabase/migrations/20261021120000_avatars_bucket.sql",
+  "supabase/migrations/20261021130000_keepsakes.sql",
+  "supabase/migrations/20261021140000_story_attribution.sql",
+  "supabase/migrations/20261021150000_keepsakes_public.sql",
   "supabase/seed.sql",
 ];
 

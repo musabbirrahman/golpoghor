@@ -31,6 +31,10 @@ export interface SeedStory {
   status: "draft" | "ongoing" | "complete";
   content_notice: string;
   chapters: SeedChapter[];
+  /** 27c: verified-public-domain seed classic (defaults to an original). */
+  origin_type?: "original" | "classic" | "translation" | "adaptation";
+  original_author?: string;
+  pd_verified?: boolean;
 }
 
 export const DEMO_PASSWORD = "golpoghor-demo-2026";
@@ -202,4 +206,30 @@ export const SEED_STORIES: (SeedStory & { author_username: string })[] = [
       },
     ],
   },
+  {
+    author_username: "tanvir_ahmed",
+    slug: "demo-classic-tale",
+    title: "Demo Classic Tale",
+    summary: "A demo public-domain classic used to exercise the 27c verified-PD publishing path.",
+    language: "en",
+    genre: "general",
+    tags: ["Classic"],
+    status: "complete",
+    content_notice: "",
+    origin_type: "classic",
+    original_author: "Demo Classic Author",
+    pd_verified: true,
+    chapters: [
+      {
+        slug: "chapter-one",
+        title: "Chapter One",
+        status: "published",
+        paragraphs: [
+          "It was an old tale, told by the river, of a traveller who carried nothing but a lantern and a promise.",
+          "The road was long and the night was longer, but the lantern never went out, not once, not even in the rain.",
+        ],
+      },
+    ],
+  },
+
 ];

@@ -13,6 +13,7 @@ import type {
   ChapterListItem,
   Comment,
   Keepsake,
+  KeepsakeLicence,
   KeepsakeTemplate,
   ModerationEvent,
   NotificationPrefs,
@@ -48,6 +49,27 @@ function mapAppeal(row: any): Appeal {
 
 function mapKeepsake(row: any): Keepsake {
   return { ...row } as Keepsake;
+}
+
+function mapPublicKeepsake(r: any): PublicKeepsake {
+  return {
+    id: r.id,
+    slug: r.slug,
+    excerpt: r.excerpt,
+    template: r.template,
+    echo: r.echo,
+    source_title: r.source_title,
+    source_author_name: r.source_author_name,
+    source_original_author: r.source_original_author,
+    source_original_title: r.source_original_title,
+    source_translator_name: r.source_translator_name,
+    source_adapter_name: r.source_adapter_name,
+    source_edition: r.source_edition,
+    source_slug: r.source_slug,
+    source_author_username: r.source_author_username,
+    published_at: r.published_at,
+    created_at: r.created_at,
+  };
 }
 
 const AUTHOR_JOIN = "author:profiles!stories_author_id_fkey(*)";
@@ -919,8 +941,92 @@ export class SupabaseProvider implements DataProvider {
       if (msg.includes("KEEPSAKE_NOT_OWNER")) throw new AppError("notAuthor", msg);
       if (msg.includes("KEEPSAKE_SOURCE_NOT_PUBLIC"))
         throw new AppError("invalidInput", msg);
+      if (msg.includes("KEEPSAKE_NOT_ELIGIBLE_NO_LICENCE"))
+        throw new AppError("keepsakeNotEligibleLicence", msg);
+      if (msg.includes("KEEPSAKE_NOT_ELIGIBLE_NOT_VERIFIED"))
+        throw new AppError("keepsakeNotEligibleNotVerified", msg);
       if (msg.includes("KEEPSAKE_NOT_ELIGIBLE"))
         throw new AppError("keepsakeNotEligible", msg);
+      throw toAppError(error);
+    }
+    return mapKeepsake(data);
+  }
+
+  async unpublishKeepsake(id: string): Promise<Keepsake> {
+    const { data, error } = await this.sb.rpc("unpublish_keepsake", {
+      p_keepsake_id: id,
+    });
+    if (error) {
+      const msg = error.message ?? "";
+      if (msg.includes("KEEPSAKE_NOT_FOUND")) throw new AppError("notFound", msg);
+      if (msg.includes("KEEPSAKE_NOT_OWNER")) throw new AppError("notAuthor", msg);
+      throw toAppError(error);
+    }
+    return mapKeepsake(data);
+  }
+
+  async getPublicKeepsake(slug: string): Promise<PublicKeepsake | null> {
+    const { data, error } = await this.sb.rpc("keepsakes_public");
+    if (error) throw toAppError(error);
+    const r = (data ?? []).find((x: any) => x.slug === slug);
+    return r ? mapPublicKeepsake(r) : null;
+  }
+
+  async getKeepsakeLicence(storyId: string): Promise<KeepsakeLicence> {
+    const me = await this.uid();
+    const { data, error } = await this.sb
+      .from("story_keepsake_licence")
+      .select("accepted_at, withdrawn_at")
+      .eq("story_id", storyId)
+      .eq("author_id", me)
+      .order("accepted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw toAppError(error);
+    const covered = !!data && !data.withdrawn_at;
+    return { covered, accepted_at: covered ? data.accepted_at : null };
+  }
+
+  async acceptKeepsakeLicence(storyId: string): Promise<KeepsakeLicence> {
+    const me = await this.uid();
+    const { data, error } = await this.sb
+      .from("story_keepsake_licence")
+      .insert({ story_id: storyId, author_id: me, licence_version: "v1" })
+      .select("accepted_at")
+      .single();
+    if (error) throw toAppError(error);
+    return { covered: true, accepted_at: data.accepted_at };
+  }
+
+  async withdrawKeepsakeLicence(storyId: string): Promise<KeepsakeLicence> {
+    const me = await this.uid();
+    const { error } = await this.sb
+      .from("story_keepsake_licence")
+      .update({ withdrawn_at: new Date().toISOString() })
+      .eq("story_id", storyId)
+      .eq("author_id", me)
+      .is("withdrawn_at", null);
+    if (error) throw toAppError(error);
+    return { covered: false, accepted_at: null };
+  }
+
+  async restrictKeepsake(id: string): Promise<Keepsake> {
+    return this.moderateKeepsakeRpc(id, "restricted");
+  }
+
+  async restoreKeepsake(id: string): Promise<Keepsake> {
+    return this.moderateKeepsakeRpc(id, "active");
+  }
+
+  private async moderateKeepsakeRpc(id: string, status: string): Promise<Keepsake> {
+    const { data, error } = await this.sb.rpc("moderate_keepsake", {
+      p_keepsake_id: id,
+      p_status: status,
+    });
+    if (error) {
+      const msg = error.message ?? "";
+      if (msg.includes("KEEPSAKE_NOT_FOUND")) throw new AppError("notFound", msg);
+      if (msg.includes("KEEPSAKE_NOT_MODERATOR")) throw new AppError("notModerator", msg);
       throw toAppError(error);
     }
     return mapKeepsake(data);
@@ -929,21 +1035,7 @@ export class SupabaseProvider implements DataProvider {
   async listPublicKeepsakes(): Promise<PublicKeepsake[]> {
     const { data, error } = await this.sb.rpc("keepsakes_public");
     if (error) throw toAppError(error);
-    return (data ?? []).map((r: any) => ({
-      id: r.id,
-      excerpt: r.excerpt,
-      template: r.template,
-      echo: r.echo,
-      source_title: r.source_title,
-      source_author_name: r.source_author_name,
-      source_original_author: r.source_original_author,
-      source_original_title: r.source_original_title,
-      source_translator_name: r.source_translator_name,
-      source_adapter_name: r.source_adapter_name,
-      source_edition: r.source_edition,
-      published_at: r.published_at,
-      created_at: r.created_at,
-    }));
+    return (data ?? []).map((r: any) => mapPublicKeepsake(r));
   }
 
   // ------------------------------------------- notification helpers
@@ -1396,6 +1488,19 @@ export class SupabaseProvider implements DataProvider {
       return {
         label: `Comment${context}: ${((data as any).body as string).slice(0, 80)}`,
         url: st ? `/stories/${st.author?.username}/${st.slug}/${ch.slug}` : null,
+        status: (data as any).status ?? null,
+      };
+    }
+    if (targetType === "keepsake") {
+      const { data, error } = await this.sb
+        .from("keepsakes")
+        .select("id, excerpt, status, visibility, slug")
+        .eq("id", targetId)
+        .maybeSingle();
+      if (error || !data) return null;
+      return {
+        label: `Keepsake: ${(data as any).excerpt.slice(0, 80)}`,
+        url: (data as any).visibility === "public" && (data as any).slug ? `/k/${(data as any).slug}` : null,
         status: (data as any).status ?? null,
       };
     }

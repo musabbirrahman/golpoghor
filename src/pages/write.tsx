@@ -450,6 +450,10 @@ export function StoryFormPage() {
                   </Button>
                 </div>
               </Card>
+
+              {(story.origin_type ?? "original") === "original" && (
+                <LicenceCard storyId={story.id} />
+              )}
             </>
           )}
         </div>
@@ -625,6 +629,59 @@ function AppealModal({ open, onClose, reason, setReason, busy, error, onSubmit }
         </Button>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * V4-27c: per-story Keepsake Sharing Licence. Author-only (the page is
+ * already owner-gated), originals only, and acceptance is a distinct
+ * button press — never a pre-ticked checkbox, never retroactive.
+ */
+function LicenceCard({ storyId }: { storyId: string }) {
+  const { t, dp } = useApp();
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+
+  const licenceQuery = useQuery({
+    queryKey: ["keepsake-licence", storyId],
+    queryFn: () => dp.getKeepsakeLicence(storyId),
+  });
+  const covered = licenceQuery.data?.covered ?? false;
+
+  const act = async (fn: () => Promise<unknown>) => {
+    setError(null);
+    try {
+      await fn();
+      queryClient.invalidateQueries({ queryKey: ["keepsake-licence", storyId] });
+    } catch (e) {
+      setError(e instanceof AppError ? t("errors", e.code) : t("errors", "generic"));
+    }
+  };
+
+  return (
+    <Card className="mt-6 p-6">
+      <h2 className="font-serif text-xl font-bold">{t("keepsakes", "licenceTitle")}</h2>
+      <p className="mt-1 text-sm text-ink-soft">
+        {covered ? t("keepsakes", "licenceCovered") : t("keepsakes", "licenceNotCovered")}
+      </p>
+      <p className="mt-3 text-sm text-ink-soft">{t("keepsakes", "licenceSummary")}</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {!covered && (
+          <Button size="sm" onClick={() => act(() => dp.acceptKeepsakeLicence(storyId))}>
+            {t("keepsakes", "licenceAccept")}
+          </Button>
+        )}
+        {covered && (
+          <Button size="sm" variant="danger" onClick={() => act(() => dp.withdrawKeepsakeLicence(storyId))}>
+            {t("keepsakes", "licenceWithdraw")}
+          </Button>
+        )}
+        <Link to="/licence" className="self-center text-sm font-medium text-river hover:underline">
+          {t("keepsakes", "licenceReadFull")}
+        </Link>
+      </div>
+      {error && <p className="mt-3 text-sm text-clay">{error}</p>}
+    </Card>
   );
 }
 

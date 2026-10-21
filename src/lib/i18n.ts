@@ -34,6 +34,8 @@ const dict = {
     guidelines: { bn: "নির্দেশিকা", en: "Guidelines" },
     terms: { bn: "শর্তাবলি", en: "Terms" },
     privacy: { bn: "গোপনীয়তা", en: "Privacy" },
+    licence: { bn: "কিপসেক লাইসেন্স", en: "Keepsake licence" },
+    keepsakesPolicy: { bn: "কিপসেক নীতি", en: "Keepsakes policy" },
     contact: { bn: "যোগাযোগ", en: "Contact" },
   },
   home: {
@@ -188,6 +190,23 @@ const dict = {
     privateBadge: { bn: "ব্যক্তিগত", en: "Private" },
     publicBadge: { bn: "প্রকাশিত", en: "Public" },
     sourceLabel: { bn: "উৎস", en: "From" },
+    publicPageTitle: { bn: "প্রকাশিত কিপসেক", en: "Public keepsake" },
+    viewPublicPage: { bn: "প্রকাশিত পেজ দেখুন", en: "View public page" },
+    unpublish: { bn: "প্রকাশনা তুলে নিন", en: "Unpublish" },
+    unpublished: { bn: "প্রকাশনা তুলে নেওয়া হয়েছে", en: "Unpublished" },
+    notFound: { bn: "এই কিপসেকটি প্রকাশিত নয় বা আর নেই।", en: "This keepsake is not public or no longer exists." },
+    report: { bn: "রিপোর্ট করুন", en: "Report" },
+    echoPublicNote: { bn: "মালিকের প্রতিধ্বনি (প্রকাশ্য)", en: "The owner's echo (shared publicly)" },
+    licenceTitle: { bn: "Keepsake Sharing Licence", en: "Keepsake Sharing Licence" },
+    licenceCovered: { bn: "এই গল্পটি Keepsake Sharing Licence-এর আওতায় আছে — পাঠকরা এটি থেকে কিপসেক প্রকাশ্যে শেয়ার করতে পারবেন।", en: "This story is covered by the Keepsake Sharing Licence — readers may publish Keepsakes from it." },
+    licenceNotCovered: { bn: "এই গল্পটি এখনো Keepsake Sharing Licence-এর আওতায় নেই — পাঠকরা এটি থেকে কিপসেক প্রকাশ্যে শেয়ার করতে পারবেন না।", en: "This story is not covered by the Keepsake Sharing Licence yet — readers cannot publish Keepsakes from it." },
+    licenceAccept: { bn: "লাইসেন্স গ্রহণ করুন", en: "Accept the licence" },
+    licenceWithdraw: { bn: "লাইসেন্স প্রত্যাহার করুন", en: "Withdraw the licence" },
+    licenceSummary: {
+      bn: "সংক্ষেপ: আপনি লেখক হিসেবে অনুমতি দিচ্ছেন যে পাঠকরা আপনার এই গল্পের সর্বোচ্চ ১,০০০ অক্ষরের উদ্ধৃতি দিয়ে কিপসেক কার্ড প্রকাশ্যে শেয়ার করতে পারবেন — আপনার নাম ও গল্পের লিংকসহ। মালিকানা আপনারই থাকবে। প্রত্যাহার করলে নতুন প্রকাশনা বন্ধ হবে; আগে প্রকাশিত কিপসেকগুলো থাকবে, যদি না আপনি অপসারণ চান।",
+      en: "In short: as the author, you allow readers to publicly share Keepsake cards quoting up to 1,000 characters from this story — with your name and a link to the story. You keep full ownership. Withdrawing stops new publications; already-public Keepsakes stay unless you ask for their removal.",
+    },
+    licenceReadFull: { bn: "পূর্ণ লাইসেন্স পড়ুন", en: "Read the full licence" },
   },
   auth: {
     signInTitle: { bn: "স্বাগতম", en: "Welcome back" },
@@ -352,6 +371,7 @@ const dict = {
     unhideStory: { bn: "গল্প ফিরিয়ে আনুন", en: "Restore story" },
     hideChapter: { bn: "অধ্যায় লুকান", en: "Hide chapter" },
     hideComment: { bn: "মন্তব্য লুকান", en: "Hide comment" },
+    restrictKeepsake: { bn: "কিপসেক সীমাবদ্ধ করুন", en: "Restrict keepsake" },
     restore: { bn: "ফিরিয়ে আনুন", en: "Restore" },
     restoreConfirmTitle: { bn: "কনটেন্ট ফিরিয়ে আনবেন?", en: "Restore this content?" },
     restoreConfirmBody: {
@@ -631,6 +651,14 @@ const dict = {
     keepsakeNotEligible: {
       bn: "এই গল্প থেকে প্রকাশ্যে শেয়ার করতে লেখকের অনুমতি বা অধিকার-যাচাই লাগবে।",
       en: "Publishing from this story needs the author's permission or a rights determination.",
+    },
+    keepsakeNotEligibleLicence: {
+      bn: "এই গল্পটি Keepsake Sharing Licence-এর আওতায় নেই। লেখক অনুমতি দিলে তবেই এটি থেকে প্রকাশ্যে শেয়ার করা যাবে।",
+      en: "This story is not covered by a Keepsake Sharing Licence. It can be shared publicly only once its author accepts the licence.",
+    },
+    keepsakeNotEligibleNotVerified: {
+      bn: "এই লেখাটির পাবলিক ডোমেইন যাচাই এখনো হয়নি, তাই এটি থেকে প্রকাশ্যে শেয়ার করা যাবে না।",
+      en: "This text has no verified public-domain determination yet, so it cannot be shared publicly.",
     },
     notModerator: {
       bn: "শুধু মডারেটররা এই পেজ দেখতে পারেন।",

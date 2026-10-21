@@ -293,6 +293,8 @@ export function Footer() {
             <Link to="/guidelines" className={linkCls}>{t("footer", "guidelines")}</Link>
             <Link to="/terms" className={linkCls}>{t("footer", "terms")}</Link>
             <Link to="/privacy" className={linkCls}>{t("footer", "privacy")}</Link>
+            <Link to="/licence" className={linkCls}>{t("footer", "licence")}</Link>
+            <Link to="/keepsakes-policy" className={linkCls}>{t("footer", "keepsakesPolicy")}</Link>
             <Link to="/contact" className={linkCls}>{t("footer", "contact")}</Link>
           </nav>
         </div>

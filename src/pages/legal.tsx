@@ -254,8 +254,117 @@ const DOCS: Record<string, LegalDoc> = {
         h: { bn: "রিপোর্ট বনাম যোগাযোগ", en: "Reports vs. contact" },
         paras: [
           {
-            bn: "সাইটের কোনো গল্প, অধ্যায় বা মন্তব্যে সমস্যা দেখলে ইমেইলের বদলে সেই সামগ্রীর রিপোর্ট বোতামটি ব্যবহার করুন — মডারেটরদের কাছে তা দ্রুত পৌঁছায়।",
-            en: "If something on the site itself is a problem — a story, chapter or comment — use that item's Report button instead of email; it reaches the moderators faster.",
+            bn: "সাইটের কোনো গল্প, অধ্যায়, মন্তব্য বা প্রকাশিত কিপসেকে সমস্যা দেখলে ইমেইলের বদলে সেই সামগ্রীর রিপোর্ট বোতামটি ব্যবহার করুন — মডারেটরদের কাছে তা দ্রুত পৌঁছায়।",
+            en: "If something on the site itself is a problem — a story, chapter, comment or public Keepsake — use that item's Report button instead of email; it reaches the moderators faster.",
+          },
+        ],
+      },
+    ],
+  },
+  licence: {
+    title: { bn: "Keepsake Sharing Licence (v1)", en: "Keepsake Sharing Licence (v1)" },
+    sections: [
+      {
+        h: { bn: "এই লাইসেন্স কী", en: "What this licence is" },
+        paras: [
+          {
+            bn: "এই লাইসেন্সটি একটি গল্পের লেখকের দেওয়া একটি নির্দিষ্ট অনুমতি: পাঠকরা আপনার এই গল্প থেকে কিপসেক কার্ড বানিয়ে প্রকাশ্যে শেয়ার করতে পারবেন। এটি শুধু এই একটি গল্পের জন্য প্রযোজ্য, এবং আপনি প্রতিটি গল্পের জন্য আলাদাভাবে গ্রহণ বা প্রত্যাহার করতে পারেন। গ্রহণ না করা পর্যন্ত কোনো পাঠক আপনার এই গল্প থেকে কিপসেক প্রকাশ্যে শেয়ার করতে পারবেন না।",
+            en: "This licence is a specific permission from a story's author: readers may make Keepsake cards from this story and share them publicly. It applies to this one story only, and you accept or withdraw it per story. Until you accept, no reader can publicly share a Keepsake from this story.",
+          },
+        ],
+      },
+      {
+        h: { bn: "অনুমতির সীমা", en: "Scope of the permission" },
+        paras: [
+          {
+            bn: "একটি কিপসেকে আপনার গল্পের সর্বোচ্চ ১,০০০ অক্ষরের উদ্ধৃতি থাকতে পারে। কার্ডটি ছবি হিসেবে প্রকাশিত হয়, আপনার নাম ও গল্পের লিংকসহ — কৃতিত্ব মুছে ফেলা যাবে না। এই অনুমতি অনন্য নয় (non-exclusive): আপনি আপনার গল্পের সব অধিকার ধরে রাখেন এবং অন্যত্র যেকোনোভাবে ব্যবহার করতে পারেন।",
+            en: "A Keepsake may quote at most 1,000 characters from your story. The card is published as an image, with your name and a link to the story — attribution may not be removed. The permission is non-exclusive: you keep all rights in your story and may use it anywhere else in any way.",
+          },
+        ],
+      },
+      {
+        h: { bn: "যা এই লাইসেন্স কভার করে না", en: "What this licence does not cover" },
+        paras: [
+          {
+            bn: "এই লাইসেন্স আপনার গল্পের ভেতরে থাকা তৃতীয় পক্ষের উপাদানকে (যেমন অন্যের উদ্ধৃতি, গানের কথা, ছবি) অনুমোদন করে না — সেগুলোর জন্য আলাদা অনুমতি লাগে। এটি অনুবাদ, রূপান্তর বা ক্লাসিক লেখার ক্ষেত্রে প্রযোজ্য নয়; সেগুলো শুধু যাচাইকৃত পাবলিক ডোমেইন নির্ধারণের ভিত্তিতে শেয়ার করা যায়।",
+            en: "This licence does not clear third-party material embedded in your story (such as quoted text, lyrics or illustrations) — those need their own permission. It does not apply to translations, adaptations or classic works; those are shared only on the basis of a verified public-domain determination.",
+          },
+        ],
+      },
+      {
+        h: { bn: "মেয়াদ ও প্রত্যাহার", en: "Duration and withdrawal" },
+        paras: [
+          {
+            bn: "লাইসেন্সটি আপনার গল্প প্রকাশিত থাকা পর্যন্ত কার্যকর। গল্পের সেটিংস থেকে যেকোনো সময় প্রত্যাহার করতে পারেন — প্রত্যাহারের পর থেকে নতুন প্রকাশনা বন্ধ হয়ে যাবে। আগে প্রকাশিত কিপসেকগুলো প্রকাশিতই থাকবে, যদি না আপনি সেগুলোর অপসারণ চান (যোগাযোগ পেজের মাধ্যমে জানালে যাচাই করে ব্যবস্থা নেওয়া হবে)। আপনার ব্যক্তিগত কিপসেকগুলো কখনোই এই লাইসেন্সের দ্বারা প্রভাবিত হয় না।",
+            en: "The licence lasts while your story is published. You may withdraw it at any time from the story's settings — withdrawal stops new publications immediately. Keepsakes published before withdrawal stay public unless you ask for their removal (tell us via the Contact page and we will act after verification). Your own private Keepsakes are never affected by this licence.",
+          },
+        ],
+      },
+      {
+        h: { bn: "অভিযোগ ও অপসারণ", en: "Complaints and removal" },
+        paras: [
+          {
+            bn: "কোনো প্রকাশিত কিপসেক নিয়ে অধিকারের অভিযোগ থাকলে যোগাযোগ পেজে জানান। যাচাইকৃত অভিযোগে কিপসেকটি সীমাবদ্ধ (restricted) করা হবে এবং মালিককে কারণসহ জানানো হবে।",
+            en: "If you have a rights complaint about a published Keepsake, tell us via the Contact page. Verified complaints lead to the Keepsake being restricted, and its owner is told why.",
+          },
+        ],
+      },
+    ],
+  },
+  keepsakes: {
+    title: { bn: "কিপসেক নীতি", en: "Keepsakes Policy" },
+    sections: [
+      {
+        h: { bn: "কিপসেক কী", en: "What a Keepsake is" },
+        paras: [
+          {
+            bn: "কিপসেক হলো একটি গল্পের ছোট উদ্ধৃতি দিয়ে বানানো একটি ছবি-কার্ড, যাতে গল্পের শিরোনাম ও লেখকের কৃতিত্ব থাকে। উদ্ধৃতির সর্বোচ্চ দৈর্ঘ্য ১,০০০ অক্ষর, এবং কার্ডে না ধরলে তা শেষ থেকে ছাঁটা হয়।",
+            en: "A Keepsake is an image card made from a short passage of a story, carrying the story's title and author attribution. The maximum excerpt is 1,000 characters, trimmed from the end if it does not fit the card.",
+          },
+        ],
+      },
+      {
+        h: { bn: "কে বানাতে ও শেয়ার করতে পারে", en: "Who may create and share" },
+        paras: [
+          {
+            bn: "আপনি পড়তে পারেন এমন যেকোনো গল্প থেকে ব্যক্তিগত ব্যবহারের জন্য কিপসেক বানানো, সংরক্ষণ ও ডাউনলোড করা সবসময় যায় — এটি কখনো সীমাবদ্ধ নয়। প্রকাশ্যে শেয়ার করা অধিকার-নির্ভর: নিজের গল্প থেকে সবসময় যায়; যাচাইকৃত পাবলিক ডোমেইন লেখা থেকে (নির্দিষ্ট লেখা/সংস্করণের জন্য যাচাই থাকলে) যায়; অন্য লেখকের মৌলিক গল্প থেকে শুধু তখনই যায় যখন লেখক সেই গল্পের জন্য Keepsake Sharing Licence গ্রহণ করেছেন। শুধু ‘ক্লাসিক’ ট্যাগ থাকা প্রমাণ নয়।",
+            en: "You may always create, save and download Keepsakes for private use from any story you can read — that is never gated. Public sharing is rights-gated: always allowed from your own stories; allowed by default from verified public-domain texts (verified for the specific text/edition); and from another author's original story only where that author has accepted the Keepsake Sharing Licence for that story. A 'Classics' tag alone is not proof.",
+          },
+        ],
+      },
+      {
+        h: { bn: "উৎস পরিবর্তন হলে কী হয়", en: "When the source changes" },
+        paras: [
+          {
+            bn: "প্রকাশিত কিপসেক পেজগুলো প্রকাশনার সময়ের স্ন্যাপশট থেকে দেখানো হয়। উৎস গল্পটি লুকানো, মুছে ফেলা বা অযোগ্য হয়ে গেলে তার প্রকাশিত কিপসেকগুলো স্বয়ংক্রিয়ভাবে সীমাবদ্ধ হয়ে যায় — মালিকের ব্যক্তিগত কপিগুলো মুছে যায় না। লাইসেন্স প্রত্যাহার করলে নতুন প্রকাশনা বন্ধ হয়; আগে প্রকাশিতগুলো থাকে, যদি না লেখক অপসারণ চান।",
+            en: "Public Keepsake pages render from a snapshot taken at publication time. If the source story is hidden, deleted or becomes ineligible, its public Keepsakes are automatically restricted — the owner's private copies are not deleted. Withdrawing a licence stops new publication; already-public Keepsakes stay unless the author asks for removal.",
+          },
+        ],
+      },
+      {
+        h: { bn: "প্রতিধ্বনি (Echo)", en: "Echoes" },
+        paras: [
+          {
+            bn: "প্রতিধ্বনি ব্যক্তিগত থাকে, যতক্ষণ না কিপসেকের মালিক সেটি প্রকাশ্যে দেখানোর জন্য প্রতিটি কিপসেকের জন্য আলাদাভাবে অনুমতি দেন।",
+            en: "Echoes stay private unless the Keepsake's owner opts in, per Keepsake, to show them publicly.",
+          },
+        ],
+      },
+      {
+        h: { bn: "অপসারণ", en: "Takedown" },
+        paras: [
+          {
+            bn: `কোনো প্রকাশিত কিপসেক নিয়ে অধিকারের অভিযোগ থাকলে যোগাযোগ পেজে (${EMAIL}) লিখুন। যাচাইকৃত অভিযোগে কিপসেকটি সীমাবদ্ধ করা হবে এবং মালিককে কারণসহ জানানো হবে।`,
+            en: `Rights holders may request removal of a public Keepsake via the Contact page (${EMAIL}). Verified requests are actioned by restricting the Keepsake; the owner is notified with the reason.`,
+          },
+        ],
+      },
+      {
+        h: { bn: "কৃতিত্ব", en: "Attribution" },
+        paras: [
+          {
+            bn: "প্রতিটি কিপসেকে — ব্যক্তিগত বা প্রকাশিত — গল্পের শিরোনাম ও লেখকের নাম থাকে (ক্লাসিকের ক্ষেত্রে মূল লেখকের নামও, যেখানে জানা আছে)। কৃতিত্ব মুছে ফেলা যায় না।",
+            en: "Every Keepsake, private or public, carries the story title and the author's name (and, for classics, the original author's name where known). Attribution may not be removed.",
           },
         ],
       },

@@ -13,6 +13,7 @@ import type {
   ChapterListItem,
   Comment,
   Keepsake,
+  KeepsakeLicence,
   KeepsakeTemplate,
   ModerationEvent,
   NotificationPrefs,
@@ -196,9 +197,18 @@ export interface DataProvider {
   deleteKeepsake(id: string): Promise<void>;
   /** Server-side publish (K2 matrix); throws keepsakeNotEligible etc. */
   publishKeepsake(id: string): Promise<Keepsake>;
+  unpublishKeepsake(id: string): Promise<Keepsake>;
+  /** Public page read (projection only — never the base table). */
+  getPublicKeepsake(slug: string): Promise<PublicKeepsake | null>;
   /** Restricted public projection only — never the base table. */
   listPublicKeepsakes(): Promise<PublicKeepsake[]>;
-
+  /** Per-story Sharing Licence (originals only, author-only actions). */
+  getKeepsakeLicence(storyId: string): Promise<KeepsakeLicence>;
+  acceptKeepsakeLicence(storyId: string): Promise<KeepsakeLicence>;
+  withdrawKeepsakeLicence(storyId: string): Promise<KeepsakeLicence>;
+  /** Moderator takedown path for reported public Keepsakes. */
+  restrictKeepsake(id: string): Promise<Keepsake>;
+  restoreKeepsake(id: string): Promise<Keepsake>;
   // ----------------------------------------------------------- reports
   createReport(targetType: ReportTarget, targetId: string, reason: string, details: string): Promise<Report>;
   listReports(status?: ReportStatus): Promise<Report[]>;

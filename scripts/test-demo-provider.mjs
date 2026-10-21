@@ -17,9 +17,10 @@ globalThis.localStorage = {
 };
 globalThis.window = globalThis;
 
-const [{ DemoProvider }, utils] = await Promise.all([
+const [{ DemoProvider }, utils, card] = await Promise.all([
   import("../src/lib/providers/demo-provider.ts"),
   import("../src/lib/utils.ts"),
+  import("../src/lib/keepsake-card.ts"),
 ]);
 const { paragraphsToDoc } = utils;
 
@@ -33,7 +34,7 @@ const check = (name, cond) => {
 // 1. seed loaded
 {
   const { stories } = await dp.listStories({ limit: 50 });
-  check("seed has 3 public stories", stories.length === 3);
+  check("seed has 4 public stories", stories.length === 4);
   check("Bangla story present", stories.some((s) => s.title === "বর্ষার চিঠি"));
   const bn = stories.find((s) => s.slug === "borshar-chithi");
   check("seed story has author joined", !!bn?.author?.username);
@@ -608,6 +609,267 @@ let appealId;
   check("avatar: avatarUrl of null is null", dp.avatarUrl(null) === null);
   check("avatar: non-image refused", (await code(() => dp.uploadAvatar({ type: "text/plain", size: 10 }))) === "generic");
   check("avatar: oversize refused", (await code(() => dp.uploadAvatar({ type: "image/png", size: 2 * 1024 * 1024 }))) === "generic");
+  await dp.signOut();
+}
+
+// 23. keepsakes (V4-27a): private foundation — owner CRUD, snapshot
+// attribution, K1 cap, readability gate, publish matrix, projection.
+{
+  const code = async (fn) => {
+    try { await fn(); return null; } catch (e) { return e?.code ?? "threw"; }
+  };
+  await dp.signUp({ email: "keeper-author@example.com", password: "secret12", username: "keeper_author", displayName: "Keeper Author" });
+  const st = await dp.createStory({ title: "Kept Tale", summary: "x", language: "en", genre: "general", tags: [] });
+  const ch = await dp.createChapter(st.id, { title: "One", body: paragraphsToDoc(["A line worth keeping, and more."]) });
+  await dp.updateChapter(ch.id, { status: "published" });
+  await dp.updateStory(st.id, { status: "ongoing" });
+  const st2 = await dp.createStory({ title: "Other Tale", summary: "x", language: "en", genre: "general", tags: [] });
+  const ch2 = await dp.createChapter(st2.id, { title: "One", body: paragraphsToDoc(["Another story's line."]) });
+  await dp.updateChapter(ch2.id, { status: "published" });
+  await dp.updateStory(st2.id, { status: "ongoing" });
+  const draft = await dp.createStory({ title: "Draft Tale", summary: "x", language: "en", genre: "general", tags: [] });
+  await dp.signOut();
+  await dp.signUp({ email: "keeper-reader@example.com", password: "secret12", username: "keeper_reader", displayName: "Keeper Reader" });
+  check("keepsake: draft source is not readable to a reader",
+    (await code(() => dp.createKeepsake({ storyId: draft.id, excerpt: "nope" }))) === "keepsakeSourceNotReadable");
+  check("keepsake: empty excerpt refused",
+    (await code(() => dp.createKeepsake({ storyId: st.id, excerpt: "  " }))) === "invalidInput");
+  check("keepsake: 1001-char excerpt refused (K1)",
+    (await code(() => dp.createKeepsake({ storyId: st.id, excerpt: "x".repeat(1001) }))) === "invalidInput");
+  check("keepsake: unknown template refused",
+    (await code(() => dp.createKeepsake({ storyId: st.id, excerpt: "ok", template: "nope" }))) === "invalidInput");
+  check("keepsake: chapter from another story refused",
+    (await code(() => dp.createKeepsake({ storyId: st.id, chapterId: ch2.id, excerpt: "ok" }))) === "invalidInput");
+  const k = await dp.createKeepsake({ storyId: st.id, chapterId: ch.id, excerpt: "A line worth keeping", template: "midnight", echo: "It stayed with me." });
+  check("keepsake: created private with snapshot title/author",
+    k.visibility === "private" && k.source_title === "Kept Tale" && k.source_author_name === "Keeper Author");
+  check("keepsake: projection hides private cards", (await dp.listPublicKeepsakes()).every((p) => p.id !== k.id));
+  check("keepsake: publish from another author's uncovered original is refused with the licence code",
+    (await code(() => dp.publishKeepsake(k.id))) === "keepsakeNotEligibleLicence");
+  check("keepsake: owner list shows it", (await dp.listMyKeepsakes()).some((x) => x.id === k.id));
+  await dp.signOut();
+  await dp.signIn("keeper-author@example.com", "secret12");
+  check("keepsake: other user cannot see it", (await dp.getKeepsake(k.id)) === null);
+  check("keepsake: other user cannot update it",
+    (await code(() => dp.updateKeepsake(k.id, { excerpt: "hijack" }))) === "notAuthor");
+  check("keepsake: other user cannot delete it",
+    (await code(() => dp.deleteKeepsake(k.id))) === "notAuthor");
+  check("keepsake: author list is empty", (await dp.listMyKeepsakes()).length === 0);
+  const own = await dp.createKeepsake({ storyId: st.id, excerpt: "My own line", echo: "Mine." });
+  check("keepsake: author can save from own draft", (await dp.createKeepsake({ storyId: draft.id, excerpt: "draft line" })).story_id === draft.id);
+  const pub = await dp.publishKeepsake(own.id);
+  check("keepsake: own-story publish succeeds with basis",
+    pub.visibility === "public" && pub.eligibility_basis === "own-story");
+  const shown = (await dp.listPublicKeepsakes()).find((p) => p.id === own.id);
+  check("keepsake: projection shows it, echo gated off by default",
+    !!shown && shown.echo === null && shown.source_title === "Kept Tale");
+  await dp.updateKeepsake(own.id, { echo_public: true });
+  check("keepsake: echo appears only after per-keepsake opt-in",
+    (await dp.listPublicKeepsakes()).find((p) => p.id === own.id)?.echo === "Mine.");
+  await dp.updateStory(st.id, { title: "Renamed Tale" });
+  check("keepsake: snapshot is not rewritten by a story edit",
+    (await dp.getKeepsake(own.id)).source_title === "Kept Tale");
+  await dp.updateStory(st.id, { status: "hidden" });
+  check("keepsake: projection drops it when the source goes private",
+    !(await dp.listPublicKeepsakes()).some((p) => p.id === own.id));
+  await dp.updateStory(st.id, { status: "ongoing" });
+  check("keepsake: projection restores it when the source returns",
+    (await dp.listPublicKeepsakes()).some((p) => p.id === own.id));
+  await dp.deleteKeepsake(own.id);
+  check("keepsake: delete removes it everywhere",
+    !(await dp.listMyKeepsakes()).some((x) => x.id === own.id) &&
+    !(await dp.listPublicKeepsakes()).some((p) => p.id === own.id));
+  await dp.signOut();
+}
+
+// 24. keepsakes studio helpers (V4-27b, Node-safe pure functions).
+{
+  const { normalizeExcerpt, keepsakeAttribution, CARD_TEMPLATES } = card;
+  check("studio: normalize collapses spaces but keeps line breaks",
+    normalizeExcerpt("  a   b\n\nc  ") === "a b\n\nc");
+  check("studio: normalize caps at 1000 on a word boundary",
+    (() => {
+      const out = normalizeExcerpt("word ".repeat(300));
+      return out.length <= 1000 && !out.endsWith(" ") && out.split(" ").every((w) => w === "word");
+    })());
+  check("studio: six templates with distinct palettes",
+    Object.keys(CARD_TEMPLATES).length === 6 &&
+    new Set(Object.values(CARD_TEMPLATES).map((p) => p.bg)).size === 6);
+  check("studio: attribution from story metadata, absent author is empty",
+    keepsakeAttribution({ title: "T", author: { display_name: "A" } }).author === "A" &&
+    keepsakeAttribution({ title: "T", author: null }).author === "");
+}
+
+// 25. attribution metadata (V4-28): conditional fields round-trip in both
+// providers' demo mirror; snapshot + card credit translator separately.
+{
+  await dp.signUp({ email: "attr@example.com", password: "secret12", username: "attr_author", displayName: "Attr Author" });
+  const tr = await dp.createStory({
+    title: "Translated Tale", summary: "x", language: "en", genre: "general", tags: [],
+    origin_type: "translation", original_author: "Old Master", original_title: "Old Title",
+    translator_name: "Attr Author", edition_source: "Gutenberg #123",
+  });
+  check("attr: translation fields round-trip",
+    tr.origin_type === "translation" && tr.original_author === "Old Master" &&
+    tr.translator_name === "Attr Author" && tr.edition_source === "Gutenberg #123");
+  const ch = await dp.createChapter(tr.id, { title: "One", body: paragraphsToDoc(["Translated line here."]) });
+  await dp.updateChapter(ch.id, { status: "published" });
+  await dp.updateStory(tr.id, { status: "ongoing" });
+  const k = await dp.createKeepsake({ storyId: tr.id, excerpt: "Translated line here." });
+  check("attr: snapshot carries original + translator + edition",
+    k.source_original_author === "Old Master" && k.source_translator_name === "Attr Author" &&
+    k.source_edition === "Gutenberg #123");
+  const { keepsakeAttribution: attr } = card;
+  check("attr: card credits original author and translator as different people",
+    attr(tr, "en").author === "Old Master · Translated by Attr Author");
+  check("attr: card in Bangla uses Bangla credit words",
+    attr(tr, "bn").author === "Old Master · অনুবাদ: Attr Author");
+  await dp.updateStory(tr.id, { origin_type: "original", original_author: null, original_title: null, translator_name: null, edition_source: null });
+  const back = await dp.getStory(tr.id);
+  check("attr: switching to original clears attribution fields",
+    back.origin_type === "original" && back.original_author === null && back.translator_name === null);
+  const plain = await dp.createStory({ title: "Plain Tale", summary: "x", language: "en", genre: "general", tags: [] });
+  check("attr: new stories default to original with no extra fields",
+    plain.origin_type === "original" && plain.original_author === null);
+  await dp.signOut();
+}
+
+// 26. echo display + edit (Library): echo saved at creation is listed,
+// editable by its owner, clearable, and never editable by another user.
+{
+  await dp.signUp({ email: "echo@example.com", password: "secret12", username: "echo_author", displayName: "Echo Author" });
+  const s = await dp.createStory({ title: "Echo Tale", summary: "x", language: "en", genre: "general", tags: [] });
+  const ch = await dp.createChapter(s.id, { title: "One", body: paragraphsToDoc(["An echo line."]) });
+  await dp.updateChapter(ch.id, { status: "published" });
+  await dp.updateStory(s.id, { status: "ongoing" });
+  const k = await dp.createKeepsake({ storyId: s.id, excerpt: "An echo line.", echo: "This line stayed with me." });
+  const mine = await dp.listMyKeepsakes();
+  check("echo: saved echo is listed with the keepsake",
+    mine.some((x) => x.id === k.id && x.echo === "This line stayed with me."));
+  const edited = await dp.updateKeepsake(k.id, { echo: "Edited echo." });
+  check("echo: owner can edit the echo", edited.echo === "Edited echo.");
+  const cleared = await dp.updateKeepsake(k.id, { echo: null });
+  check("echo: echo can be cleared", cleared.echo === null);
+  await dp.signOut();
+  await dp.signUp({ email: "echo2@example.com", password: "secret12", username: "echo_other", displayName: "Echo Other" });
+  let blocked = false;
+  try { await dp.updateKeepsake(k.id, { echo: "Hijack." }); } catch { blocked = true; }
+  check("echo: another user cannot edit someone else's echo", blocked);
+  await dp.signOut();
+}
+
+// 27. poem line breaks survive (card renderer + studio normalization).
+{
+  const { normalizeExcerpt } = card;
+  check("poem: blank lines take half height on the card",
+    card.cardLineHeight("", 44) === 38.5 && card.cardLineHeight("text", 44) === 77);
+  const stubCtx = { measureText: (s) => ({ width: s.length * 10 }) };
+  check("poem: canvas wrap keeps explicit lines and stanza gaps",
+    JSON.stringify(card.wrapText(stubCtx, "short line\nlonger second line\n\nstanza two", 100)) ===
+    JSON.stringify(["short line", "longer", "second", "line", "", "stanza two"]));
+  check("poem: line breaks and stanza gaps are preserved",
+    normalizeExcerpt("line one\nline two\n\nline four") === "line one\nline two\n\nline four");
+  check("poem: spaces collapse within a line, breaks stay",
+    normalizeExcerpt("  too   many   spaces\nnext   line  ") === "too many spaces\nnext line");
+  check("poem: leading/trailing blank lines trimmed, inner gap kept to one",
+    normalizeExcerpt("\n\nfirst\n\n\n\nsecond\n\n") === "first\n\nsecond");
+  const long = "a".repeat(400) + "\n" + "b".repeat(400) + "\n" + "c".repeat(400);
+  const capped = normalizeExcerpt(long);
+  check("poem: 1000-char cap cuts at a line boundary, keeps earlier breaks",
+    capped.length <= 1000 && capped.includes("\n") && !capped.includes("c"));
+  await dp.signUp({ email: "poem@example.com", password: "secret12", username: "poem_author", displayName: "Poem Author" });
+  const s = await dp.createStory({ title: "Poem Tale", summary: "x", language: "bn", genre: "general", tags: [] });
+  const ch = await dp.createChapter(s.id, { title: "One", body: paragraphsToDoc(["Poem line."]) });
+  await dp.updateChapter(ch.id, { status: "published" });
+  await dp.updateStory(s.id, { status: "ongoing" });
+  const k = await dp.createKeepsake({ storyId: s.id, excerpt: "first line\nsecond line\n\nthird stanza" });
+  const mine = await dp.listMyKeepsakes();
+  check("poem: stored keepsake excerpt keeps its line breaks",
+    mine.some((x) => x.id === k.id && x.excerpt === "first line\nsecond line\n\nthird stanza"));
+  await dp.signOut();
+}
+
+// 28. keepsakes public sharing (V4-27c): publish matrix, public page,
+// unpublish, licence accept/withdraw (future-only default), moderation.
+{
+  const code = async (fn) => {
+    try { await fn(); return null; } catch (e) { return e?.code ?? "threw"; }
+  };
+  // Author + original story; reader publishes from it.
+  await dp.signUp({ email: "pub-author@example.com", password: "secret12", username: "pub_author", displayName: "Pub Author" });
+  const st = await dp.createStory({ title: "Shared Tale", summary: "x", language: "en", genre: "general", tags: [] });
+  const ch = await dp.createChapter(st.id, { title: "One", body: paragraphsToDoc(["A line for the world."]) });
+  await dp.updateChapter(ch.id, { status: "published" });
+  await dp.updateStory(st.id, { status: "ongoing" });
+  await dp.signOut();
+  await dp.signUp({ email: "pub-reader@example.com", password: "secret12", username: "pub_reader", displayName: "Pub Reader" });
+  const me = (await dp.getSession()).user.id;
+  const k = await dp.createKeepsake({ storyId: st.id, excerpt: "A line for the world." });
+  check("27c: uncovered original publish refused (licence code)",
+    (await code(() => dp.publishKeepsake(k.id))) === "keepsakeNotEligibleLicence");
+  // Licence accept is author-only.
+  check("27c: non-author cannot accept the licence",
+    (await code(() => dp.acceptKeepsakeLicence(st.id))) === "notAuthor");
+  await dp.signOut();
+  await dp.signIn("pub-author@example.com", "secret12");
+  const lic = await dp.acceptKeepsakeLicence(st.id);
+  check("27c: author accepts licence", lic.covered === true);
+  await dp.signOut();
+  await dp.signIn("pub-reader@example.com", "secret12");
+  const pub = await dp.publishKeepsake(k.id);
+  check("27c: covered story publishes with licence basis + slug",
+    pub.visibility === "public" && pub.eligibility_basis === "licence" && !!pub.slug);
+  const page = await dp.getPublicKeepsake(pub.slug);
+  check("27c: public page serves the projection row",
+    !!page && page.excerpt === "A line for the world." && page.source_slug === st.slug);
+  check("27c: public page hides the echo without opt-in", page.echo === null);
+  // Echo opt-in flows through.
+  await dp.updateKeepsake(k.id, { echo: "It stayed.", echo_public: true });
+  check("27c: public page shows echo after opt-in",
+    (await dp.getPublicKeepsake(pub.slug)).echo === "It stayed.");
+  // Withdrawal: new publishes blocked, already-public stays (draft default).
+  await dp.signOut();
+  await dp.signIn("pub-author@example.com", "secret12");
+  await dp.withdrawKeepsakeLicence(st.id);
+  check("27c: licence withdrawn", (await dp.getKeepsakeLicence(st.id)).covered === false);
+  await dp.signOut();
+  await dp.signIn("pub-reader@example.com", "secret12");
+  const k2 = await dp.createKeepsake({ storyId: st.id, excerpt: "A second line." });
+  check("27c: post-withdrawal publish blocked",
+    (await code(() => dp.publishKeepsake(k2.id))) === "keepsakeNotEligibleLicence");
+  check("27c: already-public keepsake stays public after withdrawal (future-only)",
+    !!(await dp.getPublicKeepsake(pub.slug)));
+  // Unpublish revokes the page on next read.
+  await dp.unpublishKeepsake(k.id);
+  check("27c: unpublish removes the public page",
+    (await dp.getPublicKeepsake(pub.slug)) === null);
+  // Verified-PD path: any reader publishes, no licence anywhere.
+  const classic = (await dp.listStories({ limit: 50 })).stories.find((s) => s.slug === "demo-classic-tale");
+  const kc = await dp.createKeepsake({ storyId: classic.id, excerpt: "It was an old tale, told by the river, of a traveller who carried nothing but a lantern and a promise." });
+  const pubc = await dp.publishKeepsake(kc.id);
+  check("27c: verified-PD publishes with public-domain basis",
+    pubc.visibility === "public" && pubc.eligibility_basis === "public-domain");
+  // Moderation: report → restrict → page down → restore → page back.
+  const rep = await dp.createReport("keepsake", kc.id, "Test report", "");
+  check("27c: keepsake report filed", rep.target_type === "keepsake");
+  await dp.signOut();
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  await dp.restrictKeepsake(kc.id);
+  check("27c: moderator restrict takes the public page down",
+    (await dp.getPublicKeepsake(pubc.slug)) === null);
+  await dp.restoreKeepsake(kc.id);
+  check("27c: moderator restore brings the public page back",
+    !!(await dp.getPublicKeepsake(pubc.slug)));
+  const target = await dp.resolveReportTarget("keepsake", kc.id);
+  check("27c: report target resolves to the keepsake excerpt",
+    !!target && target.label.startsWith("Keepsake:"));
+  await dp.signOut();
+  // Own-story publish still works.
+  await dp.signIn("pub-author@example.com", "secret12");
+  const own = await dp.createKeepsake({ storyId: st.id, excerpt: "My own line." });
+  const pubOwn = await dp.publishKeepsake(own.id);
+  check("27c: own-story publish works with own-story basis",
+    pubOwn.visibility === "public" && pubOwn.eligibility_basis === "own-story");
   await dp.signOut();
 }
 

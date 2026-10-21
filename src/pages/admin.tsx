@@ -54,6 +54,7 @@ function RestoreButton({ targetType, targetId, onDone }: { targetType: ReportTar
       if (targetType === "story") await dp.restoreStory(targetId);
       else if (targetType === "chapter") await dp.restoreChapter(targetId);
       else if (targetType === "comment") await dp.restoreComment(targetId);
+      else if (targetType === "keepsake") await dp.restoreKeepsake(targetId);
       setConfirm(false);
       onDone();
     } finally {
@@ -109,7 +110,9 @@ function ReportCard({ report }: { report: Report }) {
 
   const statusTone = { open: "clay", in_review: "gold", resolved: "sage", dismissed: "sage" } as const;
   const isHidden = target.data?.status === "hidden";
-  const restorable = (report.target_type === "story" || report.target_type === "chapter" || report.target_type === "comment") && isHidden;
+  const isRestricted = target.data?.status === "restricted";
+  const restorable = ((report.target_type === "story" || report.target_type === "chapter" || report.target_type === "comment") && isHidden)
+    || (report.target_type === "keepsake" && isRestricted);
 
   return (
     <Card className="p-5">
@@ -155,6 +158,12 @@ function ReportCard({ report }: { report: Report }) {
               <Button size="sm" variant="danger" disabled={!!busy}
                 onClick={() => act("hide", () => dp.moderateComment(report.target_id, "hidden"))}>
                 {t("moderation", "hideComment")}
+              </Button>
+            )}
+            {report.target_type === "keepsake" && !isRestricted && (
+              <Button size="sm" variant="danger" disabled={!!busy}
+                onClick={() => act("restrict", () => dp.restrictKeepsake(report.target_id))}>
+                {t("moderation", "restrictKeepsake")}
               </Button>
             )}
             <Button size="sm" variant="secondary" disabled={!!busy}
