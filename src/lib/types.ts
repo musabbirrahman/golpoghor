@@ -159,6 +159,57 @@ export interface Comment {
   author?: Profile;
 }
 
+/** V4-27a: a reader's private copy of a passage, with a creation-time
+ * attribution snapshot (never rewritten by later story edits). */
+export type KeepsakeTemplate =
+  | "classic-paper"
+  | "midnight"
+  | "quiet-garden"
+  | "old-letters"
+  | "modern-ink"
+  | "neer";
+
+export interface Keepsake {
+  id: string;
+  owner_id: string;
+  story_id: string;
+  chapter_id: string | null;
+  excerpt: string;
+  template: KeepsakeTemplate;
+  echo: string | null;
+  echo_public: boolean;
+  visibility: "private" | "public";
+  status: "active" | "restricted";
+  source_title: string;
+  source_author_name: string;
+  source_original_author: string | null;
+  source_original_title: string | null;
+  source_translator_name: string | null;
+  source_adapter_name: string | null;
+  source_edition: string | null;
+  published_at: string | null;
+  eligibility_basis: "own-story" | "licence" | "public-domain" | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** V4-27a: approved fields only, as served by keepsakes_public(). */
+export interface PublicKeepsake {
+  id: string;
+  excerpt: string;
+  template: KeepsakeTemplate;
+  echo: string | null;
+  source_title: string;
+  source_author_name: string;
+  source_original_author: string | null;
+  source_original_title: string | null;
+  source_translator_name: string | null;
+  source_adapter_name: string | null;
+  source_edition: string | null;
+  published_at: string | null;
+  created_at: string;
+}
+
 export interface Report {
   id: string;
   reporter_id: string;

@@ -559,6 +559,10 @@ const dict = {
       bn: "শুধু লেখক এটি করতে পারেন।",
       en: "Only the author can do that.",
     },
+    keepsakeNotEligible: {
+      bn: "এই গল্প থেকে প্রকাশ্যে শেয়ার করতে লেখকের অনুমতি বা অধিকার-যাচাই লাগবে।",
+      en: "Publishing from this story needs the author's permission or a rights determination.",
+    },
     notModerator: {
       bn: "শুধু মডারেটররা এই পেজ দেখতে পারেন।",
       en: "Only moderators can view this page.",

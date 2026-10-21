@@ -12,10 +12,13 @@ import type {
   Chapter,
   ChapterListItem,
   Comment,
+  Keepsake,
+  KeepsakeTemplate,
   ModerationEvent,
   NotificationPrefs,
   NotificationType,
   Profile,
+  PublicKeepsake,
   ReadingPosition,
   ReadingProgress,
   Report,
@@ -30,13 +33,21 @@ import type {
   StoryFilters,
   StoryInput,
 } from "../data-provider";
-import { resolveNotificationPrefs } from "../data-provider";
+import {
+  KEEPSAKE_EXCERPT_MAX,
+  KEEPSAKE_TEMPLATES,
+  resolveNotificationPrefs,
+} from "../data-provider";
 import { genreAliases, normalizeGenre, sortGenres } from "../genres";
 import { AppError, countWords, docToText, slugify } from "../utils";
 
 function mapAppeal(row: any): Appeal {
   const { author, ...rest } = row ?? {};
   return { ...rest, author: author ?? undefined };
+}
+
+function mapKeepsake(row: any): Keepsake {
+  return { ...row } as Keepsake;
 }
 
 const AUTHOR_JOIN = "author:profiles!stories_author_id_fkey(*)";
@@ -754,6 +765,163 @@ export class SupabaseProvider implements DataProvider {
   async deleteComment(id: string): Promise<void> {
     const { error } = await this.sb.from("comments").delete().eq("id", id);
     if (error) throw toAppError(error);
+  }
+
+  // --------------------------------------------------------- keepsakes (V4-27a)
+  private async snapshotFor(storyId: string): Promise<{
+    source_title: string;
+    source_author_name: string;
+  }> {
+    const { data: story, error } = await this.sb
+      .from("stories")
+      .select("title, author:profiles!stories_author_id_fkey(display_name)")
+      .eq("id", storyId)
+      .single();
+    if (error || !story) throw new AppError("notFound", "Story not found");
+    return {
+      source_title: story.title,
+      // V4-28 fields (original author / translator / edition) do not exist
+      // yet — the snapshot columns stay NULL until then, never fabricated.
+      source_author_name: (story.author as any)?.display_name ?? "",
+    };
+  }
+
+  async createKeepsake(input: {
+    storyId: string;
+    chapterId?: string | null;
+    excerpt: string;
+    template?: KeepsakeTemplate;
+    echo?: string | null;
+  }): Promise<Keepsake> {
+    const me = await this.uid();
+    const excerpt = input.excerpt.trim();
+    if (!excerpt || excerpt.length > KEEPSAKE_EXCERPT_MAX)
+      throw new AppError("invalidInput", "Excerpt must be 1–1000 characters");
+    const template = input.template ?? "classic-paper";
+    if (!KEEPSAKE_TEMPLATES.includes(template))
+      throw new AppError("invalidInput", "Unknown keepsake template");
+    if (input.chapterId) {
+      const { data: ch } = await this.sb
+        .from("chapters")
+        .select("story_id")
+        .eq("id", input.chapterId)
+        .maybeSingle();
+      if (!ch || ch.story_id !== input.storyId)
+        throw new AppError("invalidInput", "Chapter does not belong to this story");
+    }
+    const snap = await this.snapshotFor(input.storyId);
+    const { data, error } = await this.sb
+      .from("keepsakes")
+      .insert({
+        owner_id: me,
+        story_id: input.storyId,
+        chapter_id: input.chapterId ?? null,
+        excerpt,
+        template,
+        echo: input.echo?.trim() ? input.echo.trim().slice(0, 2000) : null,
+        ...snap,
+      })
+      .select("*")
+      .single();
+    if (error) {
+      // The source-readability trigger raises a stable prefix.
+      if ((error.message ?? "").includes("KEEPSAKE_SOURCE_NOT_READABLE"))
+        throw new AppError("keepsakeSourceNotReadable", error.message);
+      throw toAppError(error);
+    }
+    return mapKeepsake(data);
+  }
+
+  async listMyKeepsakes(): Promise<Keepsake[]> {
+    const me = await this.uid();
+    const { data, error } = await this.sb
+      .from("keepsakes")
+      .select("*")
+      .eq("owner_id", me)
+      .order("created_at", { ascending: false });
+    if (error) throw toAppError(error);
+    return (data ?? []).map(mapKeepsake);
+  }
+
+  async getKeepsake(id: string): Promise<Keepsake | null> {
+    const { data, error } = await this.sb
+      .from("keepsakes")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw toAppError(error);
+    return data ? mapKeepsake(data) : null;
+  }
+
+  async updateKeepsake(
+    id: string,
+    patch: Partial<Pick<Keepsake, "excerpt" | "template" | "echo" | "echo_public">>
+  ): Promise<Keepsake> {
+    const body: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.excerpt !== undefined) {
+      const excerpt = patch.excerpt.trim();
+      if (!excerpt || excerpt.length > KEEPSAKE_EXCERPT_MAX)
+        throw new AppError("invalidInput", "Excerpt must be 1–1000 characters");
+      body.excerpt = excerpt;
+    }
+    if (patch.template !== undefined) {
+      if (!KEEPSAKE_TEMPLATES.includes(patch.template))
+        throw new AppError("invalidInput", "Unknown keepsake template");
+      body.template = patch.template;
+    }
+    if (patch.echo !== undefined)
+      body.echo = patch.echo?.trim() ? patch.echo.trim().slice(0, 2000) : null;
+    if (patch.echo_public !== undefined) body.echo_public = patch.echo_public;
+    const { data, error } = await this.sb
+      .from("keepsakes")
+      .update(body)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw toAppError(error);
+    return mapKeepsake(data);
+  }
+
+  async deleteKeepsake(id: string): Promise<void> {
+    const { error } = await this.sb.from("keepsakes").delete().eq("id", id);
+    if (error) throw toAppError(error);
+  }
+
+  async publishKeepsake(id: string): Promise<Keepsake> {
+    const { data, error } = await this.sb.rpc("publish_keepsake", {
+      p_keepsake_id: id,
+    });
+    if (error) {
+      const msg = error.message ?? "";
+      if (msg.includes("KEEPSAKE_NOT_FOUND")) throw new AppError("notFound", msg);
+      if (msg.includes("KEEPSAKE_NOT_OWNER")) throw new AppError("notAuthor", msg);
+      if (msg.includes("KEEPSAKE_SOURCE_NOT_PUBLIC"))
+        throw new AppError("invalidInput", msg);
+      if (msg.includes("KEEPSAKE_NOT_ELIGIBLE"))
+        throw new AppError("keepsakeNotEligible", msg);
+      throw toAppError(error);
+    }
+    return mapKeepsake(data);
+  }
+
+  async listPublicKeepsakes(): Promise<PublicKeepsake[]> {
+    const { data, error } = await this.sb.rpc("keepsakes_public");
+    if (error) throw toAppError(error);
+    return (data ?? []).map((r: any) => ({
+      id: r.id,
+      excerpt: r.excerpt,
+      template: r.template,
+      echo: r.echo,
+      source_title: r.source_title,
+      source_author_name: r.source_author_name,
+      source_original_author: r.source_original_author,
+      source_original_title: r.source_original_title,
+      source_translator_name: r.source_translator_name,
+      source_adapter_name: r.source_adapter_name,
+      source_edition: r.source_edition,
+      published_at: r.published_at,
+      created_at: r.created_at,
+    }));
   }
 
   // ------------------------------------------- notification helpers

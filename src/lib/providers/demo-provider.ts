@@ -17,10 +17,13 @@ import type {
   Chapter,
   ChapterListItem,
   Comment,
+  Keepsake,
+  KeepsakeTemplate,
   ModerationEvent,
   NotificationPrefs,
   NotificationType,
   Profile,
+  PublicKeepsake,
   ReadingPosition,
   ReadingProgress,
   Report,
@@ -36,6 +39,10 @@ import type {
   StoryInput,
 } from "../data-provider";
 import { resolveNotificationPrefs, WRITE_THROTTLE } from "../data-provider";
+import {
+  KEEPSAKE_EXCERPT_MAX,
+  KEEPSAKE_TEMPLATES,
+} from "../data-provider";
 import { normalizeGenre, sortGenres } from "../genres";
 import { SEED_AUTHORS, SEED_STORIES, DEMO_PASSWORD } from "../demo-content";
 import {
@@ -69,6 +76,7 @@ interface DemoDB {
   notifications: AppNotification[];
   storyViews: { story_id: string; viewer_id: string; viewed_on: string; created_at: string }[];
   usernameRedirects: UsernameRedirect[];
+  keepsakes: Keepsake[];
   sessionUserId: string | null;
 }
 
@@ -167,6 +175,7 @@ function seed(): DemoDB {
     notifications: [],
     storyViews: [],
     usernameRedirects: [],
+    keepsakes: [],
     sessionUserId: null,
   };
 }
@@ -209,6 +218,7 @@ export class DemoProvider implements DataProvider {
           db.notifications ??= [];
           db.storyViews ??= [];
           db.usernameRedirects ??= [];
+          db.keepsakes ??= [];
           for (const p of db.profiles) (p as any).notification_prefs ??= {};
           return db;
         }
@@ -1014,6 +1024,160 @@ export class DemoProvider implements DataProvider {
     if (c.author_id !== me && !isMod) throw new AppError("notAuthor", "You can only delete your own comment");
     this.db.comments.splice(i, 1);
     this.persist();
+  }
+
+  // --------------------------------------------------------- keepsakes (V4-27a)
+  private keepsakeSourceReadable(s: Story, me: string): boolean {
+    return this.isPublicStory(s) || s.author_id === me;
+  }
+
+  async createKeepsake(input: {
+    storyId: string;
+    chapterId?: string | null;
+    excerpt: string;
+    template?: KeepsakeTemplate;
+    echo?: string | null;
+  }): Promise<Keepsake> {
+    const me = await this.requireUid();
+    const story = this.db.stories.find((s) => s.id === input.storyId);
+    if (!story) throw new AppError("notFound", "Story not found");
+    if (!this.keepsakeSourceReadable(story, me))
+      throw new AppError("keepsakeSourceNotReadable", "The source story is not readable by you");
+    if (input.chapterId) {
+      const ch = this.db.chapters.find((c) => c.id === input.chapterId);
+      if (!ch || ch.story_id !== input.storyId)
+        throw new AppError("invalidInput", "Chapter does not belong to this story");
+    }
+    const excerpt = input.excerpt.trim();
+    if (!excerpt || excerpt.length > KEEPSAKE_EXCERPT_MAX)
+      throw new AppError("invalidInput", "Excerpt must be 1–1000 characters");
+    const template = input.template ?? "classic-paper";
+    if (!KEEPSAKE_TEMPLATES.includes(template))
+      throw new AppError("invalidInput", "Unknown keepsake template");
+    const now = new Date().toISOString();
+    const author = this.db.profiles.find((p) => p.id === story.author_id);
+    const k: Keepsake = {
+      id: uuid(),
+      owner_id: me,
+      story_id: story.id,
+      chapter_id: input.chapterId ?? null,
+      excerpt,
+      template,
+      echo: input.echo?.trim() ? input.echo.trim().slice(0, 2000) : null,
+      echo_public: false,
+      visibility: "private",
+      status: "active",
+      source_title: story.title,
+      source_author_name: author?.display_name ?? "",
+      source_original_author: null,
+      source_original_title: null,
+      source_translator_name: null,
+      source_adapter_name: null,
+      source_edition: null,
+      published_at: null,
+      eligibility_basis: null,
+      created_at: now,
+      updated_at: now,
+    };
+    this.db.keepsakes.push(k);
+    this.persist();
+    return { ...k };
+  }
+
+  async listMyKeepsakes(): Promise<Keepsake[]> {
+    const me = await this.requireUid();
+    return this.db.keepsakes
+      .filter((k) => k.owner_id === me)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map((k) => ({ ...k }));
+  }
+
+  async getKeepsake(id: string): Promise<Keepsake | null> {
+    const me = await this.requireUid();
+    const k = this.db.keepsakes.find((x) => x.id === id);
+    if (!k || k.owner_id !== me) return null;
+    return { ...k };
+  }
+
+  async updateKeepsake(
+    id: string,
+    patch: Partial<Pick<Keepsake, "excerpt" | "template" | "echo" | "echo_public">>
+  ): Promise<Keepsake> {
+    const me = await this.requireUid();
+    const k = this.db.keepsakes.find((x) => x.id === id);
+    if (!k) throw new AppError("notFound", "Keepsake not found");
+    if (k.owner_id !== me) throw new AppError("notAuthor", "You can only edit your own keepsake");
+    if (patch.excerpt !== undefined) {
+      const excerpt = patch.excerpt.trim();
+      if (!excerpt || excerpt.length > KEEPSAKE_EXCERPT_MAX)
+        throw new AppError("invalidInput", "Excerpt must be 1–1000 characters");
+      k.excerpt = excerpt;
+    }
+    if (patch.template !== undefined) {
+      if (!KEEPSAKE_TEMPLATES.includes(patch.template))
+        throw new AppError("invalidInput", "Unknown keepsake template");
+      k.template = patch.template;
+    }
+    if (patch.echo !== undefined)
+      k.echo = patch.echo?.trim() ? patch.echo.trim().slice(0, 2000) : null;
+    if (patch.echo_public !== undefined) k.echo_public = patch.echo_public;
+    k.updated_at = new Date().toISOString();
+    this.persist();
+    return { ...k };
+  }
+
+  async deleteKeepsake(id: string): Promise<void> {
+    const me = await this.requireUid();
+    const i = this.db.keepsakes.findIndex((x) => x.id === id);
+    if (i < 0) throw new AppError("notFound", "Keepsake not found");
+    if (this.db.keepsakes[i].owner_id !== me)
+      throw new AppError("notAuthor", "You can only delete your own keepsake");
+    this.db.keepsakes.splice(i, 1);
+    this.persist();
+  }
+
+  async publishKeepsake(id: string): Promise<Keepsake> {
+    const me = await this.requireUid();
+    const k = this.db.keepsakes.find((x) => x.id === id);
+    if (!k) throw new AppError("notFound", "Keepsake not found");
+    if (k.owner_id !== me) throw new AppError("notAuthor", "Only the owner can publish a keepsake");
+    const story = this.db.stories.find((s) => s.id === k.story_id);
+    if (!story || !this.isPublicStory(story))
+      throw new AppError("invalidInput", "The source story is not public");
+    // 27a extent of the K2 matrix: own-story only (see migration comment).
+    if (story.author_id !== me)
+      throw new AppError("keepsakeNotEligible", "Publishing from this story needs a recorded licence or rights determination (V4-28 / 27c)");
+    k.visibility = "public";
+    k.published_at = new Date().toISOString();
+    k.eligibility_basis = "own-story";
+    k.updated_at = new Date().toISOString();
+    this.persist();
+    return { ...k };
+  }
+
+  async listPublicKeepsakes(): Promise<PublicKeepsake[]> {
+    return this.db.keepsakes
+      .filter((k) => {
+        if (k.visibility !== "public" || k.status !== "active") return false;
+        const story = this.db.stories.find((s) => s.id === k.story_id);
+        return !!story && this.isPublicStory(story);
+      })
+      .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""))
+      .map((k) => ({
+        id: k.id,
+        excerpt: k.excerpt,
+        template: k.template,
+        echo: k.echo_public ? k.echo : null,
+        source_title: k.source_title,
+        source_author_name: k.source_author_name,
+        source_original_author: k.source_original_author,
+        source_original_title: k.source_original_title,
+        source_translator_name: k.source_translator_name,
+        source_adapter_name: k.source_adapter_name,
+        source_edition: k.source_edition,
+        published_at: k.published_at,
+        created_at: k.created_at,
+      }));
   }
 
   // ----------------------------------------------------------- reports

@@ -12,9 +12,12 @@ import type {
   Chapter,
   ChapterListItem,
   Comment,
+  Keepsake,
+  KeepsakeTemplate,
   ModerationEvent,
   NotificationPrefs,
   Profile,
+  PublicKeepsake,
   ReadingPosition,
   ReadingProgress,
   Report,
@@ -59,6 +62,17 @@ export interface ChapterInput {
 /** V4-17 write throttles (per user, trailing hour). Enforced server-side
  * by triggers (migration 20261021100000) and mirrored by the demo provider. */
 export const WRITE_THROTTLE = { commentsPerHour: 30, reportsPerHour: 10 } as const;
+
+/** V4-27a keepsakes: K1 excerpt cap + template set (spike: 1,000 chars). */
+export const KEEPSAKE_EXCERPT_MAX = 1000;
+export const KEEPSAKE_TEMPLATES: KeepsakeTemplate[] = [
+  "classic-paper",
+  "midnight",
+  "quiet-garden",
+  "old-letters",
+  "modern-ink",
+  "neer",
+];
 
 export interface DataProvider {
   readonly kind: "supabase" | "demo";
@@ -155,6 +169,26 @@ export interface DataProvider {
   listComments(chapterId: string): Promise<Comment[]>;
   createComment(chapterId: string, body: string): Promise<Comment>;
   deleteComment(id: string): Promise<void>;
+
+  // --------------------------------------------------------- keepsakes (V4-27a)
+  createKeepsake(input: {
+    storyId: string;
+    chapterId?: string | null;
+    excerpt: string;
+    template?: KeepsakeTemplate;
+    echo?: string | null;
+  }): Promise<Keepsake>;
+  listMyKeepsakes(): Promise<Keepsake[]>;
+  getKeepsake(id: string): Promise<Keepsake | null>;
+  updateKeepsake(
+    id: string,
+    patch: Partial<Pick<Keepsake, "excerpt" | "template" | "echo" | "echo_public">>
+  ): Promise<Keepsake>;
+  deleteKeepsake(id: string): Promise<void>;
+  /** Server-side publish (K2 matrix); throws keepsakeNotEligible etc. */
+  publishKeepsake(id: string): Promise<Keepsake>;
+  /** Restricted public projection only — never the base table. */
+  listPublicKeepsakes(): Promise<PublicKeepsake[]>;
 
   // ----------------------------------------------------------- reports
   createReport(targetType: ReportTarget, targetId: string, reason: string, details: string): Promise<Report>;
