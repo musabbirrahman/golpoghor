@@ -1,37 +1,43 @@
-import { useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { AppError } from "../lib/utils";
 import type { Keepsake } from "../lib/types";
-import { CARD_TEMPLATES, downloadKeepsakePNG, renderKeepsakeCard } from "../lib/keepsake-card";
-import { Button, ButtonLink, EmptyState, Spinner } from "./ui";
+import { CARD_TEMPLATES, downloadKeepsakePNG, keepsakeAttribution, renderKeepsakeCard } from "../lib/keepsake-card";
+import { ButtonLink, EmptyState, Spinner } from "./ui";
+import { KeepsakeViewer } from "./keepsake-viewer";
 
 /**
- * My Keepsakes, shared by the Library page (3 latest in one row) and
- * /library/keepsakes (all, same 3-across grid). Cards share the row
- * height (grid stretch) with actions pinned to the bottom, and the
- * collapsed preview budget (excerpt 3 lines, 2 with an echo; echo
- * 2-line teaser, tap to expand) keeps rows from getting too long —
- * so a row looks uniform without one tall card dragging it out.
- * Show more reveals all.
+ * My Keepsakes, shared by the Library page and /library/keepsakes.
+ *
+ * With a limit (Library): homepage-strip cards — template palette,
+ * 120-char excerpt, no Show more/less; tapping a card opens the
+ * full-card viewer.
+ *
+ * Without a limit (View all): public-shelf cards — centered stacked
+ * list, 240-char excerpt, source line, echo teaser; tapping a card
+ * opens the same full-card viewer. Actions live in the viewer only,
+ * so both lists stay as clean as the homepage strip and the shelf.
  */
 export function MyKeepsakesSection({ limit }: { limit?: number }) {
-  const { t, dp, session } = useApp();
+  const { t, dp, session, locale } = useApp();
   const queryClient = useQueryClient();
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [keepsakeBusy, setKeepsakeBusy] = useState(false);
   const [keepsakeError, setKeepsakeError] = useState<{ id: string; message: string } | null>(null);
-  const [echoEditId, setEchoEditId] = useState<string | null>(null);
-  const [expandedEchoId, setExpandedEchoId] = useState<string | null>(null);
-  const [echoDraft, setEchoDraft] = useState("");
-  const [expandedExcerptId, setExpandedExcerptId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const keepsakesQuery = useQuery({
     queryKey: ["keepsakes", "mine"],
     queryFn: () => dp.listMyKeepsakes(),
     enabled: !!session,
   });
+
+  const data = keepsakesQuery.data ?? [];
+  const selected = data.find((k) => k.id === selectedId) ?? null;
+  useEffect(() => {
+    if (selectedId && keepsakesQuery.data && !selected) setSelectedId(null);
+  }, [selectedId, keepsakesQuery.data, selected]);
 
   /** Re-render a saved keepsake's card offscreen and download it (K6). */
   const redownload = async (k: Keepsake) => {
@@ -72,12 +78,8 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
   };
 
   const deleteKeepsake = async (k: Keepsake) => {
-    if (confirmDeleteId !== k.id) {
-      setConfirmDeleteId(k.id);
-      return;
-    }
-    setConfirmDeleteId(null);
     setKeepsakeBusy(true);
+    setKeepsakeError(null);
     try {
       await dp.deleteKeepsake(k.id);
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
@@ -88,154 +90,167 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
     }
   };
 
-  /** Echoes are private notes: shown only to their owner, in this list. */
-  const saveEcho = async (k: Keepsake) => {
+  /** Echoes are private notes: shown only to their owner, in this list and the viewer. */
+  const saveEcho = async (k: Keepsake, draft: string) => {
     setKeepsakeBusy(true);
     setKeepsakeError(null);
     try {
-      await dp.updateKeepsake(k.id, { echo: echoDraft.trim() ? echoDraft.trim() : null });
-      setEchoEditId(null);
+      await dp.updateKeepsake(k.id, { echo: draft.trim() ? draft.trim() : null });
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
     } catch (e) {
       setKeepsakeError({ id: k.id, message: e instanceof AppError ? t("errors", e.code) : t("errors", "generic") });
+      throw e;
     } finally {
       setKeepsakeBusy(false);
     }
   };
 
+  const templateLabel = (k: Keepsake) =>
+    t("keepsakes", `template${k.template.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join("")}`);
+  const visibilityLabel = (k: Keepsake) =>
+    k.visibility === "public" ? t("keepsakes", "publicBadge") : t("keepsakes", "privateBadge");
+  const openCard = (k: Keepsake) => ({
+    "data-testid": "keepsake-card",
+    role: "button" as const,
+    tabIndex: 0,
+    onClick: () => setSelectedId(k.id),
+    onKeyDown: (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setSelectedId(k.id);
+      }
+    },
+  });
+
   return (
-        <section className="mt-10">
-          <h2 className="mb-4 font-serif text-xl font-bold">{t("keepsakes", "myKeepsakes")}</h2>
-          {keepsakesQuery.isLoading ? <Spinner /> : keepsakesQuery.data?.length ? (
-            <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(limit ? keepsakesQuery.data.slice(0, limit) : keepsakesQuery.data).map((k) => {
+    <section className={limit ? "mt-10" : "mx-auto mt-10 max-w-2xl"}>
+      <h2 className="mb-4 font-serif text-xl font-bold">{t("keepsakes", "myKeepsakes")}</h2>
+      {keepsakesQuery.isLoading ? (
+        <Spinner />
+      ) : data.length ? (
+        limit ? (
+          <>
+            <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible">
+              {data.slice(0, limit).map((k) => {
                 const tpl = CARD_TEMPLATES[k.template];
+                const excerpt = k.excerpt.length > 120 ? k.excerpt.slice(0, 120).trimEnd() + "…" : k.excerpt;
                 return (
-                <div
-                  key={k.id}
-                  className="flex min-w-0 flex-col rounded-xl p-4 shadow-card"
-                  style={{ backgroundColor: tpl.bg, color: tpl.ink }}
-                >
-                  <p aria-hidden className="font-serif text-lg leading-none" style={{ color: tpl.accent }}>❦</p>
-                  <p className={`mt-2 whitespace-pre-line break-words font-serif text-base leading-relaxed ${expandedExcerptId === k.id ? "" : k.echo ? "line-clamp-2" : "line-clamp-3"}`}>
-                    {expandedExcerptId === k.id || k.excerpt.length <= 120
-                      ? k.excerpt
-                      : k.excerpt.slice(0, 120) + "…"}
-                  </p>
-                  {(k.excerpt.length > 120 || k.excerpt.split("\n").length > (k.echo ? 2 : 3)) && (
-                    <button
-                      type="button"
-                      className="mt-1 text-sm font-medium hover:underline"
-                      style={{ color: tpl.accent }}
-                      onClick={() => setExpandedExcerptId(expandedExcerptId === k.id ? null : k.id)}
+                  <div
+                    key={k.id}
+                    {...openCard(k)}
+                    className="w-64 shrink-0 cursor-pointer sm:w-auto"
+                  >
+                    <div
+                      className="h-full min-w-0 rounded-xl p-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg"
+                      style={{ backgroundColor: tpl.bg, color: tpl.ink }}
                     >
-                      {expandedExcerptId === k.id ? t("keepsakes", "showLess") : t("keepsakes", "showMore")}
-                    </button>
-                  )}
-                  <p className="mt-3 truncate text-sm" style={{ color: tpl.faint }}>
-                    {t("keepsakes", "sourceLabel")}: {k.source_title} · {k.source_author_name}
-                  </p>
-                  <p className="mt-1 text-xs" style={{ color: tpl.faint }}>
-                    {t("keepsakes", `template${k.template.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join("")}`)}
-                    {" · "}
-                    {k.visibility === "public" ? t("keepsakes", "publicBadge") : t("keepsakes", "privateBadge")}
-                  </p>
-                  {keepsakeError?.id === k.id && <p className="mt-2 text-sm text-clay">{keepsakeError.message}</p>}
-                  {echoEditId === k.id ? (
-                    <div className="mt-3">
-                      <textarea
-                        aria-label={t("keepsakes", "echoLabel")}
-                        rows={3}
-                        maxLength={2000}
-                        className="w-full rounded-lg border border-sage-dark bg-white px-3 py-2 text-sm text-ink"
-                        value={echoDraft}
-                        onChange={(e) => setEchoDraft(e.target.value)}
-                        placeholder={t("keepsakes", "echoPlaceholder")}
-                      />
-                      <div className="mt-2 flex gap-2">
-                        <Button size="sm" onClick={() => saveEcho(k)} disabled={keepsakeBusy}>
-                          {t("keepsakes", "saveEcho")}
-                        </Button>
-                        <Button size="sm" variant="ghost" className="hover:!bg-black/5" style={{ color: tpl.ink }} onClick={() => setEchoEditId(null)}>
-                          {t("keepsakes", "cancelEcho")}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : k.echo ? (
-                    k.echo.length > 60 || k.echo.split("\n").length > 2 ? (
-                      <button
-                        type="button"
-                        aria-expanded={expandedEchoId === k.id}
-                        className={`mt-3 block w-full cursor-pointer whitespace-pre-line break-words border-l-2 pl-3 text-left text-sm italic ${expandedEchoId === k.id ? "" : "line-clamp-2"}`}
-                        style={{ borderColor: tpl.accent, color: tpl.faint }}
-                        onClick={() => setExpandedEchoId(expandedEchoId === k.id ? null : k.id)}
-                      >
-                        {expandedEchoId === k.id ? k.echo : k.echo.slice(0, 60) + "…"}
-                      </button>
-                    ) : (
-                      <p className="mt-3 whitespace-pre-line break-words border-l-2 pl-3 text-sm italic" style={{ borderColor: tpl.accent, color: tpl.faint }}>
-                        {k.echo}
+                      <p aria-hidden className="font-serif text-lg leading-none" style={{ color: tpl.accent }}>
+                        ❦
                       </p>
-                    )
-                  ) : null}
-                  <div className="mt-auto flex flex-wrap gap-2 pt-3">
-                    <Button size="sm" variant="secondary" onClick={() => redownload(k)}>
-                      {t("keepsakes", "downloadAgain")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="hover:!bg-black/5"
-                      style={{ color: tpl.ink }}
-                      onClick={() => { setEchoEditId(k.id); setEchoDraft(k.echo ?? ""); }}
-                    >
-                      {k.echo ? t("keepsakes", "editEcho") : t("keepsakes", "addEcho")}
-                    </Button>
-                    {k.visibility !== "public" && (
-                      <Button size="sm" variant="ghost" className="hover:!bg-black/5" style={{ color: tpl.ink }} onClick={() => publishKeepsake(k)} disabled={keepsakeBusy}>
-                        {t("keepsakes", "publish")}
-                      </Button>
-                    )}
-                    {k.visibility === "public" && (
-                      <>
-                        {k.slug && (
-                          <Link to={`/k/${k.slug}`}>
-                            <Button size="sm" variant="ghost" className="hover:!bg-black/5" style={{ color: tpl.ink }}>{t("keepsakes", "viewPublicPage")}</Button>
-                          </Link>
-                        )}
-                        <Button size="sm" variant="ghost" className="hover:!bg-black/5" style={{ color: tpl.ink }} onClick={() => unpublishKeepsake(k)} disabled={keepsakeBusy}>
-                          {t("keepsakes", "unpublish")}
-                        </Button>
-                      </>
-                    )}
-                    <Button
-                      size="sm"
-                      variant={confirmDeleteId === k.id ? "danger" : "ghost"}
-                      className={confirmDeleteId === k.id ? "" : "hover:!bg-black/5"}
-                      style={confirmDeleteId === k.id ? undefined : { color: tpl.ink }}
-                      onClick={() => deleteKeepsake(k)}
-                      disabled={keepsakeBusy}
-                    >
-                      {confirmDeleteId === k.id ? t("keepsakes", "deleteConfirm") : t("keepsakes", "delete")}
-                    </Button>
+                      <p className="mt-2 whitespace-pre-line break-words font-serif text-base leading-relaxed">
+                        “{excerpt}”
+                      </p>
+                      <p className="mt-3 truncate text-xs" style={{ color: tpl.faint }}>
+                        {templateLabel(k)} · {visibilityLabel(k)}
+                      </p>
+                    </div>
                   </div>
-                </div>
                 );
               })}
             </div>
-            {limit && keepsakesQuery.data.length > limit && (
+            {data.length > limit && (
               <div className="mt-4 text-center">
                 <ButtonLink to="/library/keepsakes" variant="secondary" size="sm">
                   {t("keepsakes", "showAll")}
                 </ButtonLink>
               </div>
             )}
-            </>
-          ) : (
-            <EmptyState title={t("keepsakes", "empty")} action={<ButtonLink to="/discover" variant="secondary">{t("discover", "title")}</ButtonLink>} />
-          )}
-        </section>
-
+          </>
+        ) : (
+          <div className="mt-6 flex flex-col gap-4">
+            {data.map((k) => {
+              const tpl = CARD_TEMPLATES[k.template];
+              const attr = keepsakeAttribution(
+                {
+                  title: k.source_title,
+                  author: { display_name: k.source_author_name },
+                  original_author: k.source_original_author,
+                  translator_name: k.source_translator_name,
+                  adapter_name: k.source_adapter_name,
+                },
+                locale
+              );
+              const excerpt = k.excerpt.length > 240 ? k.excerpt.slice(0, 240).trimEnd() + "…" : k.excerpt;
+              return (
+                <div
+                  key={k.id}
+                  {...openCard(k)}
+                  className="min-w-0 cursor-pointer rounded-xl p-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg sm:p-5"
+                  style={{ backgroundColor: tpl.bg, color: tpl.ink }}
+                >
+                  <p aria-hidden className="font-serif text-xl leading-none" style={{ color: tpl.accent }}>
+                    ❦
+                  </p>
+                  <p className="mt-2 whitespace-pre-line break-words font-serif text-base leading-relaxed sm:text-lg">
+                    “{excerpt}”
+                  </p>
+                  <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${tpl.rule}` }}>
+                    <p className="break-words text-sm" style={{ color: tpl.faint }}>
+                      {attr.title} · {attr.author}
+                    </p>
+                    <p className="mt-1 text-sm" style={{ color: tpl.faint }}>
+                      {visibilityLabel(k)} · {templateLabel(k)}
+                    </p>
+                    {k.echo && (
+                      <p
+                        className="mt-2 line-clamp-2 break-words border-l-2 pl-3 text-sm italic"
+                        style={{ borderColor: tpl.accent, color: tpl.faint }}
+                      >
+                        {k.echo}
+                      </p>
+                    )}
+                    {k.slug && (
+                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                        <Link
+                          to={`/k/${k.slug}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-medium hover:underline"
+                          style={{ color: tpl.accent }}
+                        >
+                          {t("keepsakes", "viewPublicPage")}
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : (
+        <EmptyState
+          title={t("keepsakes", "empty")}
+          action={
+            <ButtonLink to="/discover" variant="secondary">
+              {t("discover", "title")}
+            </ButtonLink>
+          }
+        />
+      )}
+      {selected && (
+        <KeepsakeViewer
+          key={selected.id}
+          keepsake={selected}
+          busy={keepsakeBusy}
+          error={keepsakeError?.id === selected.id ? keepsakeError.message : null}
+          onClose={() => setSelectedId(null)}
+          onDownload={redownload}
+          onPublish={publishKeepsake}
+          onUnpublish={unpublishKeepsake}
+          onDelete={deleteKeepsake}
+          onSaveEcho={saveEcho}
+        />
+      )}
+    </section>
   );
 }
