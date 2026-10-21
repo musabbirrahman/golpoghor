@@ -6,6 +6,8 @@ import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
 import { Avatar, Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
 import { ReportDialog } from "../components/report-dialog";
+import { PENDING_KEEP_KEY, QuoteStudio, type PendingKeepsake } from "../components/quote-studio";
+import { normalizeExcerpt } from "../lib/keepsake-card";
 import { readingMinutes, timeAgo, AppError } from "../lib/utils";
 import type { Chapter, ReadingPosition, ReadingProgress, TiptapDoc, TiptapNode } from "../lib/types";
 
@@ -257,6 +259,15 @@ export function ReaderPage() {
   const queryClient = useQueryClient();
   const [prefs, setPrefsState] = useState(loadPrefs);
   const [reportOpen, setReportOpen] = useState(false);
+  // Quote Studio (V4-27b): a passage selection inside the chapter body
+  // surfaces a floating button; the modal overlays the reader, so opening
+  // it never navigates away or loses the reading position.
+  const [studio, setStudio] = useState<{
+    excerpt: string;
+    template?: PendingKeepsake["template"];
+    echo?: string;
+  } | null>(null);
+  const [studioBtn, setStudioBtn] = useState<{ top: number; left: number } | null>(null);
   const saveTimer = useRef<number | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   /** Saves are blocked until the restore decision for this chapter has settled,
@@ -460,6 +471,66 @@ export function ReaderPage() {
     dp.recordStoryView(story.id).catch(() => {});
   }, [story?.id, chapter?.id, session?.user.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Quote Studio selection: any non-collapsed selection inside the chapter
+  // body shows the floating button; scrolling hides it (stale rect).
+  useEffect(() => {
+    if (!story || !chapter) return;
+    const onSelect = () => {
+      if (studio) return;
+      const sel = window.getSelection();
+      const root = bodyRef.current;
+      if (!sel || sel.isCollapsed || !root || !root.contains(sel.anchorNode)) {
+        setStudioBtn(null);
+        return;
+      }
+      const text = sel.toString();
+      if (text.trim().length < 1) {
+        setStudioBtn(null);
+        return;
+      }
+      try {
+        const r = sel.getRangeAt(0).getBoundingClientRect();
+        setStudioBtn({
+          top: Math.min(r.bottom + 8, window.innerHeight - 56),
+          left: Math.min(Math.max(r.left + r.width / 2, 84), window.innerWidth - 84),
+        });
+      } catch {
+        setStudioBtn(null);
+      }
+    };
+    const onScroll = () => {
+      if (!studio) setStudioBtn(null);
+    };
+    document.addEventListener("selectionchange", onSelect);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      document.removeEventListener("selectionchange", onSelect);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [story, chapter, studio]);
+
+  // Signed-out selection survives sign-in: the studio stashes the draft in
+  // sessionStorage before routing to /login; on return, reopen it here.
+  useEffect(() => {
+    if (!story || !chapter || !session) return;
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(PENDING_KEEP_KEY);
+    } catch {
+      raw = null;
+    }
+    if (!raw) return;
+    try {
+      const pending = JSON.parse(raw) as PendingKeepsake;
+      if (pending.storyId === story.id && pending.chapterId === chapter.id) {
+        setStudio({ excerpt: pending.excerpt, template: pending.template, echo: pending.echo });
+        sessionStorage.removeItem(PENDING_KEEP_KEY);
+      }
+    } catch {
+      /* corrupt stash — ignore */
+    }
+  }, [story, chapter, session]);
+
   const themeCls =
     prefs.theme === "dark"
       ? "bg-[#1c2422] text-[#e8e4d8]"
@@ -543,6 +614,34 @@ export function ReaderPage() {
       </div>
 
       <Comments chapterId={chapter.id} />
+
+      {studioBtn && !studio && (
+        <button
+          onClick={() => {
+            const text = window.getSelection()?.toString() ?? "";
+            setStudio({ excerpt: normalizeExcerpt(text) });
+            setStudioBtn(null);
+          }}
+          className="fixed z-40 -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper shadow-lift"
+          style={{ top: studioBtn.top, left: studioBtn.left }}
+        >
+          ❦ {t("keepsakes", "makeKeepsake")}
+        </button>
+      )}
+
+      {studio && (
+        <QuoteStudio
+          open
+          onClose={() => setStudio(null)}
+          story={story}
+          chapterId={chapter.id}
+          initialExcerpt={studio.excerpt}
+          initialTemplate={studio.template}
+          initialEcho={studio.echo}
+          returnTo={window.location.pathname}
+          filenameBase={slug}
+        />
+      )}
 
       <ReportDialog
         open={reportOpen}

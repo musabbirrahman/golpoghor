@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AppError, fileToAvatarFile } from "../lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { resolveNotificationPrefs } from "../lib/data-provider";
-import type { NotificationPrefs } from "../lib/types";
+import type { Keepsake, NotificationPrefs } from "../lib/types";
+import { downloadKeepsakePNG, renderKeepsakeCard } from "../lib/keepsake-card";
 import { Layout } from "../components/layout";
-import { Avatar, ButtonLink, EmptyState, Spinner } from "../components/ui";
+import { Avatar, Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
 import { StoryCard, storyPath } from "../components/story-card";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -27,6 +28,10 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 export function LibraryPage() {
   const { t, dp, session } = useApp();
+  const queryClient = useQueryClient();
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [keepsakeBusy, setKeepsakeBusy] = useState(false);
+  const [keepsakeError, setKeepsakeError] = useState<string | null>(null);
 
   const listQuery = useQuery({
     queryKey: ["readingList", "full"],
@@ -43,6 +48,53 @@ export function LibraryPage() {
     queryFn: () => dp.getFollowing(session!.user.id),
     enabled: !!session,
   });
+  const keepsakesQuery = useQuery({
+    queryKey: ["keepsakes", "mine"],
+    queryFn: () => dp.listMyKeepsakes(),
+    enabled: !!session,
+  });
+
+  /** Re-render a saved keepsake's card offscreen and download it (K6). */
+  const redownload = async (k: Keepsake) => {
+    const canvas = document.createElement("canvas");
+    await renderKeepsakeCard(canvas, {
+      excerpt: k.excerpt,
+      title: k.source_title,
+      author: k.source_author_name,
+      template: k.template,
+    });
+    downloadKeepsakePNG(canvas, `golponeer-keepsake-${k.id.slice(0, 8)}.png`);
+  };
+
+  const publishKeepsake = async (k: Keepsake) => {
+    setKeepsakeBusy(true);
+    setKeepsakeError(null);
+    try {
+      await dp.publishKeepsake(k.id);
+      queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
+    } catch (e) {
+      setKeepsakeError(e instanceof AppError ? t("errors", e.code) : t("errors", "generic"));
+    } finally {
+      setKeepsakeBusy(false);
+    }
+  };
+
+  const deleteKeepsake = async (k: Keepsake) => {
+    if (confirmDeleteId !== k.id) {
+      setConfirmDeleteId(k.id);
+      return;
+    }
+    setConfirmDeleteId(null);
+    setKeepsakeBusy(true);
+    try {
+      await dp.deleteKeepsake(k.id);
+      queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
+    } catch (e) {
+      setKeepsakeError(e instanceof AppError ? t("errors", e.code) : t("errors", "generic"));
+    } finally {
+      setKeepsakeBusy(false);
+    }
+  };
 
   return (
     <RequireAuth>
@@ -67,6 +119,50 @@ export function LibraryPage() {
             </div>
           ) : (
             <EmptyState title={t("library", "empty")} action={<ButtonLink to="/discover" variant="secondary">{t("discover", "title")}</ButtonLink>} />
+          )}
+        </section>
+
+        <section className="mt-10">
+          <h2 className="mb-4 font-serif text-xl font-bold">{t("keepsakes", "myKeepsakes")}</h2>
+          {keepsakesQuery.isLoading ? <Spinner /> : keepsakesQuery.data?.length ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {keepsakesQuery.data.map((k) => (
+                <div key={k.id} className="rounded-xl bg-white p-4 shadow-card">
+                  <p className="font-serif text-base leading-relaxed">
+                    {k.excerpt.length > 160 ? k.excerpt.slice(0, 160) + "…" : k.excerpt}
+                  </p>
+                  <p className="mt-3 truncate text-sm text-ink-faint">
+                    {t("keepsakes", "sourceLabel")}: {k.source_title} · {k.source_author_name}
+                  </p>
+                  <p className="mt-1 text-xs text-ink-faint">
+                    {t("keepsakes", `template${k.template.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join("")}`)}
+                    {" · "}
+                    {k.visibility === "public" ? t("keepsakes", "publicBadge") : t("keepsakes", "privateBadge")}
+                  </p>
+                  {keepsakeError && <p className="mt-2 text-sm text-clay">{keepsakeError}</p>}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => redownload(k)}>
+                      {t("keepsakes", "downloadAgain")}
+                    </Button>
+                    {k.visibility !== "public" && (
+                      <Button size="sm" variant="ghost" onClick={() => publishKeepsake(k)} disabled={keepsakeBusy}>
+                        {t("keepsakes", "publish")}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant={confirmDeleteId === k.id ? "danger" : "ghost"}
+                      onClick={() => deleteKeepsake(k)}
+                      disabled={keepsakeBusy}
+                    >
+                      {confirmDeleteId === k.id ? t("keepsakes", "deleteConfirm") : t("keepsakes", "delete")}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title={t("keepsakes", "empty")} action={<ButtonLink to="/discover" variant="secondary">{t("discover", "title")}</ButtonLink>} />
           )}
         </section>
 
