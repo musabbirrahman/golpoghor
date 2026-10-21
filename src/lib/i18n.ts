@@ -167,6 +167,8 @@ const dict = {
     addEcho: { bn: "প্রতিধ্বনি যোগ করুন", en: "Add echo" },
     showMore: { bn: "আরো দেখুন", en: "Show more" },
     showLess: { bn: "কম দেখুন", en: "Show less" },
+    showAll: { bn: "সব কিপসেক দেখুন", en: "Show all keepsakes" },
+    showFewer: { bn: "কম দেখুন", en: "Show fewer" },
     saveEcho: { bn: "সংরক্ষণ", en: "Save echo" },
     cancelEcho: { bn: "বাতিল", en: "Cancel" },
     download: { bn: "ছবি ডাউনলোড", en: "Download image" },

@@ -33,6 +33,8 @@ export function LibraryPage() {
   const [keepsakeBusy, setKeepsakeBusy] = useState(false);
   const [keepsakeError, setKeepsakeError] = useState<{ id: string; message: string } | null>(null);
   const [echoEditId, setEchoEditId] = useState<string | null>(null);
+  const [expandedEchoId, setExpandedEchoId] = useState<string | null>(null);
+  const [showAllKeepsakes, setShowAllKeepsakes] = useState(false);
   const [echoDraft, setEchoDraft] = useState("");
   const [expandedExcerptId, setExpandedExcerptId] = useState<string | null>(null);
 
@@ -156,8 +158,9 @@ export function LibraryPage() {
         <section className="mt-10">
           <h2 className="mb-4 font-serif text-xl font-bold">{t("keepsakes", "myKeepsakes")}</h2>
           {keepsakesQuery.isLoading ? <Spinner /> : keepsakesQuery.data?.length ? (
+            <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {keepsakesQuery.data.map((k) => {
+              {(showAllKeepsakes ? keepsakesQuery.data : keepsakesQuery.data.slice(0, 6)).map((k) => {
                 const tpl = CARD_TEMPLATES[k.template];
                 return (
                 <div
@@ -211,9 +214,23 @@ export function LibraryPage() {
                       </div>
                     </div>
                   ) : k.echo ? (
-                    <p className="mt-3 whitespace-pre-line break-words border-l-2 pl-3 text-sm italic" style={{ borderColor: tpl.accent, color: tpl.faint }}>
-                      {k.echo}
-                    </p>
+                    <>
+                      <p className="mt-3 whitespace-pre-line break-words border-l-2 pl-3 text-sm italic" style={{ borderColor: tpl.accent, color: tpl.faint }}>
+                        {expandedEchoId === k.id || k.echo.length <= 160
+                          ? k.echo
+                          : k.echo.slice(0, 160) + "…"}
+                      </p>
+                      {k.echo.length > 160 && (
+                        <button
+                          type="button"
+                          className="mt-1 text-sm font-medium hover:underline"
+                          style={{ color: tpl.accent }}
+                          onClick={() => setExpandedEchoId(expandedEchoId === k.id ? null : k.id)}
+                        >
+                          {expandedEchoId === k.id ? t("keepsakes", "showLess") : t("keepsakes", "showMore")}
+                        </button>
+                      )}
+                    </>
                   ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button size="sm" variant="secondary" onClick={() => redownload(k)}>
@@ -260,6 +277,14 @@ export function LibraryPage() {
                 );
               })}
             </div>
+            {keepsakesQuery.data.length > 6 && (
+              <div className="mt-4 text-center">
+                <Button size="sm" variant="secondary" onClick={() => setShowAllKeepsakes(!showAllKeepsakes)}>
+                  {showAllKeepsakes ? t("keepsakes", "showFewer") : t("keepsakes", "showAll")}
+                </Button>
+              </div>
+            )}
+            </>
           ) : (
             <EmptyState title={t("keepsakes", "empty")} action={<ButtonLink to="/discover" variant="secondary">{t("discover", "title")}</ButtonLink>} />
           )}
