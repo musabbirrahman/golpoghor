@@ -86,6 +86,7 @@ const router = createBrowserRouter([
       // Heavier, signed-in surfaces load on demand (V4-11) so the public
       // reading loop ships a smaller first bundle.
       { path: "/library", lazy: () => import("./pages/library").then((m) => ({ Component: m.LibraryPage })) },
+      { path: "/library/keepsakes", lazy: () => import("./pages/library").then((m) => ({ Component: m.LibraryKeepsakesPage })) },
       { path: "/inbox", element: <InboxPage /> },
       { path: "/write", lazy: () => import("./pages/write").then((m) => ({ Component: m.WriteDashboard })) },
       { path: "/write/stories/new", lazy: () => import("./pages/write").then((m) => ({ Component: m.StoryFormPage })) },
