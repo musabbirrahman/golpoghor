@@ -12,13 +12,16 @@ import { KeepsakeViewer } from "./keepsake-viewer";
  * My Keepsakes, shared by the Library page and /library/keepsakes.
  *
  * With a limit (Library): homepage-strip cards — template palette,
- * 120-char excerpt, no Show more/less; tapping a card opens the
- * full-card viewer.
+ * 120-char excerpt, echo lines when an echo exists, no Show
+ * more/less; tapping a card opens the full-card viewer.
  *
  * Without a limit (View all): public-shelf cards — centered stacked
- * list, 240-char excerpt, source line, echo teaser; tapping a card
- * opens the same full-card viewer. Actions live in the viewer only,
- * so both lists stay as clean as the homepage strip and the shelf.
+ * list, 240-char excerpt, source line, 3-line echo teaser; tapping
+ * a card opens the same full-card viewer. Actions live in the
+ * viewer only, so both lists stay as clean as the homepage strip
+ * and the shelf. The viewer shows the rendered card (which already
+ * carries passage + attribution) followed by the echo itself — no
+ * duplicated text below — plus an opt-in "include echo" download.
  */
 export function MyKeepsakesSection({ limit }: { limit?: number }) {
   const { t, dp, session, locale } = useApp();
@@ -39,14 +42,16 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
     if (selectedId && keepsakesQuery.data && !selected) setSelectedId(null);
   }, [selectedId, keepsakesQuery.data, selected]);
 
-  /** Re-render a saved keepsake's card offscreen and download it (K6). */
-  const redownload = async (k: Keepsake) => {
+  /** Re-render a saved keepsake's card offscreen and download it (K6).
+   *  With withEcho, the owner's echo is drawn under the passage. */
+  const redownload = async (k: Keepsake, withEcho = false) => {
     const canvas = document.createElement("canvas");
     await renderKeepsakeCard(canvas, {
       excerpt: k.excerpt,
       title: k.source_title,
       author: k.source_author_name,
       template: k.template,
+      echo: withEcho ? k.echo : undefined,
     });
     downloadKeepsakePNG(canvas, `golponeer-keepsake-${k.id.slice(0, 8)}.png`);
   };
@@ -150,6 +155,14 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
                       <p className="mt-2 whitespace-pre-line break-words font-serif text-base leading-relaxed">
                         “{excerpt}”
                       </p>
+                      {k.echo && (
+                        <p
+                          className="mt-2 line-clamp-3 whitespace-pre-line break-words border-l-2 pl-3 font-serif text-base italic leading-relaxed"
+                          style={{ borderColor: tpl.accent, color: tpl.faint }}
+                        >
+                          {k.echo}
+                        </p>
+                      )}
                       <p className="mt-3 truncate text-xs" style={{ color: tpl.faint }}>
                         {templateLabel(k)} · {visibilityLabel(k)}
                       </p>
@@ -203,7 +216,7 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
                     </p>
                     {k.echo && (
                       <p
-                        className="mt-2 line-clamp-2 break-words border-l-2 pl-3 text-sm italic"
+                        className="mt-2 line-clamp-3 whitespace-pre-line break-words border-l-2 pl-3 font-serif text-base italic leading-relaxed"
                         style={{ borderColor: tpl.accent, color: tpl.faint }}
                       >
                         {k.echo}

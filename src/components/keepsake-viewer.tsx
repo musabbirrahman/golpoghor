@@ -26,7 +26,7 @@ export function KeepsakeViewer({
   busy: boolean;
   error: string | null;
   onClose: () => void;
-  onDownload: (k: Keepsake) => void;
+  onDownload: (k: Keepsake, includeEcho: boolean) => void;
   onPublish: (k: Keepsake) => void;
   onUnpublish: (k: Keepsake) => void;
   onDelete: (k: Keepsake) => void;
@@ -37,6 +37,9 @@ export function KeepsakeViewer({
   const [echoEdit, setEchoEdit] = useState(false);
   const [echoDraft, setEchoDraft] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Echo downloads are opt-in per tap (default off): an echo is a
+  // private note, so it must never land on a shared image by accident.
+  const [includeEcho, setIncludeEcho] = useState(false);
   const tpl = CARD_TEMPLATES[keepsake.template];
   const attr = keepsakeAttribution(
     {
@@ -61,25 +64,13 @@ export function KeepsakeViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keepsake]);
 
-  const templateLabel = t(
-    "keepsakes",
-    `template${keepsake.template.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join("")}`
-  );
-
   return (
     <Modal open onClose={onClose} title={t("keepsakes", "title")}>
       <div className="max-h-[75vh] overflow-y-auto px-1">
         <canvas ref={canvasRef} className="w-full rounded-xl shadow-card" aria-label={t("keepsakes", "title")} />
-        <p className="mt-4 whitespace-pre-line break-words font-serif text-base leading-relaxed">
-          “{keepsake.excerpt}”
-        </p>
-        <p className="mt-3 break-words text-sm text-ink-faint">
-          {attr.title} · {attr.author}
-        </p>
-        <p className="mt-1 text-xs text-ink-faint">
-          {templateLabel} ·{" "}
-          {keepsake.visibility === "public" ? t("keepsakes", "publicBadge") : t("keepsakes", "privateBadge")}
-        </p>
+        {/* The canvas already carries the passage, title and author —
+            repeating them below only buried the echo, so the echo is
+            the first thing under the card now. */}
         {echoEdit ? (
           <div className="mt-4">
             <textarea
@@ -113,9 +104,12 @@ export function KeepsakeViewer({
           </div>
         ) : keepsake.echo ? (
           <div className="mt-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">
+              {t("keepsakes", "echoHeading")}
+            </p>
             <p
-              className="whitespace-pre-line break-words border-l-2 pl-3 text-sm italic"
-              style={{ borderColor: tpl.accent, color: tpl.faint }}
+              className="mt-2 whitespace-pre-line break-words border-l-2 pl-3 font-serif text-base italic leading-relaxed"
+              style={{ borderColor: tpl.accent }}
             >
               {keepsake.echo}
             </p>
@@ -145,10 +139,20 @@ export function KeepsakeViewer({
           </Button>
         )}
         {error && <p className="mt-3 text-sm text-clay">{error}</p>}
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button size="sm" variant="secondary" onClick={() => onDownload(keepsake)}>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={() => onDownload(keepsake, includeEcho)}>
             {t("keepsakes", "downloadAgain")}
           </Button>
+          {keepsake.echo && (
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={includeEcho}
+                onChange={(e) => setIncludeEcho(e.target.checked)}
+              />
+              {t("keepsakes", "includeEchoOnCard")}
+            </label>
+          )}
           {keepsake.visibility !== "public" && (
             <Button size="sm" variant="ghost" onClick={() => onPublish(keepsake)} disabled={busy}>
               {t("keepsakes", "publish")}

@@ -108,6 +108,8 @@ async function ensureFonts(text: string): Promise<void> {
     jobs.push(document.fonts.load(`400 ${s}px "Noto Serif Bengali"`, text));
     jobs.push(document.fonts.load(`400 ${s}px "Literata"`, text));
   }
+  jobs.push(document.fonts.load('italic 400 30px "Noto Serif Bengali"', text));
+  jobs.push(document.fonts.load('italic 400 30px "Literata"', text));
   jobs.push(document.fonts.load('600 30px "Noto Serif Bengali"', text));
   jobs.push(document.fonts.load('600 30px "Literata"', text));
   jobs.push(document.fonts.load('500 22px "Noto Sans Bengali"', "গল্পনীড়"));
@@ -120,6 +122,7 @@ export interface CardRender {
   lineCount: number;
   trimmed: boolean;
   excerpt: string;
+  echoTrimmed?: boolean;
 }
 
 /** Height of one laid-out line. Blank lines (stanza gaps) take half a
@@ -159,31 +162,60 @@ export async function renderKeepsakeCard(
     /** Keeper credit (public cards only): drawn under the author line. */
     keeper?: string | null;
     keeperLabel?: string;
+    /**
+     * Optional echo (owner downloads only — never passed for public
+     * cards). Drawn under the passage behind a rule, in italic; the
+     * passage is trimmed to the space above it so the two never
+     * overlap. Without an echo the layout is exactly the old one.
+     */
+    echo?: string | null;
   }
 ): Promise<CardRender> {
   canvas.width = CARD_W;
   canvas.height = CARD_H;
   const ctx = canvas.getContext("2d")!;
   const tpl = CARD_TEMPLATES[input.template];
-  await ensureFonts(input.excerpt + input.title + input.author);
+  await ensureFonts(input.excerpt + input.title + input.author + (input.echo ?? ""));
 
   const padX = 96;
   const textW = CARD_W - padX * 2;
   const topY = 120;
   const textAreaH = CARD_H - topY - 190 - 40;
+  const echoText = input.echo?.trim() ? input.echo.trim() : null;
+  // Echo block: rule gap + up to 6 lines at 30px/1.6. The passage gets
+  // whatever text area remains, so an echo card never clips.
+  const echoAreaH = echoText ? 350 : 0;
+  const passageAreaH = textAreaH - echoAreaH;
 
   // Trim from the end until the floor size fits (no clipping, ever).
   // Cutting at the last space OR newline keeps poem line breaks intact.
   let excerpt = input.excerpt;
   let trimmed = false;
-  let lay = layout(ctx, excerpt, textW, textAreaH);
+  let lay = layout(ctx, excerpt, textW, passageAreaH);
   while (!lay.fits && excerpt.length > 0) {
     const clean = excerpt.replace(/ …$/, "");
     const cutAt = Math.max(clean.lastIndexOf(" "), clean.lastIndexOf("\n"));
     if (cutAt <= 0) break;
     excerpt = clean.slice(0, cutAt) + " …";
     trimmed = true;
-    lay = layout(ctx, excerpt, textW, textAreaH);
+    lay = layout(ctx, excerpt, textW, passageAreaH);
+  }
+
+  // Echo lines, truncated to the reserved block with an ellipsis.
+  let echoLines: string[] = [];
+  let echoHeights: number[] = [];
+  let echoTrimmed = false;
+  if (echoText) {
+    ctx.font = `italic 400 30px ${SERIF}`;
+    echoLines = wrapText(ctx, echoText, textW);
+    if (echoLines.length > 6) {
+      echoLines = echoLines.slice(0, 6);
+      echoTrimmed = true;
+      let last = echoLines[5].replace(/ …$/, "");
+      while (last.length > 0 && ctx.measureText(last + " …").width > textW) last = last.slice(0, -1);
+      echoLines[5] = last + " …";
+    }
+    echoHeights = echoLines.map((l) => (l === "" ? 24 : 48));
   }
 
   ctx.fillStyle = tpl.bg;
@@ -195,15 +227,34 @@ export async function renderKeepsakeCard(
   ctx.textAlign = "center";
   ctx.fillText("❦", CARD_W / 2, topY - 28);
 
-  // Passage (vertically centred when short — spike design note).
+  // Passage + echo centred as one block when an echo is included;
+  // without an echo the passage is centred exactly as before.
   const blockH = lay.heights.reduce((a, b) => a + b, 0);
-  let y = topY + lay.fontSize + Math.max(0, (textAreaH - blockH) / 2);
+  const echoH = echoHeights.reduce((a, b) => a + b, 0);
+  const totalH = blockH + (echoText ? 60 + echoH : 0);
+  let y = topY + lay.fontSize + Math.max(0, (textAreaH - totalH) / 2);
   ctx.fillStyle = tpl.ink;
   ctx.font = `400 ${lay.fontSize}px ${SERIF}`;
   ctx.textAlign = "left";
   for (let i = 0; i < lay.lines.length; i++) {
     ctx.fillText(lay.lines[i], padX, y);
     y += lay.heights[i];
+  }
+  if (echoText) {
+    y += 20;
+    ctx.strokeStyle = tpl.rule;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(padX, y);
+    ctx.lineTo(padX + 72, y);
+    ctx.stroke();
+    y += 40;
+    ctx.fillStyle = tpl.ink;
+    ctx.font = `italic 400 30px ${SERIF}`;
+    for (let i = 0; i < echoLines.length; i++) {
+      ctx.fillText(echoLines[i], padX, y);
+      y += echoHeights[i];
+    }
   }
 
   // Attribution (fixed block, never overlapped: text area reserves it).
@@ -229,7 +280,7 @@ export async function renderKeepsakeCard(
   ctx.fillText("GolpoNeer · গল্পনীড়", CARD_W - padX, base + 42);
   ctx.textAlign = "left";
 
-  return { fontSize: lay.fontSize, lineCount: lay.lines.length, trimmed, excerpt };
+  return { fontSize: lay.fontSize, lineCount: lay.lines.length, trimmed, excerpt, echoTrimmed };
 }
 
 /** Attribution from story metadata (V4-28). A classic/translated work is
