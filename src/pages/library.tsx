@@ -71,7 +71,7 @@ export function LibraryPage() {
           )}
         </section>
 
-        <MyKeepsakesSection limit={6} />
+        <MyKeepsakesSection limit={3} />
 
         <section className="mt-10">
           <h2 className="mb-4 font-serif text-xl font-bold">{t("library", "readingList")}</h2>

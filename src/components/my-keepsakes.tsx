@@ -8,10 +8,13 @@ import { CARD_TEMPLATES, downloadKeepsakePNG, renderKeepsakeCard } from "../lib/
 import { Button, ButtonLink, EmptyState, Spinner } from "./ui";
 
 /**
- * My Keepsakes, shared by the Library page (capped, with a link to the
- * dedicated page) and /library/keepsakes (uncapped). One component, so
- * the cards, echo editing, publish/unpublish/delete and downloads
- * behave identically in both places.
+ * My Keepsakes, shared by the Library page (3 latest in one row) and
+ * /library/keepsakes (all, same 3-across grid). Cards share the row
+ * height (grid stretch) with actions pinned to the bottom, and the
+ * collapsed preview budget (excerpt 3 lines, 2 with an echo; echo
+ * 2-line teaser, tap to expand) keeps rows from getting too long —
+ * so a row looks uniform without one tall card dragging it out.
+ * Show more reveals all.
  */
 export function MyKeepsakesSection({ limit }: { limit?: number }) {
   const { t, dp, session } = useApp();
@@ -115,12 +118,12 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
                   style={{ backgroundColor: tpl.bg, color: tpl.ink }}
                 >
                   <p aria-hidden className="font-serif text-lg leading-none" style={{ color: tpl.accent }}>❦</p>
-                  <p className={`mt-2 whitespace-pre-line break-words font-serif text-base leading-relaxed ${expandedExcerptId === k.id || k.excerpt.length <= 160 ? "" : "line-clamp-4"}`}>
-                    {expandedExcerptId === k.id || k.excerpt.length <= 160
+                  <p className={`mt-2 whitespace-pre-line break-words font-serif text-base leading-relaxed ${expandedExcerptId === k.id ? "" : k.echo ? "line-clamp-2" : "line-clamp-3"}`}>
+                    {expandedExcerptId === k.id || k.excerpt.length <= 120
                       ? k.excerpt
-                      : k.excerpt.slice(0, 160) + "…"}
+                      : k.excerpt.slice(0, 120) + "…"}
                   </p>
-                  {k.excerpt.length > 160 && (
+                  {(k.excerpt.length > 120 || k.excerpt.split("\n").length > (k.echo ? 2 : 3)) && (
                     <button
                       type="button"
                       className="mt-1 text-sm font-medium hover:underline"
@@ -160,23 +163,21 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
                       </div>
                     </div>
                   ) : k.echo ? (
-                    <>
+                    k.echo.length > 60 || k.echo.split("\n").length > 2 ? (
+                      <button
+                        type="button"
+                        aria-expanded={expandedEchoId === k.id}
+                        className={`mt-3 block w-full cursor-pointer whitespace-pre-line break-words border-l-2 pl-3 text-left text-sm italic ${expandedEchoId === k.id ? "" : "line-clamp-2"}`}
+                        style={{ borderColor: tpl.accent, color: tpl.faint }}
+                        onClick={() => setExpandedEchoId(expandedEchoId === k.id ? null : k.id)}
+                      >
+                        {expandedEchoId === k.id ? k.echo : k.echo.slice(0, 60) + "…"}
+                      </button>
+                    ) : (
                       <p className="mt-3 whitespace-pre-line break-words border-l-2 pl-3 text-sm italic" style={{ borderColor: tpl.accent, color: tpl.faint }}>
-                        {expandedEchoId === k.id || k.echo.length <= 100
-                          ? k.echo
-                          : k.echo.slice(0, 100) + "…"}
+                        {k.echo}
                       </p>
-                      {k.echo.length > 100 && (
-                        <button
-                          type="button"
-                          className="mt-1 text-sm font-medium hover:underline"
-                          style={{ color: tpl.accent }}
-                          onClick={() => setExpandedEchoId(expandedEchoId === k.id ? null : k.id)}
-                        >
-                          {expandedEchoId === k.id ? t("keepsakes", "showLess") : t("keepsakes", "showMore")}
-                        </button>
-                      )}
-                    </>
+                    )
                   ) : null}
                   <div className="mt-auto flex flex-wrap gap-2 pt-3">
                     <Button size="sm" variant="secondary" onClick={() => redownload(k)}>
