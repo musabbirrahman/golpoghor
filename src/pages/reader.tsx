@@ -548,6 +548,16 @@ export function ReaderPage() {
       : prefs.theme === "sepia"
         ? "bg-[#f4ecd8] text-[#43382e]"
         : "bg-white text-ink";
+  // The floating keepsake button must stay visible on every reader
+  // theme: it takes the theme's text colour as its background and the
+  // theme's background as its text (dark page → light button, and
+  // vice versa). A fixed dark button vanished on the dark theme.
+  const studioBtnCls =
+    prefs.theme === "dark"
+      ? "bg-[#e8e4d8] text-[#1c2422]"
+      : prefs.theme === "sepia"
+        ? "bg-[#43382e] text-[#f4ecd8]"
+        : "bg-ink text-paper";
   const fontCls = { sm: "text-[17px]", md: "text-[19px]", lg: "text-[21px]", xl: "text-[24px]" }[prefs.fontSize];
   const leadingCls = { normal: "leading-[1.6]", relaxed: "leading-[1.85]", loose: "leading-[2.2]" }[prefs.lineSpacing];
 
@@ -638,7 +648,7 @@ export function ReaderPage() {
             // as long as a selection exists, and would overlay the studio.
             window.getSelection()?.removeAllRanges();
           }}
-          className="fixed z-40 -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper shadow-lift"
+          className={`fixed z-40 -translate-x-1/2 rounded-full px-4 py-2 text-sm font-medium shadow-lift ${studioBtnCls}`}
           style={{ top: studioBtn.top, left: studioBtn.left }}
         >
           ❦ {t("keepsakes", "makeKeepsake")}

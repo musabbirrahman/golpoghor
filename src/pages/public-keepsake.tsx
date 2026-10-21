@@ -5,6 +5,7 @@ import { useApp } from "../lib/app-context";
 import { renderKeepsakeCard, keepsakeAttribution, downloadKeepsakePNG } from "../lib/keepsake-card";
 import { Card, Button } from "../components/ui";
 import { ReportDialog } from "../components/report-dialog";
+import { Layout } from "../components/layout";
 
 /**
  * Public Keepsake page (V4-27c). Reads ONLY the restricted projection:
@@ -47,15 +48,17 @@ export function PublicKeepsakePage() {
     }).catch(() => {});
   }, [k, locale]);
 
-  if (isLoading) return <p className="text-sm text-ink-faint">{t("common", "loading")}</p>;
+  if (isLoading) return <Layout><p className="text-sm text-ink-faint">{t("common", "loading")}</p></Layout>;
   if (!k) {
     return (
+      <Layout>
       <Card className="p-6 text-center">
         <p className="text-sm text-ink-soft">{t("keepsakes", "notFound")}</p>
         <Link to="/discover" className="mt-3 inline-block text-sm font-medium text-river hover:underline">
           {t("nav", "discover")}
         </Link>
       </Card>
+      </Layout>
     );
   }
 
@@ -65,6 +68,7 @@ export function PublicKeepsakePage() {
   };
 
   return (
+    <Layout>
     <div className="mx-auto max-w-xl">
       <div className="mb-4">
         {/* Shared links carry no in-app history, so Back always lands on
@@ -109,5 +113,6 @@ export function PublicKeepsakePage() {
         />
       )}
     </div>
+    </Layout>
   );
 }

@@ -1,8 +1,9 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { CARD_TEMPLATES, keepsakeAttribution } from "../lib/keepsake-card";
-import { EmptyState, Spinner } from "../components/ui";
+import { Button, EmptyState, Spinner } from "../components/ui";
+import { Layout } from "../components/layout";
 import type { KeepsakeTemplate } from "../lib/types";
 
 const TEMPLATE_LABEL: Record<KeepsakeTemplate, "templateClassicPaper" | "templateMidnight" | "templateQuietGarden" | "templateOldLetters" | "templateModernInk" | "templateNeer"> = {
@@ -22,21 +23,41 @@ const TEMPLATE_LABEL: Record<KeepsakeTemplate, "templateClassicPaper" | "templat
  */
 export function KeepsakesShelfPage() {
   const { t, dp, locale } = useApp();
+  const navigate = useNavigate();
   const { data, isLoading } = useQuery({
     queryKey: ["public-keepsakes"],
     queryFn: () => dp.listPublicKeepsakes(),
   });
 
-  if (isLoading) return <Spinner />;
+  if (isLoading) return <Layout><Spinner /></Layout>;
   const rows = [...(data ?? [])].sort((a, b) =>
     (b.published_at ?? "").localeCompare(a.published_at ?? ""));
   if (rows.length === 0) {
-    return <EmptyState title={t("keepsakes", "shelfEmpty")} />;
+    return (
+      <Layout>
+        <div className="mx-auto max-w-2xl">
+          <div className="mb-4">
+            <Button size="sm" variant="ghost" onClick={() => navigate("/")}>
+              ← {t("common", "back")}
+            </Button>
+          </div>
+          <EmptyState title={t("keepsakes", "shelfEmpty")} />
+        </div>
+      </Layout>
+    );
   }
 
   return (
+    <Layout>
     <div className="mx-auto max-w-2xl">
-      <h1 className="font-serif text-3xl font-bold">{t("keepsakes", "shelfTitle")}</h1>
+      <div className="mb-4">
+        {/* The shelf is directly linkable, so Back always lands on Home
+            instead of leaving the site for direct visitors. */}
+        <Button size="sm" variant="ghost" onClick={() => navigate("/")}>
+          ← {t("common", "back")}
+        </Button>
+      </div>
+      <h1 className="font-serif text-2xl font-bold sm:text-3xl">{t("keepsakes", "shelfTitle")}</h1>
       <p className="mt-2 text-sm text-ink-soft">{t("keepsakes", "shelfSubtitle")}</p>
       <div className="mt-6 flex flex-col gap-4">
         {rows.map((k) => {
@@ -55,15 +76,15 @@ export function KeepsakesShelfPage() {
           return (
             <div
               key={k.id}
-              className="rounded-xl p-5 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg"
+              className="min-w-0 rounded-xl p-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg sm:p-5"
               style={{ backgroundColor: tpl.bg, color: tpl.ink }}
             >
               <p aria-hidden className="font-serif text-xl leading-none" style={{ color: tpl.accent }}>❦</p>
               <Link to={`/k/${k.slug}`} className="mt-2 block">
-                <p className="whitespace-pre-line font-serif text-lg leading-relaxed">“{excerpt}”</p>
+                <p className="whitespace-pre-line break-words font-serif text-base leading-relaxed sm:text-lg">“{excerpt}”</p>
               </Link>
               <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${tpl.rule}` }}>
-                <p className="text-sm" style={{ color: tpl.faint }}>
+                <p className="break-words text-sm" style={{ color: tpl.faint }}>
                   {attr.title} · {attr.author}
                 </p>
                 <p className="mt-1 text-sm" style={{ color: tpl.faint }}>
@@ -87,5 +108,6 @@ export function KeepsakesShelfPage() {
         })}
       </div>
     </div>
+    </Layout>
   );
 }
