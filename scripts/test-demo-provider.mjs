@@ -911,6 +911,124 @@ let appealId;
   await dp.signOut();
 }
 
+// 31. admin metrics (V4-12): numbers match independent reads, and move
+// exactly with the actions that should move them.
+{
+  const code = async (fn) => {
+    try { await fn(); return null; } catch (e) { return e?.code ?? "threw"; }
+  };
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  const m0 = await dp.getAdminMetrics();
+  check("metrics: all fields are non-negative numbers",
+    [m0.signups, m0.storiesPublished, m0.chaptersPublished, m0.views7d, m0.views30d, m0.openReports, m0.appealsPending]
+      .every((v) => typeof v === "number" && v >= 0));
+  check("metrics: 7-day views never exceed 30-day views", m0.views7d <= m0.views30d);
+  const openNow = (await dp.listReports()).filter((r) => r.status === "open" || r.status === "in_review").length;
+  check("metrics: open reports match the report queue", m0.openReports === openNow);
+  const pendingNow = (await dp.listAppeals()).filter((a) => a.status === "pending").length;
+  check("metrics: pending appeals match the appeals list", m0.appealsPending === pendingNow);
+  await dp.signOut();
+
+  // A counted view moves both windows by exactly one (or zero if already
+  // counted today by this reader — the return value says which).
+  await dp.signIn("tanvir@golpoghor.demo", "golpoghor-demo-2026");
+  const mine = (await dp.getSession()).user.id;
+  const target = (await dp.listStories({ limit: 50 })).stories.find((s) => s.author_id !== mine);
+  const counted = await dp.recordStoryView(target.id);
+  await dp.signOut();
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  const m1 = await dp.getAdminMetrics();
+  check("metrics: a counted view moves views7d by one", m1.views7d === m0.views7d + (counted ? 1 : 0));
+  check("metrics: a counted view moves views30d by one", m1.views30d === m0.views30d + (counted ? 1 : 0));
+  await dp.signOut();
+
+  // A new signup, a newly published story, and a newly published chapter
+  // each move exactly their own counter.
+  await dp.signUp({ email: "metrics@example.com", password: "secret12", username: "metrics_user", displayName: "Metrics User" });
+  const st = await dp.createStory({ title: "Metrics Tale", summary: "x", language: "en", genre: "general", tags: [] });
+  const ch = await dp.createChapter(st.id, { title: "One", body: paragraphsToDoc(["A line."]) });
+  await dp.updateChapter(ch.id, { status: "published" });
+  await dp.updateStory(st.id, { status: "ongoing" });
+  await dp.signOut();
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  const m2 = await dp.getAdminMetrics();
+  check("metrics: a new signup moves signups by one", m2.signups === m0.signups + 1);
+  check("metrics: a newly published story moves storiesPublished by one", m2.storiesPublished === m0.storiesPublished + 1);
+  check("metrics: a newly published chapter moves chaptersPublished by one", m2.chaptersPublished === m0.chaptersPublished + 1);
+  await dp.signOut();
+
+  // Non-moderators cannot read metrics at all.
+  await dp.signIn("tanvir@golpoghor.demo", "golpoghor-demo-2026");
+  check("metrics: non-moderator refused", (await code(() => dp.getAdminMetrics())) === "notModerator");
+  await dp.signOut();
+}
+
+// 32. comment editing (V4-15): owner-only, visible-only, edited marker.
+{
+  const code = async (fn) => {
+    try { await fn(); return null; } catch (e) { return e?.code ?? "threw"; }
+  };
+  await dp.signIn("tanvir@golpoghor.demo", "golpoghor-demo-2026");
+  const story = (await dp.listStories({ q: "বর্ষার চিঠি" })).stories[0];
+  const chapter = (await dp.listChapters(story.id, { publishedOnly: true }))[0];
+  const c = await dp.createComment(chapter.id, "first draft of this thought");
+  check("comment edit: fresh comment has no edited marker", !c.edited_at);
+  const edited = await dp.updateComment(c.id, "revised thought");
+  check("comment edit: owner edit changes the body", edited.body === "revised thought");
+  check("comment edit: owner edit sets edited_at", !!edited.edited_at);
+  const listed = (await dp.listComments(chapter.id)).find((x) => x.id === c.id);
+  check("comment edit: listed comment carries the marker", !!listed?.edited_at);
+  await dp.signOut();
+
+  await dp.signIn("nusrat@golpoghor.demo", "golpoghor-demo-2026");
+  check("comment edit: another user refused",
+    (await code(() => dp.updateComment(c.id, "hijacked"))) === "notAuthor");
+  await dp.signOut();
+
+  await dp.signIn("tanvir@golpoghor.demo", "golpoghor-demo-2026");
+  check("comment edit: empty edit refused",
+    (await code(() => dp.updateComment(c.id, "   "))) === "generic");
+  await dp.signOut();
+
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  await dp.moderateComment(c.id, "hidden");
+  await dp.signOut();
+  await dp.signIn("tanvir@golpoghor.demo", "golpoghor-demo-2026");
+  check("comment edit: hidden comment cannot be edited",
+    (await code(() => dp.updateComment(c.id, "back from hiding"))) === "generic");
+  const stillHidden = (await dp.listComments(chapter.id)).some((x) => x.id === c.id);
+  check("comment edit: hidden comment stays hidden after refused edit", !stillHidden);
+  await dp.signOut();
+}
+
+// 33. chapter reordering (V4-20): up/down swaps neighbours, ends are
+// no-ops, and only the story author may move chapters.
+{
+  const code = async (fn) => {
+    try { await fn(); return null; } catch (e) { return e?.code ?? "threw"; }
+  };
+  await dp.signUp({ email: "reorder@example.com", password: "secret12", username: "reorder_user", displayName: "Reorder User" });
+  const st = await dp.createStory({ title: "Reorder Tale", summary: "x", language: "en", genre: "general", tags: [] });
+  const one = await dp.createChapter(st.id, { title: "One", body: paragraphsToDoc(["First."]) });
+  const two = await dp.createChapter(st.id, { title: "Two", body: paragraphsToDoc(["Second."]) });
+  const three = await dp.createChapter(st.id, { title: "Three", body: paragraphsToDoc(["Third."]) });
+  const order = async () => (await dp.listChapters(st.id, { publishedOnly: false })).map((c) => c.title);
+  check("reorder: initial order is creation order", (await order()).join(",") === "One,Two,Three");
+  await dp.moveChapter(two.id, "up");
+  check("reorder: middle chapter moves up", (await order()).join(",") === "Two,One,Three");
+  await dp.moveChapter(two.id, "up");
+  check("reorder: moving the first chapter up is a no-op", (await order()).join(",") === "Two,One,Three");
+  await dp.moveChapter(three.id, "down");
+  check("reorder: moving the last chapter down is a no-op", (await order()).join(",") === "Two,One,Three");
+  await dp.moveChapter(one.id, "down");
+  check("reorder: middle chapter moves down", (await order()).join(",") === "Two,Three,One");
+  await dp.signOut();
+  await dp.signIn("tanvir@golpoghor.demo", "golpoghor-demo-2026");
+  check("reorder: non-author refused",
+    (await code(() => dp.moveChapter(two.id, "up"))) === "notAuthor");
+  await dp.signOut();
+}
+
 console.log("");
 for (const [st, name] of results) console.log(`${st}  ${name}`);
 const fails = results.filter((r) => r[0] === "FAIL").length;

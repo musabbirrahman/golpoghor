@@ -4,6 +4,7 @@
  * trying the app without credentials). The UI never touches either directly.
  */
 import type {
+  AdminMetrics,
   Appeal,
   AppealStatus,
   AppealTarget,
@@ -147,6 +148,9 @@ export interface DataProvider {
   getChapter(id: string): Promise<Chapter | null>;
   createChapter(storyId: string, input: ChapterInput): Promise<Chapter>;
   updateChapter(id: string, patch: Partial<ChapterInput & { status: Chapter["status"] }>): Promise<Chapter>;
+  /** V4-20: swap a chapter's position with its neighbour (author only);
+   * moving past either end is a no-op. */
+  moveChapter(id: string, direction: "up" | "down"): Promise<Chapter>;
   deleteChapter(id: string): Promise<void>;
 
   // ------------------------------------------------------------ social
@@ -178,6 +182,8 @@ export interface DataProvider {
   // ---------------------------------------------------------- comments
   listComments(chapterId: string): Promise<Comment[]>;
   createComment(chapterId: string, body: string): Promise<Comment>;
+  /** V4-15: author-only edit; server-side RLS enforces owner + visible. */
+  updateComment(id: string, body: string): Promise<Comment>;
   deleteComment(id: string): Promise<void>;
 
   // --------------------------------------------------------- keepsakes (V4-27a)
@@ -215,6 +221,8 @@ export interface DataProvider {
   updateReport(id: string, status: ReportStatus): Promise<Report>;
 
   // -------------------------------------------------------- moderation
+  /** Moderator-only: platform health numbers from existing tables (V4-12). */
+  getAdminMetrics(): Promise<AdminMetrics>;
   listModerationEvents(targetType?: ReportTarget, targetId?: string): Promise<ModerationEvent[]>;
   logModerationEvent(action: string, targetType: ReportTarget, targetId: string, details: Record<string, unknown>): Promise<ModerationEvent>;
   moderateStory(id: string, status: "hidden" | "ongoing" | "complete"): Promise<void>;

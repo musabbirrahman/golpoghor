@@ -5,6 +5,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  AdminMetrics,
   Appeal,
   AppealStatus,
   AppealTarget,
@@ -611,6 +612,41 @@ export class SupabaseProvider implements DataProvider {
     if (error) throw toAppError(error);
   }
 
+  /** V4-20: swap positions with the neighbouring chapter. Enforced by the
+   * existing chapters_owner_all RLS policy (story author only); no
+   * unique constraint on (story_id, position) exists, so the two updates
+   * can never collide. Ends are no-ops. */
+  async moveChapter(id: string, direction: "up" | "down"): Promise<Chapter> {
+    const { data: current, error: curErr } = await this.sb
+      .from("chapters")
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (curErr) throw toAppError(curErr);
+    const { data: siblings, error: sibErr } = await this.sb
+      .from("chapters")
+      .select("id, position")
+      .eq("story_id", (current as Chapter).story_id)
+      .order("position", { ascending: true });
+    if (sibErr) throw toAppError(sibErr);
+    const list = siblings ?? [];
+    const idx = list.findIndex((c) => c.id === id);
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= list.length) return current as Chapter;
+    const other = list[swapIdx];
+    const curPos = (current as Chapter).position;
+    const { error: e1 } = await this.sb.from("chapters").update({ position: curPos }).eq("id", other.id);
+    if (e1) throw toAppError(e1);
+    const { data: moved, error: e2 } = await this.sb
+      .from("chapters")
+      .update({ position: other.position })
+      .eq("id", id)
+      .select()
+      .single();
+    if (e2) throw toAppError(e2);
+    return moved as Chapter;
+  }
+
   // ------------------------------------------------------------ social
   private async uid(): Promise<string> {
     const s = await this.getSession();
@@ -802,6 +838,22 @@ export class SupabaseProvider implements DataProvider {
   async deleteComment(id: string): Promise<void> {
     const { error } = await this.sb.from("comments").delete().eq("id", id);
     if (error) throw toAppError(error);
+  }
+
+  /** V4-15: owner edit. Enforced by the existing comments_owner_update
+   * RLS policy (author-only, visible comments only); edited_at marks it. */
+  async updateComment(id: string, body: string): Promise<Comment> {
+    const text = body.trim();
+    if (!text) throw new AppError("generic", "Comment is empty");
+    if (text.length > 2000) throw new AppError("generic", "Comment too long");
+    const { data, error } = await this.sb
+      .from("comments")
+      .update({ body: text, edited_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("*, author:profiles!comments_author_id_fkey(*)")
+      .single();
+    if (error) throw toAppError(error);
+    return mapComment(data);
   }
 
   // --------------------------------------------------------- keepsakes (V4-27a)
@@ -1182,6 +1234,15 @@ export class SupabaseProvider implements DataProvider {
   }
 
   // -------------------------------------------------------- moderation
+  /** Moderator-only health numbers (V4-12), served by a SECURITY DEFINER
+   * function: story_views has no direct read policy by design, so the
+   * function counts it server-side and refuses non-moderators itself. */
+  async getAdminMetrics(): Promise<AdminMetrics> {
+    const { data, error } = await this.sb.rpc("get_admin_metrics");
+    if (error) throw toAppError(error);
+    return data as AdminMetrics;
+  }
+
   async listModerationEvents(targetType?: ReportTarget, targetId?: string): Promise<ModerationEvent[]> {
     let q = this.sb
       .from("moderation_events")

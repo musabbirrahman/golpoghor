@@ -128,6 +128,8 @@ const files = [
   "supabase/migrations/20261021140000_story_attribution.sql",
   "supabase/migrations/20261021150000_keepsakes_public.sql",
   "supabase/migrations/20261021160000_keepsake_keeper_credit.sql",
+  "supabase/migrations/20261021170000_admin_metrics.sql",
+  "supabase/migrations/20261021170001_comment_edited_at.sql",
   "supabase/seed.sql",
 ];
 

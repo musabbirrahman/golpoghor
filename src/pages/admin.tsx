@@ -281,9 +281,14 @@ function AppealCard({ appeal }: { appeal: Appeal }) {
 
 export function AdminPage() {
   const { t, locale, dp } = useApp();
-  const [tab, setTab] = useState<"queue" | "appeals" | "resolved" | "audit">("queue");
+  const [tab, setTab] = useState<"queue" | "appeals" | "resolved" | "audit" | "metrics">("queue");
 
   const reportsQuery = useQuery({ queryKey: ["reports"], queryFn: () => dp.listReports() });
+  const metricsQuery = useQuery({
+    queryKey: ["admin-metrics"],
+    queryFn: () => dp.getAdminMetrics(),
+    enabled: tab === "metrics",
+  });
   const appealsQuery = useQuery({
     queryKey: ["appeals"],
     queryFn: () => dp.listAppeals(),
@@ -322,10 +327,34 @@ export function AdminPage() {
           <button role="tab" aria-selected={tab === "audit"} className={tabBtn(tab === "audit")} onClick={() => setTab("audit")}>
             {t("moderation", "audit")}
           </button>
+          <button role="tab" aria-selected={tab === "metrics"} className={tabBtn(tab === "metrics")} onClick={() => setTab("metrics")}>
+            {t("moderation", "metrics")}
+          </button>
         </div>
 
         <div className="mt-6">
-          {tab === "appeals" ? (
+          {tab === "metrics" ? (
+            metricsQuery.isLoading ? <Spinner /> : metricsQuery.data ? (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {([
+                  ["metricsSignups", metricsQuery.data.signups],
+                  ["metricsStories", metricsQuery.data.storiesPublished],
+                  ["metricsChapters", metricsQuery.data.chaptersPublished],
+                  ["metricsViews7d", metricsQuery.data.views7d],
+                  ["metricsViews30d", metricsQuery.data.views30d],
+                  ["metricsOpenReports", metricsQuery.data.openReports],
+                  ["metricsAppealsPending", metricsQuery.data.appealsPending],
+                ] as const).map(([key, value]) => (
+                  <Card key={key} className="p-5">
+                    <p className="font-serif text-3xl font-bold">{value}</p>
+                    <p className="mt-1 text-sm text-ink-soft">{t("moderation", key)}</p>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <EmptyState title={t("moderation", "empty")} />
+            )
+          ) : tab === "appeals" ? (
             appealsQuery.isLoading ? <Spinner /> : appeals.length ? (
               <div className="flex flex-col gap-4">
                 {appeals.map((a) => <AppealCard key={a.id} appeal={a} />)}

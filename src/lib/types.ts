@@ -168,8 +168,21 @@ export interface Comment {
   status: CommentStatus;
   created_at: string;
   updated_at: string;
+  /** V4-15: set on author edit; null/undefined means never edited. */
+  edited_at?: string | null;
   /** joined */
   author?: Profile;
+}
+
+/** V4-12: platform health numbers, from existing tables only. */
+export interface AdminMetrics {
+  signups: number;
+  storiesPublished: number;
+  chaptersPublished: number;
+  views7d: number;
+  views30d: number;
+  openReports: number;
+  appealsPending: number;
 }
 
 /** V4-27a: a reader's private copy of a passage, with a creation-time

@@ -10,6 +10,7 @@
  */
 import type {
   UsernameRedirect,
+  AdminMetrics,
   Appeal,
   AppealStatus,
   AppealTarget,
@@ -846,6 +847,29 @@ export class DemoProvider implements DataProvider {
     this.persist();
   }
 
+  /** V4-20: swap positions with the neighbouring chapter (author only). */
+  async moveChapter(id: string, direction: "up" | "down"): Promise<Chapter> {
+    const me = await this.requireUid();
+    const c = this.db.chapters.find((x) => x.id === id);
+    if (!c) throw new AppError("notFound", "Chapter not found");
+    this.requireOwner(this.storyOfChapter(id), me);
+    const siblings = this.db.chapters
+      .filter((x) => x.story_id === c.story_id)
+      .sort((a, b) => a.position - b.position);
+    const idx = siblings.findIndex((x) => x.id === id);
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= siblings.length) return { ...c };
+    const other = siblings[swapIdx];
+    const tmp = c.position;
+    c.position = other.position;
+    other.position = tmp;
+    const now = new Date().toISOString();
+    c.updated_at = now;
+    other.updated_at = now;
+    this.persist();
+    return { ...c };
+  }
+
   // ------------------------------------------------------------ social
   async isFollowing(authorId: string): Promise<boolean> {
     const me = this.sessionSync()?.user.id;
@@ -1030,10 +1054,30 @@ export class DemoProvider implements DataProvider {
       status: "visible",
       created_at: now,
       updated_at: now,
+      edited_at: null,
     };
     this.db.comments.push(comment);
     this.persist();
     return { ...comment, author: this.db.profiles.find((p) => p.id === me) };
+  }
+
+  /** V4-15: author-only edit, mirroring comments_owner_update RLS
+   * (owner + visible-only; a hidden comment cannot be edited back). */
+  async updateComment(id: string, body: string): Promise<Comment> {
+    const me = await this.requireUid();
+    const text = body.trim();
+    if (!text) throw new AppError("generic", "Comment is empty");
+    if (text.length > 2000) throw new AppError("generic", "Comment too long");
+    const c = this.db.comments.find((x) => x.id === id);
+    if (!c) throw new AppError("notFound", "Comment not found");
+    if (c.author_id !== me) throw new AppError("notAuthor", "You can only edit your own comment");
+    if (c.status !== "visible") throw new AppError("generic", "Comment cannot be edited");
+    const now = new Date().toISOString();
+    c.body = text;
+    c.updated_at = now;
+    c.edited_at = now;
+    this.persist();
+    return { ...c, author: this.db.profiles.find((p) => p.id === me) };
   }
 
   async deleteComment(id: string): Promise<void> {
@@ -1444,6 +1488,23 @@ export class DemoProvider implements DataProvider {
   }
 
   // -------------------------------------------------------- moderation
+  /** Moderator-only health numbers (V4-12) from the demo collections. */
+  async getAdminMetrics(): Promise<AdminMetrics> {
+    const me = await this.requireUid();
+    this.requireModerator(me);
+    const dateDaysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString().slice(0, 10);
+    const inWindow = (viewedOn: string, days: number) => viewedOn >= dateDaysAgo(days - 1);
+    return {
+      signups: this.db.profiles.length,
+      storiesPublished: this.db.stories.filter((s) => s.status === "ongoing" || s.status === "complete").length,
+      chaptersPublished: this.db.chapters.filter((c) => c.status === "published").length,
+      views7d: this.db.storyViews.filter((v) => inWindow(v.viewed_on, 7)).length,
+      views30d: this.db.storyViews.filter((v) => inWindow(v.viewed_on, 30)).length,
+      openReports: this.db.reports.filter((r) => r.status === "open" || r.status === "in_review").length,
+      appealsPending: this.db.appeals.filter((a) => a.status === "pending").length,
+    };
+  }
+
   async listModerationEvents(targetType?: ReportTarget, targetId?: string): Promise<ModerationEvent[]> {
     const me = await this.requireUid();
     this.requireModerator(me);

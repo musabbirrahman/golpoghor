@@ -687,11 +687,16 @@ function LicenceCard({ storyId }: { storyId: string }) {
 
 function ChapterListCard({ storyId }: { storyId: string }) {
   const { t, dp } = useApp();
+  const queryClient = useQueryClient();
   const chaptersQuery = useQuery({
     queryKey: ["chapters", storyId, "all"],
     queryFn: () => dp.listChapters(storyId, { publishedOnly: false }),
   });
   const chapters = chaptersQuery.data ?? [];
+  const moveMutation = useMutation({
+    mutationFn: ({ id, direction }: { id: string; direction: "up" | "down" }) => dp.moveChapter(id, direction),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["chapters", storyId, "all"] }),
+  });
 
   return (
     <Card className="mt-6 p-6">
@@ -707,6 +712,20 @@ function ChapterListCard({ storyId }: { storyId: string }) {
                 <span className="w-6 text-center font-serif text-ink-faint">{i + 1}</span>
                 <span className="min-w-0 flex-1 truncate font-medium">{c.title}</span>
                 <StatusBadge status={c.status} />
+                <span className="flex items-center gap-1">
+                  <button
+                    onClick={() => moveMutation.mutate({ id: c.id, direction: "up" })}
+                    disabled={i === 0 || moveMutation.isPending}
+                    aria-label={t("write", "moveUp")}
+                    className="rounded px-1.5 py-0.5 text-sm text-ink-soft hover:bg-sage disabled:opacity-30"
+                  >↑</button>
+                  <button
+                    onClick={() => moveMutation.mutate({ id: c.id, direction: "down" })}
+                    disabled={i === chapters.length - 1 || moveMutation.isPending}
+                    aria-label={t("write", "moveDown")}
+                    className="rounded px-1.5 py-0.5 text-sm text-ink-soft hover:bg-sage disabled:opacity-30"
+                  >↓</button>
+                </span>
                 {c.status === "hidden" && (
                   <AppealSection targetType="chapter" targetId={c.id} compact />
                 )}

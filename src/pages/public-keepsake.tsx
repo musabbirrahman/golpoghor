@@ -67,9 +67,22 @@ export function PublicKeepsakePage() {
     downloadKeepsakePNG(canvasRef.current, `golponeer-keepsake-${k.slug}.png`);
   };
 
+  // Text alternative for the canvas card (its text is pixels, not DOM text).
+  const cardAttr = keepsakeAttribution(
+    {
+      title: k.source_title,
+      author: { display_name: k.source_author_name },
+      original_author: k.source_original_author,
+      translator_name: k.source_translator_name,
+      adapter_name: k.source_adapter_name,
+    },
+    locale
+  );
+
   return (
     <Layout>
     <div className="mx-auto max-w-xl">
+      <h1 className="sr-only">{t("keepsakes", "title")}: {k.source_title}</h1>
       <div className="mb-4">
         {/* Shared links carry no in-app history, so Back always lands on
             the shelf — the keepsakes home — instead of leaving the site. */}
@@ -78,7 +91,7 @@ export function PublicKeepsakePage() {
         </Button>
       </div>
       <Card className="overflow-hidden p-0">
-        <canvas ref={canvasRef} className="block w-full" />
+        <canvas ref={canvasRef} className="block w-full" role="img" aria-label={`${cardAttr.title} · ${cardAttr.author}`} />
       </Card>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button size="sm" variant="secondary" onClick={download}>

@@ -18,7 +18,7 @@ interface LegalDoc {
   sections: LegalSection[];
 }
 
-const EMAIL = "golpoghor.app@gmail.com";
+const EMAIL = "golponeer.app@gmail.com";
 
 const DOCS: Record<string, LegalDoc> = {
   terms: {

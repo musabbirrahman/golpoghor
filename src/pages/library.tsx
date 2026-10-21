@@ -113,6 +113,7 @@ export function LibraryKeepsakesPage() {
   return (
     <RequireAuth>
       <Layout>
+        <h1 className="sr-only">{t("keepsakes", "myKeepsakes")}</h1>
         <div className="mb-4 mt-6">
           <Button size="sm" variant="ghost" onClick={() => navigate("/library")}>
             ← {t("common", "back")}

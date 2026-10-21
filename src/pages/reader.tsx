@@ -138,6 +138,8 @@ function Comments({ chapterId }: { chapterId: string }) {
   const queryClient = useQueryClient();
   const [body, setBody] = useState("");
   const [reportId, setReportId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState("");
 
   const commentsQuery = useQuery({
     queryKey: ["comments", chapterId],
@@ -157,12 +159,24 @@ function Comments({ chapterId }: { chapterId: string }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["comments", chapterId] }),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, text }: { id: string; text: string }) => dp.updateComment(id, text),
+    onSuccess: () => {
+      setEditId(null);
+      queryClient.invalidateQueries({ queryKey: ["comments", chapterId] });
+    },
+  });
+
   const err =
     createMutation.error instanceof AppError
       ? t("errors", createMutation.error.code)
       : createMutation.error
         ? t("errors", "generic")
-        : null;
+        : updateMutation.error instanceof AppError
+          ? t("errors", updateMutation.error.code)
+          : updateMutation.error
+            ? t("errors", "generic")
+            : null;
 
   return (
     <section className="mx-auto mt-12 max-w-reader" aria-labelledby="comments-heading">
@@ -213,15 +227,23 @@ function Comments({ chapterId }: { chapterId: string }) {
                 <Avatar name={c.author?.display_name ?? "?"} size="sm" src={dp.avatarUrl(c.author?.avatar_path ?? null)} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{c.author?.display_name}</p>
-                  <p className="text-xs text-ink-faint">{timeAgo(c.created_at, locale)}</p>
+                  <p className="text-xs text-ink-faint">{timeAgo(c.created_at, locale)}{c.edited_at ? ` · ${t("comments", "edited")}` : ""}</p>
                 </div>
                 {(c.author_id === profile?.id) && (
-                  <button
-                    onClick={() => deleteMutation.mutate(c.id)}
-                    className="text-xs text-ink-faint underline hover:text-clay"
-                  >
-                    {t("comments", "delete")}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => { setEditId(c.id); setEditBody(c.body); }}
+                      className="text-xs text-ink-faint underline hover:text-clay"
+                    >
+                      {t("comments", "edit")}
+                    </button>
+                    <button
+                      onClick={() => deleteMutation.mutate(c.id)}
+                      className="text-xs text-ink-faint underline hover:text-clay"
+                    >
+                      {t("comments", "delete")}
+                    </button>
+                  </>
                 )}
                 {session && c.author_id !== profile?.id && (
                   <button
@@ -232,7 +254,35 @@ function Comments({ chapterId }: { chapterId: string }) {
                   </button>
                 )}
               </div>
-              <p className="mt-2 whitespace-pre-line text-[15px]">{c.body}</p>
+              {editId === c.id ? (
+                <form
+                  className="mt-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (editBody.trim()) updateMutation.mutate({ id: c.id, text: editBody });
+                  }}
+                >
+                  <label htmlFor={`comment-edit-${c.id}`} className="sr-only">{t("comments", "edit")}</label>
+                  <textarea
+                    id={`comment-edit-${c.id}`}
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value)}
+                    rows={3}
+                    maxLength={2000}
+                    className="w-full rounded-xl border border-ink/15 bg-white px-4 py-3 focus:border-river focus:outline-none focus:ring-1 focus:ring-river"
+                  />
+                  <div className="mt-2 flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" type="button" onClick={() => setEditId(null)}>
+                      {t("common", "cancel")}
+                    </Button>
+                    <Button size="sm" type="submit" disabled={updateMutation.isPending || !editBody.trim()}>
+                      {t("comments", "save")}
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <p className="mt-2 whitespace-pre-line text-[15px]">{c.body}</p>
+              )}
             </article>
           ))
         ) : (

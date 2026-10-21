@@ -313,11 +313,13 @@ export function Footer() {
 }
 
 export function Layout({ children }: { children: ReactNode }) {
+  const { t } = useApp();
   return (
     <div className="flex min-h-screen flex-col">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-river focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">{t("common", "skipToContent")}</a>
       <DemoBanner />
       <Header />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 md:pb-12">{children}</main>
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 md:pb-12">{children}</main>
       <Footer />
       <BottomNav />
     </div>
@@ -325,11 +327,13 @@ export function Layout({ children }: { children: ReactNode }) {
 }
 
 export function NarrowLayout({ children }: { children: ReactNode }) {
+  const { t } = useApp();
   return (
     <div className="flex min-h-screen flex-col">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-river focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">{t("common", "skipToContent")}</a>
       <DemoBanner />
       <Header />
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 pb-24 pt-8 md:pb-12">{children}</main>
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-2xl flex-1 px-4 pb-24 pt-8 md:pb-12">{children}</main>
       <Footer />
       <BottomNav />
     </div>
