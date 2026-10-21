@@ -100,7 +100,7 @@ export function PublicKeepsakePage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
             {t("keepsakes", "echoPublicNote")}
           </p>
-          <p className="mt-1 whitespace-pre-line text-sm italic text-ink-soft">{k.echo}</p>
+          <p className="mt-1 whitespace-pre-line break-words text-sm italic text-ink-soft">{k.echo}</p>
         </Card>
       )}
       {reportOpen && (

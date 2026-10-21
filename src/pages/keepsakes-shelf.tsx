@@ -1,8 +1,8 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { CARD_TEMPLATES, keepsakeAttribution } from "../lib/keepsake-card";
-import { Button, EmptyState, Spinner } from "../components/ui";
+import { EmptyState, Spinner } from "../components/ui";
 import { Layout } from "../components/layout";
 import type { KeepsakeTemplate } from "../lib/types";
 
@@ -23,7 +23,6 @@ const TEMPLATE_LABEL: Record<KeepsakeTemplate, "templateClassicPaper" | "templat
  */
 export function KeepsakesShelfPage() {
   const { t, dp, locale } = useApp();
-  const navigate = useNavigate();
   const { data, isLoading } = useQuery({
     queryKey: ["public-keepsakes"],
     queryFn: () => dp.listPublicKeepsakes(),
@@ -36,11 +35,6 @@ export function KeepsakesShelfPage() {
     return (
       <Layout>
         <div className="mx-auto max-w-2xl">
-          <div className="mb-4">
-            <Button size="sm" variant="ghost" onClick={() => navigate("/")}>
-              ← {t("common", "back")}
-            </Button>
-          </div>
           <EmptyState title={t("keepsakes", "shelfEmpty")} />
         </div>
       </Layout>
@@ -50,13 +44,6 @@ export function KeepsakesShelfPage() {
   return (
     <Layout>
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4">
-        {/* The shelf is directly linkable, so Back always lands on Home
-            instead of leaving the site for direct visitors. */}
-        <Button size="sm" variant="ghost" onClick={() => navigate("/")}>
-          ← {t("common", "back")}
-        </Button>
-      </div>
       <h1 className="font-serif text-2xl font-bold sm:text-3xl">{t("keepsakes", "shelfTitle")}</h1>
       <p className="mt-2 text-sm text-ink-soft">{t("keepsakes", "shelfSubtitle")}</p>
       <div className="mt-6 flex flex-col gap-4">
@@ -91,7 +78,7 @@ export function KeepsakesShelfPage() {
                   {t("keepsakes", "keptBy")} {k.keeper_name}
                 </p>
                 {k.echo && (
-                  <p className="mt-2 border-l-2 pl-3 text-sm italic" style={{ borderColor: tpl.accent, color: tpl.faint }}>{k.echo}</p>
+                  <p className="mt-2 break-words border-l-2 pl-3 text-sm italic" style={{ borderColor: tpl.accent, color: tpl.faint }}>{k.echo}</p>
                 )}
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                   <Link to={`/k/${k.slug}`} className="font-medium hover:underline" style={{ color: tpl.accent }}>

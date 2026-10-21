@@ -31,7 +31,7 @@ export function LibraryPage() {
   const queryClient = useQueryClient();
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [keepsakeBusy, setKeepsakeBusy] = useState(false);
-  const [keepsakeError, setKeepsakeError] = useState<string | null>(null);
+  const [keepsakeError, setKeepsakeError] = useState<{ id: string; message: string } | null>(null);
   const [echoEditId, setEchoEditId] = useState<string | null>(null);
   const [echoDraft, setEchoDraft] = useState("");
   const [expandedExcerptId, setExpandedExcerptId] = useState<string | null>(null);
@@ -76,7 +76,7 @@ export function LibraryPage() {
       await dp.publishKeepsake(k.id);
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
     } catch (e) {
-      setKeepsakeError(e instanceof AppError ? t("errors", e.code) : t("errors", "generic"));
+      setKeepsakeError({ id: k.id, message: e instanceof AppError ? t("errors", e.code) : t("errors", "generic") });
     } finally {
       setKeepsakeBusy(false);
     }
@@ -89,7 +89,7 @@ export function LibraryPage() {
       await dp.unpublishKeepsake(k.id);
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
     } catch (e) {
-      setKeepsakeError(e instanceof AppError ? t("errors", e.code) : t("errors", "generic"));
+      setKeepsakeError({ id: k.id, message: e instanceof AppError ? t("errors", e.code) : t("errors", "generic") });
     } finally {
       setKeepsakeBusy(false);
     }
@@ -106,7 +106,7 @@ export function LibraryPage() {
       await dp.deleteKeepsake(k.id);
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
     } catch (e) {
-      setKeepsakeError(e instanceof AppError ? t("errors", e.code) : t("errors", "generic"));
+      setKeepsakeError({ id: k.id, message: e instanceof AppError ? t("errors", e.code) : t("errors", "generic") });
     } finally {
       setKeepsakeBusy(false);
     }
@@ -121,7 +121,7 @@ export function LibraryPage() {
       setEchoEditId(null);
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
     } catch (e) {
-      setKeepsakeError(e instanceof AppError ? t("errors", e.code) : t("errors", "generic"));
+      setKeepsakeError({ id: k.id, message: e instanceof AppError ? t("errors", e.code) : t("errors", "generic") });
     } finally {
       setKeepsakeBusy(false);
     }
@@ -189,7 +189,7 @@ export function LibraryPage() {
                     {" · "}
                     {k.visibility === "public" ? t("keepsakes", "publicBadge") : t("keepsakes", "privateBadge")}
                   </p>
-                  {keepsakeError && <p className="mt-2 text-sm text-clay">{keepsakeError}</p>}
+                  {keepsakeError?.id === k.id && <p className="mt-2 text-sm text-clay">{keepsakeError.message}</p>}
                   {echoEditId === k.id ? (
                     <div className="mt-3">
                       <textarea
@@ -211,7 +211,7 @@ export function LibraryPage() {
                       </div>
                     </div>
                   ) : k.echo ? (
-                    <p className="mt-3 whitespace-pre-line border-l-2 pl-3 text-sm italic" style={{ borderColor: tpl.accent, color: tpl.faint }}>
+                    <p className="mt-3 whitespace-pre-line break-words border-l-2 pl-3 text-sm italic" style={{ borderColor: tpl.accent, color: tpl.faint }}>
                       {k.echo}
                     </p>
                   ) : null}
