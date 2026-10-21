@@ -196,7 +196,7 @@ export function LibraryPage() {
                         aria-label={t("keepsakes", "echoLabel")}
                         rows={3}
                         maxLength={2000}
-                        className="w-full rounded-lg border border-sage-dark bg-white px-3 py-2 text-sm"
+                        className="w-full rounded-lg border border-sage-dark bg-white px-3 py-2 text-sm text-ink"
                         value={echoDraft}
                         onChange={(e) => setEchoDraft(e.target.value)}
                         placeholder={t("keepsakes", "echoPlaceholder")}
@@ -205,7 +205,7 @@ export function LibraryPage() {
                         <Button size="sm" onClick={() => saveEcho(k)} disabled={keepsakeBusy}>
                           {t("keepsakes", "saveEcho")}
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setEchoEditId(null)}>
+                        <Button size="sm" variant="ghost" className="hover:!bg-black/5" style={{ color: tpl.ink }} onClick={() => setEchoEditId(null)}>
                           {t("keepsakes", "cancelEcho")}
                         </Button>
                       </div>
@@ -222,13 +222,14 @@ export function LibraryPage() {
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="hover:!bg-black/5"
                       style={{ color: tpl.ink }}
                       onClick={() => { setEchoEditId(k.id); setEchoDraft(k.echo ?? ""); }}
                     >
                       {k.echo ? t("keepsakes", "editEcho") : t("keepsakes", "addEcho")}
                     </Button>
                     {k.visibility !== "public" && (
-                      <Button size="sm" variant="ghost" style={{ color: tpl.ink }} onClick={() => publishKeepsake(k)} disabled={keepsakeBusy}>
+                      <Button size="sm" variant="ghost" className="hover:!bg-black/5" style={{ color: tpl.ink }} onClick={() => publishKeepsake(k)} disabled={keepsakeBusy}>
                         {t("keepsakes", "publish")}
                       </Button>
                     )}
@@ -236,10 +237,10 @@ export function LibraryPage() {
                       <>
                         {k.slug && (
                           <Link to={`/k/${k.slug}`}>
-                            <Button size="sm" variant="ghost" style={{ color: tpl.ink }}>{t("keepsakes", "viewPublicPage")}</Button>
+                            <Button size="sm" variant="ghost" className="hover:!bg-black/5" style={{ color: tpl.ink }}>{t("keepsakes", "viewPublicPage")}</Button>
                           </Link>
                         )}
-                        <Button size="sm" variant="ghost" style={{ color: tpl.ink }} onClick={() => unpublishKeepsake(k)} disabled={keepsakeBusy}>
+                        <Button size="sm" variant="ghost" className="hover:!bg-black/5" style={{ color: tpl.ink }} onClick={() => unpublishKeepsake(k)} disabled={keepsakeBusy}>
                           {t("keepsakes", "unpublish")}
                         </Button>
                       </>
@@ -247,6 +248,7 @@ export function LibraryPage() {
                     <Button
                       size="sm"
                       variant={confirmDeleteId === k.id ? "danger" : "ghost"}
+                      className={confirmDeleteId === k.id ? "" : "hover:!bg-black/5"}
                       style={confirmDeleteId === k.id ? undefined : { color: tpl.ink }}
                       onClick={() => deleteKeepsake(k)}
                       disabled={keepsakeBusy}
