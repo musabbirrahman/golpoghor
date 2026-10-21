@@ -136,6 +136,7 @@ function seed(): DemoDB {
       content_notice: s.content_notice,
       cover_path: `demo:${encodeURIComponent(s.title)}:${s.language}`,
       view_count: 40 + Math.floor(Math.random() * 400),
+      origin_type: "original",
       created_at: daysAgo(day + 6),
       updated_at: daysAgo(Math.max(day - 2, 1)),
       published_at: published ? daysAgo(day) : null,
@@ -624,6 +625,13 @@ export class DemoProvider implements DataProvider {
       created_at: now,
       updated_at: now,
       published_at: null,
+      origin_type: input.origin_type ?? "original",
+      original_author: input.original_author?.trim() || null,
+      original_title: input.original_title?.trim() || null,
+      translator_name: input.translator_name?.trim() || null,
+      adapter_name: input.adapter_name?.trim() || null,
+      edition_source: input.edition_source?.trim() || null,
+      publication_details: input.publication_details?.trim() || null,
     };
     this.db.stories.push(story);
     this.persist();
@@ -648,6 +656,13 @@ export class DemoProvider implements DataProvider {
     if (patch.genre !== undefined) s.genre = patch.genre.trim().slice(0, 60) || "general";
     if (patch.tags !== undefined) s.tags = patch.tags.map((t) => t.trim()).filter(Boolean).slice(0, 10);
     if (patch.content_notice !== undefined) s.content_notice = patch.content_notice.trim().slice(0, 500);
+    if (patch.origin_type !== undefined) s.origin_type = patch.origin_type;
+    if (patch.original_author !== undefined) s.original_author = patch.original_author?.trim() || null;
+    if (patch.original_title !== undefined) s.original_title = patch.original_title?.trim() || null;
+    if (patch.translator_name !== undefined) s.translator_name = patch.translator_name?.trim() || null;
+    if (patch.adapter_name !== undefined) s.adapter_name = patch.adapter_name?.trim() || null;
+    if (patch.edition_source !== undefined) s.edition_source = patch.edition_source?.trim() || null;
+    if (patch.publication_details !== undefined) s.publication_details = patch.publication_details?.trim() || null;
     if (patch.cover_path !== undefined) s.cover_path = patch.cover_path;
     if (patch.status !== undefined) {
       const allowed: Story["status"][] = ["draft", "ongoing", "complete", "hidden"];
@@ -1069,11 +1084,11 @@ export class DemoProvider implements DataProvider {
       status: "active",
       source_title: story.title,
       source_author_name: author?.display_name ?? "",
-      source_original_author: null,
-      source_original_title: null,
-      source_translator_name: null,
-      source_adapter_name: null,
-      source_edition: null,
+      source_original_author: story.original_author ?? null,
+      source_original_title: story.original_title ?? null,
+      source_translator_name: story.translator_name ?? null,
+      source_adapter_name: story.adapter_name ?? null,
+      source_edition: story.edition_source ?? null,
       published_at: null,
       eligibility_basis: null,
       created_at: now,

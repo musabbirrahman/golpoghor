@@ -145,6 +145,30 @@ export function StoryPage() {
 
           <p className="mt-4 max-w-2xl whitespace-pre-line text-ink-soft">{story.summary}</p>
 
+          {/* V4-28 attribution: only credits that exist are shown. */}
+          {(story.original_author || story.original_title || story.translator_name || story.adapter_name || story.edition_source || story.publication_details) && (
+            <dl className="mt-4 max-w-2xl space-y-1 text-sm text-ink-soft">
+              {story.original_author && (
+                <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "originalAuthor")}:</dt><dd>{story.original_author}</dd></div>
+              )}
+              {story.original_title && story.original_title !== story.title && (
+                <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "originalTitle")}:</dt><dd>{story.original_title}</dd></div>
+              )}
+              {story.translator_name && (
+                <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "translatedBy")}:</dt><dd>{story.translator_name}</dd></div>
+              )}
+              {story.adapter_name && (
+                <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "adaptedBy")}:</dt><dd>{story.adapter_name}</dd></div>
+              )}
+              {story.edition_source && (
+                <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "editionSource")}:</dt><dd>{story.edition_source}</dd></div>
+              )}
+              {story.publication_details && (
+                <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "publicationDetails")}:</dt><dd>{story.publication_details}</dd></div>
+              )}
+            </dl>
+          )}
+
           {story.content_notice && (
             <p className="mt-3 max-w-2xl rounded-lg bg-clay-soft px-3 py-2 text-sm text-clay-dark">
               <strong>{t("story", "contentNotice")}:</strong> {story.content_notice}

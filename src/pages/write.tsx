@@ -138,6 +138,14 @@ export function StoryFormPage() {
   const [genre, setGenre] = useState("general");
   const [tags, setTags] = useState("");
   const [notice, setNotice] = useState("");
+  // V4-28 attribution: original authors see none of the extra fields.
+  const [origin, setOrigin] = useState<"original" | "classic" | "translation" | "adaptation">("original");
+  const [originalAuthor, setOriginalAuthor] = useState("");
+  const [originalTitle, setOriginalTitle] = useState("");
+  const [translatorName, setTranslatorName] = useState("");
+  const [adapterName, setAdapterName] = useState("");
+  const [editionSource, setEditionSource] = useState("");
+  const [publicationDetails, setPublicationDetails] = useState("");
   const [initialized, setInitialized] = useState(false);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -169,6 +177,13 @@ export function StoryFormPage() {
     setGenre(normalizeGenre(story.genre));
     setTags(story.tags.join(", "));
     setNotice(story.content_notice);
+    setOrigin(story.origin_type ?? "original");
+    setOriginalAuthor(story.original_author ?? "");
+    setOriginalTitle(story.original_title ?? "");
+    setTranslatorName(story.translator_name ?? "");
+    setAdapterName(story.adapter_name ?? "");
+    setEditionSource(story.edition_source ?? "");
+    setPublicationDetails(story.publication_details ?? "");
     setInitialized(true);
   }
 
@@ -188,6 +203,15 @@ export function StoryFormPage() {
         genre,
         tags: tags.split(",").map((x) => x.trim()).filter(Boolean),
         content_notice: notice,
+        origin_type: origin,
+        // Original stories carry no attribution fields (clears stale values
+        // when an author switches a story back to original).
+        original_author: origin === "original" ? null : originalAuthor.trim() || null,
+        original_title: origin === "original" ? null : originalTitle.trim() || null,
+        translator_name: origin === "translation" ? translatorName.trim() || null : null,
+        adapter_name: origin === "adaptation" ? adapterName.trim() || null : null,
+        edition_source: origin === "original" ? null : editionSource.trim() || null,
+        publication_details: origin === "original" ? null : publicationDetails.trim() || null,
       };
       if (isNew) {
         const created = await dp.createStory(input);
@@ -311,6 +335,48 @@ export function StoryFormPage() {
               <Label htmlFor="sf-notice">{t("write", "contentNotice")}</Label>
               <Input id="sf-notice" value={notice} onChange={(e) => setNotice(e.target.value)} maxLength={500} />
             </div>
+
+            <div>
+              <Label htmlFor="sf-origin">{t("write", "origin")}</Label>
+              <Select id="sf-origin" value={origin} onChange={(e) => setOrigin(e.target.value as typeof origin)}>
+                <option value="original">{t("write", "originOriginal")}</option>
+                <option value="classic">{t("write", "originClassic")}</option>
+                <option value="translation">{t("write", "originTranslation")}</option>
+                <option value="adaptation">{t("write", "originAdaptation")}</option>
+              </Select>
+            </div>
+            {origin !== "original" && (
+              <>
+                <div>
+                  <Label htmlFor="sf-oauthor">{t("write", "originalAuthor")}</Label>
+                  <Input id="sf-oauthor" value={originalAuthor} onChange={(e) => setOriginalAuthor(e.target.value)} maxLength={200} />
+                </div>
+                <div>
+                  <Label htmlFor="sf-otitle">{t("write", "originalTitle")}</Label>
+                  <Input id="sf-otitle" value={originalTitle} onChange={(e) => setOriginalTitle(e.target.value)} maxLength={200} />
+                </div>
+                {origin === "translation" && (
+                  <div>
+                    <Label htmlFor="sf-translator">{t("write", "translatorName")}</Label>
+                    <Input id="sf-translator" value={translatorName} onChange={(e) => setTranslatorName(e.target.value)} maxLength={200} />
+                  </div>
+                )}
+                {origin === "adaptation" && (
+                  <div>
+                    <Label htmlFor="sf-adapter">{t("write", "adapterName")}</Label>
+                    <Input id="sf-adapter" value={adapterName} onChange={(e) => setAdapterName(e.target.value)} maxLength={200} />
+                  </div>
+                )}
+                <div>
+                  <Label htmlFor="sf-edition">{t("write", "editionSource")}</Label>
+                  <Input id="sf-edition" value={editionSource} onChange={(e) => setEditionSource(e.target.value)} maxLength={300} />
+                </div>
+                <div>
+                  <Label htmlFor="sf-pub">{t("write", "publicationDetails")}</Label>
+                  <Input id="sf-pub" value={publicationDetails} onChange={(e) => setPublicationDetails(e.target.value)} maxLength={300} />
+                </div>
+              </>
+            )}
 
             {!isNew && (
               <div>

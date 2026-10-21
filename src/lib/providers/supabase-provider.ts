@@ -420,6 +420,13 @@ export class SupabaseProvider implements DataProvider {
         tags: input.tags,
         content_notice: (input.content_notice ?? "").trim(),
         status: "draft",
+        origin_type: input.origin_type ?? "original",
+        original_author: input.original_author?.trim() || null,
+        original_title: input.original_title?.trim() || null,
+        translator_name: input.translator_name?.trim() || null,
+        adapter_name: input.adapter_name?.trim() || null,
+        edition_source: input.edition_source?.trim() || null,
+        publication_details: input.publication_details?.trim() || null,
       })
       .select(STORY_JOIN)
       .single();
@@ -457,6 +464,13 @@ export class SupabaseProvider implements DataProvider {
     if (patch.genre !== undefined) body.genre = patch.genre.trim() || "general";
     if (patch.tags !== undefined) body.tags = patch.tags;
     if (patch.content_notice !== undefined) body.content_notice = patch.content_notice.trim();
+    if (patch.origin_type !== undefined) body.origin_type = patch.origin_type;
+    if (patch.original_author !== undefined) body.original_author = patch.original_author?.trim() || null;
+    if (patch.original_title !== undefined) body.original_title = patch.original_title?.trim() || null;
+    if (patch.translator_name !== undefined) body.translator_name = patch.translator_name?.trim() || null;
+    if (patch.adapter_name !== undefined) body.adapter_name = patch.adapter_name?.trim() || null;
+    if (patch.edition_source !== undefined) body.edition_source = patch.edition_source?.trim() || null;
+    if (patch.publication_details !== undefined) body.publication_details = patch.publication_details?.trim() || null;
     if (patch.status !== undefined) {
       const enteringPublic =
         (patch.status === "ongoing" || patch.status === "complete") &&
@@ -771,18 +785,26 @@ export class SupabaseProvider implements DataProvider {
   private async snapshotFor(storyId: string): Promise<{
     source_title: string;
     source_author_name: string;
+    source_original_author: string | null;
+    source_original_title: string | null;
+    source_translator_name: string | null;
+    source_adapter_name: string | null;
+    source_edition: string | null;
   }> {
     const { data: story, error } = await this.sb
       .from("stories")
-      .select("title, author:profiles!stories_author_id_fkey(display_name)")
+      .select("title, original_author, original_title, translator_name, adapter_name, edition_source, author:profiles!stories_author_id_fkey(display_name)")
       .eq("id", storyId)
       .single();
     if (error || !story) throw new AppError("notFound", "Story not found");
     return {
       source_title: story.title,
-      // V4-28 fields (original author / translator / edition) do not exist
-      // yet — the snapshot columns stay NULL until then, never fabricated.
       source_author_name: (story.author as any)?.display_name ?? "",
+      source_original_author: story.original_author ?? null,
+      source_original_title: story.original_title ?? null,
+      source_translator_name: story.translator_name ?? null,
+      source_adapter_name: story.adapter_name ?? null,
+      source_edition: story.edition_source ?? null,
     };
   }
 

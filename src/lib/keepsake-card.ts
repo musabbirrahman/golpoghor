@@ -187,12 +187,26 @@ export async function renderKeepsakeCard(
   return { fontSize: lay.fontSize, lineCount: lay.lines.length, trimmed, excerpt };
 }
 
-/** Attribution from story metadata (V4-28 extends this for classics). */
-export function keepsakeAttribution(story: {
-  title: string;
-  author?: { display_name: string } | null;
-}): { title: string; author: string } {
-  return { title: story.title, author: story.author?.display_name ?? "" };
+/** Attribution from story metadata (V4-28). A classic/translated work is
+ * credited to its original author, with translator/adapter named as
+ * different people; absent credits stay absent, never fabricated. */
+export function keepsakeAttribution(
+  story: {
+    title: string;
+    author?: { display_name: string } | null;
+    original_author?: string | null;
+    translator_name?: string | null;
+    adapter_name?: string | null;
+  },
+  locale: "bn" | "en" = "en"
+): { title: string; author: string } {
+  const base = story.original_author?.trim() || story.author?.display_name || "";
+  const bits: string[] = [];
+  if (story.translator_name?.trim())
+    bits.push(locale === "bn" ? `অনুবাদ: ${story.translator_name.trim()}` : `Translated by ${story.translator_name.trim()}`);
+  if (story.adapter_name?.trim())
+    bits.push(locale === "bn" ? `রূপান্তর: ${story.adapter_name.trim()}` : `Adapted by ${story.adapter_name.trim()}`);
+  return { title: story.title, author: bits.length ? `${base} · ${bits.join(" · ")}` : base };
 }
 
 /** Trigger a browser download of the canvas as a PNG. The anchor must be

@@ -16,6 +16,7 @@ import type {
   KeepsakeTemplate,
   ModerationEvent,
   NotificationPrefs,
+  OriginType,
   Profile,
   PublicKeepsake,
   ReadingPosition,
@@ -51,6 +52,14 @@ export interface StoryInput {
   genre: string;
   tags: string[];
   content_notice?: string;
+  /** V4-28: defaults to "original" on create when omitted. */
+  origin_type?: OriginType;
+  original_author?: string | null;
+  original_title?: string | null;
+  translator_name?: string | null;
+  adapter_name?: string | null;
+  edition_source?: string | null;
+  publication_details?: string | null;
 }
 
 export interface ChapterInput {

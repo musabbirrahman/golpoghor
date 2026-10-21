@@ -54,7 +54,7 @@ export function StoryCard({ story }: { story: Story }) {
           {story.title}
         </h3>
         <p className="text-sm text-ink-faint">
-          {t("story", "by")} {story.author?.display_name}
+          {t("story", "by")} {story.original_author ?? story.author?.display_name}
         </p>
         <p className="text-sm text-ink-soft clamp-3">{story.summary}</p>
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-2 text-xs text-ink-faint">

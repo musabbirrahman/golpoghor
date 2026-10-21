@@ -58,10 +58,9 @@ export function QuoteStudio({
    * "download" by some download handlers — story slugs are Latin). */
   filenameBase: string;
 }) {
-  const { t, dp, session } = useApp();
+  const { t, dp, session, locale } = useApp();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const queryClient = useQueryClient();  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [excerpt, setExcerpt] = useState(() => normalizeExcerpt(initialExcerpt));
   const [template, setTemplate] = useState<KeepsakeTemplate>(initialTemplate ?? "classic-paper");
   const [echo, setEcho] = useState(initialEcho ?? "");
@@ -89,7 +88,7 @@ export function QuoteStudio({
   useEffect(() => {
     if (!open || !canvasRef.current) return;
     let cancelled = false;
-    const attr = keepsakeAttribution(story);
+    const attr = keepsakeAttribution(story, locale);
     renderKeepsakeCard(canvasRef.current, { excerpt, title: attr.title, author: attr.author, template })
       .then((r) => {
         if (!cancelled) setTrimmed(r.trimmed);

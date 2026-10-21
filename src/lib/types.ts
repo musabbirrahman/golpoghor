@@ -53,6 +53,8 @@ export interface UsernameRedirect {
   expires_at: string;
 }
 
+export type OriginType = "original" | "classic" | "translation" | "adaptation";
+
 export interface Story {
   id: string;
   author_id: string;
@@ -69,6 +71,16 @@ export interface Story {
   created_at: string;
   updated_at: string;
   published_at: string | null;
+  /** V4-28 attribution metadata (nullable; absent renders as absent). */
+  origin_type?: OriginType | null;
+  original_author?: string | null;
+  original_title?: string | null;
+  translator_name?: string | null;
+  adapter_name?: string | null;
+  edition_source?: string | null;
+  publication_details?: string | null;
+  /** Audit linkage only — never rendered, never a legal claim. */
+  rights_evidence_ref?: string | null;
   /** joined */
   author?: Profile;
   chapter_count?: number;
