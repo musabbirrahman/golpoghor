@@ -122,21 +122,30 @@ export interface CardRender {
   excerpt: string;
 }
 
+/** Height of one laid-out line. Blank lines (stanza gaps) take half a
+ * line: the chapter this poem comes from has a blank paragraph between
+ * every line, and full-height blanks read as double spacing on a card. */
+export function cardLineHeight(line: string, fontSize: number): number {
+  return line === "" ? fontSize * 0.875 : fontSize * 1.75;
+}
+
 function layout(
   ctx: CanvasRenderingContext2D,
   text: string,
   textW: number,
   textAreaH: number
-): { fontSize: number; lines: string[]; fits: boolean } {
+): { fontSize: number; lines: string[]; heights: number[]; fits: boolean } {
   let fontSize = 44;
   let lines: string[] = [];
+  let heights: number[] = [];
   for (; fontSize >= 26; fontSize -= 2) {
     ctx.font = `400 ${fontSize}px ${SERIF}`;
     lines = wrapText(ctx, text, textW);
-    if (lines.length * fontSize * 1.75 <= textAreaH) break;
+    heights = lines.map((l) => cardLineHeight(l, fontSize));
+    if (heights.reduce((a, b) => a + b, 0) <= textAreaH) break;
   }
-  const lineHeight = fontSize * 1.75;
-  return { fontSize, lines, fits: lines.length * lineHeight <= textAreaH };
+  const totalH = heights.reduce((a, b) => a + b, 0);
+  return { fontSize, lines, heights, fits: totalH <= textAreaH };
 }
 
 /** Draw one card at export resolution. Returns layout info + trim flag. */
@@ -179,14 +188,14 @@ export async function renderKeepsakeCard(
   ctx.fillText("❦", CARD_W / 2, topY - 28);
 
   // Passage (vertically centred when short — spike design note).
-  const blockH = lay.lines.length * lay.fontSize * 1.75;
+  const blockH = lay.heights.reduce((a, b) => a + b, 0);
   let y = topY + lay.fontSize + Math.max(0, (textAreaH - blockH) / 2);
   ctx.fillStyle = tpl.ink;
   ctx.font = `400 ${lay.fontSize}px ${SERIF}`;
   ctx.textAlign = "left";
-  for (const ln of lay.lines) {
-    ctx.fillText(ln, padX, y);
-    y += lay.fontSize * 1.75;
+  for (let i = 0; i < lay.lines.length; i++) {
+    ctx.fillText(lay.lines[i], padX, y);
+    y += lay.heights[i];
   }
 
   // Attribution (fixed block, never overlapped: text area reserves it).
