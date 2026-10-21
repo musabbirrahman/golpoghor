@@ -74,6 +74,9 @@ export function QuoteStudio({
   // Fresh state every time the studio opens for a new selection.
   useEffect(() => {
     if (!open) return;
+    // Drop any lingering reader selection so the mobile OS selection
+    // toolbar (Translate/Copy/search) dismisses instead of overlaying us.
+    window.getSelection()?.removeAllRanges();
     setExcerpt(normalizeExcerpt(initialExcerpt));
     setTemplate(initialTemplate ?? "classic-paper");
     setEcho(initialEcho ?? "");

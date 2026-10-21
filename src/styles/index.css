@@ -116,3 +116,13 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Brand text selection instead of the browser's default blue. */
+::selection {
+  background: #e0b45c;
+  color: #1c1c1c;
+}
+::-moz-selection {
+  background: #e0b45c;
+  color: #1c1c1c;
+}

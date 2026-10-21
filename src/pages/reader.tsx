@@ -472,39 +472,50 @@ export function ReaderPage() {
   }, [story?.id, chapter?.id, session?.user.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Quote Studio selection: any non-collapsed selection inside the chapter
-  // body shows the floating button; scrolling hides it (stale rect).
+  // body shows the floating button. The button is deliberately NOT hidden
+  // on collapsed selections: tapping it (and mobile selection handles)
+  // collapses the selection first, which used to unmount the button
+  // before the tap could land. It hides on a tap anywhere else, and
+  // re-pins under the selection on scroll instead of vanishing.
+  const btnRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     if (!story || !chapter) return;
-    const onSelect = () => {
-      if (studio) return;
+    const positionFromSelection = (): { top: number; left: number } | null => {
       const sel = window.getSelection();
       const root = bodyRef.current;
-      if (!sel || sel.isCollapsed || !root || !root.contains(sel.anchorNode)) {
-        setStudioBtn(null);
-        return;
-      }
-      const text = sel.toString();
-      if (text.trim().length < 1) {
-        setStudioBtn(null);
-        return;
-      }
+      if (!sel || sel.isCollapsed || !root || !root.contains(sel.anchorNode)) return null;
+      if (sel.toString().trim().length < 1) return null;
       try {
         const r = sel.getRangeAt(0).getBoundingClientRect();
-        setStudioBtn({
+        return {
           top: Math.min(r.bottom + 8, window.innerHeight - 56),
           left: Math.min(Math.max(r.left + r.width / 2, 84), window.innerWidth - 84),
-        });
+        };
       } catch {
-        setStudioBtn(null);
+        return null;
       }
     };
+    const onSelect = () => {
+      if (studio) return;
+      const pos = positionFromSelection();
+      if (pos) setStudioBtn(pos);
+      else if (window.getSelection() && !window.getSelection()!.isCollapsed) setStudioBtn(null);
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (studio) return;
+      if (btnRef.current && btnRef.current.contains(e.target as Node)) return;
+      setStudioBtn(null);
+    };
     const onScroll = () => {
-      if (!studio) setStudioBtn(null);
+      if (studio) return;
+      setStudioBtn(positionFromSelection());
     };
     document.addEventListener("selectionchange", onSelect);
+    document.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       document.removeEventListener("selectionchange", onSelect);
+      document.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("scroll", onScroll);
     };
   }, [story, chapter, studio]);
@@ -617,10 +628,15 @@ export function ReaderPage() {
 
       {studioBtn && !studio && (
         <button
+          ref={btnRef}
           onClick={() => {
             const text = window.getSelection()?.toString() ?? "";
             setStudio({ excerpt: normalizeExcerpt(text) });
             setStudioBtn(null);
+            // Clear the reader selection: on mobile Chrome/Android the
+            // OS selection toolbar (Translate/Copy/search bar) stays up
+            // as long as a selection exists, and would overlay the studio.
+            window.getSelection()?.removeAllRanges();
           }}
           className="fixed z-40 -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper shadow-lift"
           style={{ top: studioBtn.top, left: studioBtn.left }}

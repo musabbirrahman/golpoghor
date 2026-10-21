@@ -34,6 +34,7 @@ export function LibraryPage() {
   const [keepsakeError, setKeepsakeError] = useState<string | null>(null);
   const [echoEditId, setEchoEditId] = useState<string | null>(null);
   const [echoDraft, setEchoDraft] = useState("");
+  const [expandedExcerptId, setExpandedExcerptId] = useState<string | null>(null);
 
   const listQuery = useQuery({
     queryKey: ["readingList", "full"],
@@ -145,9 +146,20 @@ export function LibraryPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {keepsakesQuery.data.map((k) => (
                 <div key={k.id} className="rounded-xl bg-white p-4 shadow-card">
-                  <p className="font-serif text-base leading-relaxed">
-                    {k.excerpt.length > 160 ? k.excerpt.slice(0, 160) + "…" : k.excerpt}
+                  <p className="whitespace-pre-line font-serif text-base leading-relaxed">
+                    {expandedExcerptId === k.id || k.excerpt.length <= 160
+                      ? k.excerpt
+                      : k.excerpt.slice(0, 160) + "…"}
                   </p>
+                  {k.excerpt.length > 160 && (
+                    <button
+                      type="button"
+                      className="mt-1 text-sm font-medium text-river hover:text-river-dark"
+                      onClick={() => setExpandedExcerptId(expandedExcerptId === k.id ? null : k.id)}
+                    >
+                      {expandedExcerptId === k.id ? t("keepsakes", "showLess") : t("keepsakes", "showMore")}
+                    </button>
+                  )}
                   <p className="mt-3 truncate text-sm text-ink-faint">
                     {t("keepsakes", "sourceLabel")}: {k.source_title} · {k.source_author_name}
                   </p>

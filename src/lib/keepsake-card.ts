@@ -41,19 +41,33 @@ export const CARD_TEMPLATES: Record<KeepsakeTemplate, Palette> = {
   neer: { bg: "#24473c", ink: "#f2ecdc", faint: "rgba(242,236,220,.62)", accent: "#e0b45c", rule: "rgba(242,236,220,.25)" },
 };
 
-/** Collapse whitespace and cap at K1, cutting at a word boundary. */
+/** Preserve line breaks (poems, stanzas) and cap at K1, cutting at a
+ * word/line boundary. Only spaces/tabs collapse within a line; blank
+ * lines collapse to at most one (a stanza gap). */
 export function normalizeExcerpt(raw: string): string {
-  const text = raw.replace(/\s+/g, " ").trim();
+  const lines = raw.split(/\r\n|\r|\n/).map((l) => l.replace(/[ \t]+/g, " ").trim());
+  const out: string[] = [];
+  let blanks = 0;
+  for (const l of lines) {
+    if (l === "") {
+      blanks++;
+      if (blanks <= 1) out.push("");
+      continue;
+    }
+    blanks = 0;
+    out.push(l);
+  }
+  while (out[0] === "") out.shift();
+  while (out[out.length - 1] === "") out.pop();
+  const text = out.join("\n");
   if (text.length <= KEEPSAKE_EXCERPT_MAX) return text;
   const cut = text.slice(0, KEEPSAKE_EXCERPT_MAX);
-  const lastSpace = cut.lastIndexOf(" ");
-  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trim();
+  const lastBreak = Math.max(cut.lastIndexOf("\n"), cut.lastIndexOf(" "));
+  return (lastBreak > 0 ? cut.slice(0, lastBreak) : cut).trim();
 }
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-  const words = text.split(/\s+/).filter(Boolean);
+export function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const lines: string[] = [];
-  let line = "";
   const fits = (s: string) => ctx.measureText(s).width <= maxWidth;
   const pushLongWord = (word: string) => {
     let cur = "";
@@ -65,16 +79,25 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
     }
     return cur;
   };
-  for (const w of words) {
-    const trial = line ? line + " " + w : w;
-    if (fits(trial)) {
-      line = trial;
+  // Wrap paragraph by paragraph so explicit line breaks survive; a blank
+  // input line becomes a blank canvas line (stanza gap).
+  for (const para of text.split("\n")) {
+    if (para === "") {
+      lines.push("");
       continue;
     }
+    let line = "";
+    for (const w of para.split(/\s+/).filter(Boolean)) {
+      const trial = line ? line + " " + w : w;
+      if (fits(trial)) {
+        line = trial;
+        continue;
+      }
+      if (line) lines.push(line);
+      line = fits(w) ? w : pushLongWord(w);
+    }
     if (line) lines.push(line);
-    line = fits(w) ? w : pushLongWord(w);
   }
-  if (line) lines.push(line);
   return lines;
 }
 
@@ -133,14 +156,15 @@ export async function renderKeepsakeCard(
   const textAreaH = CARD_H - topY - 190 - 40;
 
   // Trim from the end until the floor size fits (no clipping, ever).
+  // Cutting at the last space OR newline keeps poem line breaks intact.
   let excerpt = input.excerpt;
   let trimmed = false;
   let lay = layout(ctx, excerpt, textW, textAreaH);
   while (!lay.fits && excerpt.length > 0) {
-    const words = excerpt.split(/\s+/);
-    if (words.length <= 1) break;
-    words.pop();
-    excerpt = words.join(" ") + " …";
+    const clean = excerpt.replace(/ …$/, "");
+    const cutAt = Math.max(clean.lastIndexOf(" "), clean.lastIndexOf("\n"));
+    if (cutAt <= 0) break;
+    excerpt = clean.slice(0, cutAt) + " …";
     trimmed = true;
     lay = layout(ctx, excerpt, textW, textAreaH);
   }
