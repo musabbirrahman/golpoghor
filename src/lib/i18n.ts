@@ -36,6 +36,7 @@ const dict = {
     privacy: { bn: "গোপনীয়তা", en: "Privacy" },
     licence: { bn: "কিপসেক লাইসেন্স", en: "Keepsake licence" },
     keepsakesPolicy: { bn: "কিপসেক নীতি", en: "Keepsakes policy" },
+    keepsakesShelf: { bn: "কিপসেক শেলফ", en: "Keepsakes shelf" },
     contact: { bn: "যোগাযোগ", en: "Contact" },
   },
   home: {
@@ -198,6 +199,15 @@ const dict = {
     report: { bn: "রিপোর্ট করুন", en: "Report" },
     echoPublicNote: { bn: "মালিকের প্রতিধ্বনি (প্রকাশ্য)", en: "The owner's echo (shared publicly)" },
     licenceTitle: { bn: "Keepsake Sharing Licence", en: "Keepsake Sharing Licence" },
+    shelfTitle: { bn: "কিপসেক শেলফ", en: "Keepsakes shelf" },
+    shelfSubtitle: {
+      bn: "পাঠকদের প্রকাশ্যে শেয়ার করা প্রিয় লাইনগুলো — কার্ড দেখতে যেকোনো একটিতে চাপ দিন।",
+      en: "Lines readers chose to share publicly — tap any card to see it.",
+    },
+    shelfEmpty: {
+      bn: "এখনো কোনো প্রকাশিত কিপসেক নেই। আপনিই প্রথম হতে পারেন — গল্প পড়ার সময় পছন্দের লাইন সিলেক্ট করুন।",
+      en: "No published Keepsakes yet. You could be the first — select a passage you love while reading.",
+    },
     licenceCovered: { bn: "এই গল্পটি Keepsake Sharing Licence-এর আওতায় আছে — পাঠকরা এটি থেকে কিপসেক প্রকাশ্যে শেয়ার করতে পারবেন।", en: "This story is covered by the Keepsake Sharing Licence — readers may publish Keepsakes from it." },
     licenceNotCovered: { bn: "এই গল্পটি এখনো Keepsake Sharing Licence-এর আওতায় নেই — পাঠকরা এটি থেকে কিপসেক প্রকাশ্যে শেয়ার করতে পারবেন না।", en: "This story is not covered by the Keepsake Sharing Licence yet — readers cannot publish Keepsakes from it." },
     licenceAccept: { bn: "লাইসেন্স গ্রহণ করুন", en: "Accept the licence" },

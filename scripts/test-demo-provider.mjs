@@ -873,6 +873,26 @@ let appealId;
   await dp.signOut();
 }
 
+// 29. keepsakes shelf (27c follow-up): projection list is newest-first
+// and never includes private cards.
+{
+  await dp.signUp({ email: "shelf@example.com", password: "secret12", username: "shelf_user", displayName: "Shelf User" });
+  const st = await dp.createStory({ title: "Shelf Tale", summary: "x", language: "en", genre: "general", tags: [] });
+  const ch = await dp.createChapter(st.id, { title: "One", body: paragraphsToDoc(["First shelf line."]) });
+  await dp.updateChapter(ch.id, { status: "published" });
+  await dp.updateStory(st.id, { status: "ongoing" });
+  const a = await dp.createKeepsake({ storyId: st.id, excerpt: "First shelf line." });
+  const b = await dp.createKeepsake({ storyId: st.id, excerpt: "Private shelf line." });
+  await dp.publishKeepsake(a.id);
+  const list = await dp.listPublicKeepsakes();
+  check("shelf: published card listed, private card absent",
+    list.some((x) => x.id === a.id) && !list.some((x) => x.id === b.id));
+  const sorted = [...list].sort((x, y) => (y.published_at ?? "").localeCompare(x.published_at ?? ""));
+  check("shelf: list orders newest first",
+    list.every((x, i) => x.id === sorted[i].id));
+  await dp.signOut();
+}
+
 console.log("");
 for (const [st, name] of results) console.log(`${st}  ${name}`);
 const fails = results.filter((r) => r[0] === "FAIL").length;

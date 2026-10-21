@@ -260,6 +260,7 @@ export function Footer() {
             { to: "/", label: t("nav", "home") },
             { to: "/discover", label: t("nav", "discover") },
             { to: "/search", label: t("nav", "search") },
+            { to: "/keepsakes", label: t("footer", "keepsakesShelf") },
           ])}
 
           {col(t("footer", "readWrite"), [
