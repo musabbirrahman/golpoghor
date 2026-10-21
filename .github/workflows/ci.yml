@@ -1,0 +1,25 @@
+# Place this file at .github/workflows/ci.yml in the repo (golpoghor).
+# It runs the same checks Muse runs locally: typecheck, build, demo tests.
+# Demo tests run in demo mode (no .env needed), so this is CI-safe.
+# Prepared during M6 (2026-10-21) — CI did not exist in the repo yet.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx tsc -b
+      - run: npm run build
+      - run: node scripts/test-demo-provider.mjs

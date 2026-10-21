@@ -46,10 +46,24 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
    *  With withEcho, the owner's echo is drawn under the passage. */
   const redownload = async (k: Keepsake, withEcho = false) => {
     const canvas = document.createElement("canvas");
+    // Same attribution as the on-screen card (V4-28): a classic is
+    // credited to its original author, not the publishing account.
+    // (M6 finding: redownload used source_author_name raw, so a
+    // downloaded classic PNG credited the publisher instead.)
+    const attr = keepsakeAttribution(
+      {
+        title: k.source_title,
+        author: { display_name: k.source_author_name },
+        original_author: k.source_original_author,
+        translator_name: k.source_translator_name,
+        adapter_name: k.source_adapter_name,
+      },
+      locale
+    );
     await renderKeepsakeCard(canvas, {
       excerpt: k.excerpt,
-      title: k.source_title,
-      author: k.source_author_name,
+      title: attr.title,
+      author: attr.author,
       template: k.template,
       echo: withEcho ? k.echo : undefined,
     });
