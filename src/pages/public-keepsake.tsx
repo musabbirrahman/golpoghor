@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { renderKeepsakeCard, keepsakeAttribution, downloadKeepsakePNG } from "../lib/keepsake-card";
@@ -14,6 +14,7 @@ import { ReportDialog } from "../components/report-dialog";
  */
 export function PublicKeepsakePage() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { t, dp, session, locale } = useApp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [reportOpen, setReportOpen] = useState(false);
@@ -41,6 +42,8 @@ export function PublicKeepsakePage() {
       title: attr.title,
       author: attr.author,
       template: k.template,
+      keeper: k.keeper_name,
+      keeperLabel: t("keepsakes", "keptBy"),
     }).catch(() => {});
   }, [k, locale]);
 
@@ -63,6 +66,13 @@ export function PublicKeepsakePage() {
 
   return (
     <div className="mx-auto max-w-xl">
+      <div className="mb-4">
+        {/* Shared links carry no in-app history, so Back always lands on
+            the shelf — the keepsakes home — instead of leaving the site. */}
+        <Button size="sm" variant="ghost" onClick={() => navigate("/keepsakes")}>
+          ← {t("common", "back")}
+        </Button>
+      </div>
       <Card className="overflow-hidden p-0">
         <canvas ref={canvasRef} className="block w-full" />
       </Card>

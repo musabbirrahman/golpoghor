@@ -67,6 +67,7 @@ function mapPublicKeepsake(r: any): PublicKeepsake {
     source_edition: r.source_edition,
     source_slug: r.source_slug,
     source_author_username: r.source_author_username,
+    keeper_name: r.keeper_name,
     published_at: r.published_at,
     created_at: r.created_at,
   };

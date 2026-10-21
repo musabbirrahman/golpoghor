@@ -1262,6 +1262,7 @@ export class DemoProvider implements DataProvider {
       k.eligibility_basis === "licence";
     if (!ok) return null;
     const author = this.db.profiles.find((p) => p.id === story.author_id);
+    const keeper = this.db.profiles.find((p) => p.id === k.owner_id);
     return {
       id: k.id,
       slug: k.slug ?? `k-${k.id.slice(0, 8)}`,
@@ -1277,6 +1278,7 @@ export class DemoProvider implements DataProvider {
       source_edition: k.source_edition,
       source_slug: story.slug,
       source_author_username: author?.username ?? "",
+      keeper_name: keeper?.display_name ?? "",
       published_at: k.published_at,
       created_at: k.created_at,
     };

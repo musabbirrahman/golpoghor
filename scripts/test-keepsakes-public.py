@@ -15,6 +15,7 @@ import pgserver
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 MIGRATION = ROOT / "supabase/migrations/20261021150000_keepsakes_public.sql"
+MIGRATION_KEEPER = ROOT / "supabase/migrations/20261021160000_keepsake_keeper_credit.sql"
 
 AUTHOR = "11111111-1111-1111-1111-111111111111"
 READER = "22222222-2222-2222-2222-222222222222"
@@ -39,6 +40,7 @@ $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
 create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   username text not null unique,
+  display_name text not null default '',
   role text not null default 'reader'
 );
 create table public.stories (
@@ -95,8 +97,8 @@ create table public.reports (
 create table test_log (case_name text, outcome text);
 
 insert into auth.users values ('%s'), ('%s'), ('%s');
-insert into public.profiles (id, username, role) values
-  ('%s','author','reader'), ('%s','reader','reader'), ('%s','mod','moderator');
+insert into public.profiles (id, username, display_name, role) values
+  ('%s','author','Author','reader'), ('%s','reader','Reader','reader'), ('%s','mod','Mod','moderator');
 insert into public.stories (id, author_id, slug, status, origin_type) values
   ('%s','%s','orig-tale','ongoing','original'),
   ('%s','%s','old-tale','ongoing','classic'),
@@ -137,6 +139,7 @@ def main():
     psql = server.psql
     psql(SCHEMA)
     psql(MIGRATION.read_text())
+    psql(MIGRATION_KEEPER.read_text())
     # PD backfill in the drill's own data (migration backfills fixed ids).
     psql("update public.stories set pd_verified = true where id = '%s'" % PD)
 
@@ -229,6 +232,15 @@ def main():
     n = proj_count()
     print(("PASS " if n == 0 else "FAIL ") + f"projection empty after source hidden (got {n})")
     ok &= n == 0
+    # Keeper credit: the projection carries the owner's display name.
+    psql("update public.stories set status = 'ongoing' where id = '%s';" % PD)
+    psql("insert into public.keepsakes (id, owner_id, story_id, excerpt, template, source_title, source_author_name) values ('b0000000-0000-0000-0000-000000000077','%s','%s','keeper line','midnight','PD Tale','Author');" % (READER, PD))
+    psql(attempt("keeper publish", READER, "select public.publish_keepsake('b0000000-0000-0000-0000-000000000077')"))
+    keeper_out = psql("select keeper_name from public.keepsakes_public() where slug like 'k-%' limit 1;")
+    keeper = [l.strip() for l in keeper_out.splitlines() if l.strip() and "(1 row)" not in l and l.strip() != "keeper_name" and set(l.strip()) != {"-"}]
+    good = len(keeper) == 1 and keeper[0] == "Reader"
+    ok &= good
+    print(("PASS " if good else "FAIL ") + f"projection carries keeper display name (got {keeper})")
 
     print("\nALL PASS" if ok else "\nFAILURES PRESENT")
     sys.exit(0 if ok else 1)

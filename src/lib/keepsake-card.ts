@@ -22,7 +22,7 @@ export const CARD_H = 1350;
 const SERIF = '"Literata", "Noto Serif Bengali", Georgia, serif';
 const SANS = '"Inter", "Noto Sans Bengali", system-ui, sans-serif';
 
-interface Palette {
+export interface Palette {
   bg: string;
   ink: string;
   faint: string;
@@ -151,7 +151,15 @@ function layout(
 /** Draw one card at export resolution. Returns layout info + trim flag. */
 export async function renderKeepsakeCard(
   canvas: HTMLCanvasElement,
-  input: { excerpt: string; title: string; author: string; template: KeepsakeTemplate }
+  input: {
+    excerpt: string;
+    title: string;
+    author: string;
+    template: KeepsakeTemplate;
+    /** Keeper credit (public cards only): drawn under the author line. */
+    keeper?: string | null;
+    keeperLabel?: string;
+  }
 ): Promise<CardRender> {
   canvas.width = CARD_W;
   canvas.height = CARD_H;
@@ -212,6 +220,10 @@ export async function renderKeepsakeCard(
   ctx.fillStyle = tpl.faint;
   ctx.font = `400 26px ${SERIF}`;
   ctx.fillText(input.author, padX, base + 42);
+  if (input.keeper) {
+    ctx.font = `400 24px ${SERIF}`;
+    ctx.fillText(`${input.keeperLabel ?? "Kept by"} ${input.keeper}`, padX, base + 84);
+  }
   ctx.font = `500 22px ${SANS}`;
   ctx.textAlign = "right";
   ctx.fillText("GolpoNeer · গল্পনীড়", CARD_W - padX, base + 42);

@@ -127,6 +127,7 @@ const files = [
   "supabase/migrations/20261021130000_keepsakes.sql",
   "supabase/migrations/20261021140000_story_attribution.sql",
   "supabase/migrations/20261021150000_keepsakes_public.sql",
+  "supabase/migrations/20261021160000_keepsake_keeper_credit.sql",
   "supabase/seed.sql",
 ];
 

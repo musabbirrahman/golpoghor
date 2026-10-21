@@ -893,6 +893,24 @@ let appealId;
   await dp.signOut();
 }
 
+// 30. keeper credit (27c follow-up): the public projection carries the
+// keeper's display name; private cards never expose it.
+{
+  await dp.signUp({ email: "keeper2@example.com", password: "secret12", username: "keeper_two", displayName: "Keeper Two" });
+  const st = await dp.createStory({ title: "Keeper Tale", summary: "x", language: "en", genre: "general", tags: [] });
+  const ch = await dp.createChapter(st.id, { title: "One", body: paragraphsToDoc(["A kept line."]) });
+  await dp.updateChapter(ch.id, { status: "published" });
+  await dp.updateStory(st.id, { status: "ongoing" });
+  const k = await dp.createKeepsake({ storyId: st.id, excerpt: "A kept line." });
+  const pub = await dp.publishKeepsake(k.id);
+  const page = await dp.getPublicKeepsake(pub.slug);
+  check("keeper: public page carries the keeper display name",
+    !!page && page.keeper_name === "Keeper Two");
+  check("keeper: shelf row carries the keeper display name",
+    (await dp.listPublicKeepsakes()).some((x) => x.id === k.id && x.keeper_name === "Keeper Two"));
+  await dp.signOut();
+}
+
 console.log("");
 for (const [st, name] of results) console.log(`${st}  ${name}`);
 const fails = results.filter((r) => r[0] === "FAIL").length;

@@ -225,6 +225,8 @@ export interface PublicKeepsake {
   /** Source story link fields — present only when the source is public. */
   source_slug: string;
   source_author_username: string;
+  /** Display name of the keeper (owner) — public cards only, by design. */
+  keeper_name: string;
   published_at: string | null;
   created_at: string;
 }
