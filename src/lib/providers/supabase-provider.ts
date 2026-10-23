@@ -361,7 +361,13 @@ export class SupabaseProvider implements DataProvider {
         q = q.or(ors.join(","));
       }
     }
-    if (f.sort === "most_viewed") {
+    if (f.sort === "featured") {
+      // admin picks in position order (no fill here: Discover shows the picks themselves)
+      q = q
+        .not("featured_position", "is", null)
+        .order("featured_position", { ascending: true })
+        .order("published_at", { ascending: false, nullsFirst: false });
+    } else if (f.sort === "most_viewed") {
       // tracked view counts first, newest first as tie-breaker
       q = q.order("view_count", { ascending: false }).order("published_at", { ascending: false, nullsFirst: false });
     } else if (f.sort === "popular") {

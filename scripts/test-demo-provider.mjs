@@ -88,6 +88,8 @@ const check = (name, cond) => {
   check("shelf starts with picks in order", shelf[0].id === picks[0].id && shelf[1].id === picks[1].id);
   check("shelf fill excludes picks", !shelf.slice(2).some((s) => picks.some((p) => p.id === s.id)));
   check("shelf is all public", shelf.every((s) => s.status === "ongoing" || s.status === "complete"));
+  const feat = await dp.listStories({ sort: "featured" });
+  check("featured sort returns picks in order, no fill", feat.stories.length === 2 && feat.stories[0].id === picks[0].id && feat.stories[1].id === picks[1].id);
 
   // moderator: feature a third story, swap it to first, then unfeature
   await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");

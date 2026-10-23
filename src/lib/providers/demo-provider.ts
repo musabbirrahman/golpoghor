@@ -570,7 +570,13 @@ export class DemoProvider implements DataProvider {
         });
       }
     }
+    if (f.sort === "featured") rows = rows.filter((s) => s.featured_position != null);
     rows.sort((a, b) => {
+      if (f.sort === "featured")
+        return (
+          (a.featured_position ?? Infinity) - (b.featured_position ?? Infinity) ||
+          (b.published_at ?? b.created_at).localeCompare(a.published_at ?? a.created_at)
+        );
       if (f.sort === "popular") return b.view_count - a.view_count;
       if (f.sort === "most_viewed")
         return b.view_count - a.view_count || (b.published_at ?? b.created_at).localeCompare(a.published_at ?? a.created_at);

@@ -77,7 +77,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <Shelf title={t("home", "featured")} action={<Link to="/discover?sort=newest" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
+      <Shelf title={t("home", "featured")} action={<Link to="/discover?sort=featured" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
         {featured.isLoading ? <Spinner /> : (
           <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
             {(featured.data ?? []).map((s) => <StoryCard key={s.id} story={s} />)}
@@ -139,7 +139,7 @@ export function DiscoverPage() {
   const [params, setParams] = useSearchParams();
   const language = (params.get("language") || "") as StoryLanguage | "";
   const genre = params.get("genre") || "";
-  const sort = (params.get("sort") || "newest") as "newest" | "popular" | "most_viewed";
+  const sort = (params.get("sort") || "newest") as "newest" | "popular" | "most_viewed" | "featured";
   const q = params.get("q") || "";
   const tag = params.get("tag") || "";
 
@@ -186,6 +186,7 @@ export function DiscoverPage() {
           <option value="newest">{t("discover", "newest")}</option>
           <option value="popular">{t("discover", "popular")}</option>
           <option value="most_viewed">{t("discover", "mostViewed")}</option>
+          <option value="featured">{t("discover", "featured")}</option>
         </select>
       </div>
 

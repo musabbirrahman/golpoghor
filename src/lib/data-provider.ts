@@ -41,7 +41,7 @@ export interface StoryFilters {
   authorId?: string;
   /** default: published only (ongoing+complete) */
   includeDrafts?: boolean;
-  sort?: "newest" | "popular" | "most_viewed";
+  sort?: "newest" | "popular" | "most_viewed" | "featured";
   limit?: number;
   offset?: number;
 }

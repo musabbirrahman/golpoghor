@@ -345,6 +345,7 @@ const dict = {
     newest: { bn: "নতুন", en: "Newest" },
     popular: { bn: "জনপ্রিয়", en: "Most read" },
     mostViewed: { bn: "সর্বাধিক দেখা", en: "Most viewed" },
+    featured: { bn: "নির্বাচিত", en: "Featured" },
     noResults: {
       bn: "কিছু পাওয়া যায়নি। অন্য কিছু খুঁজে দেখুন।",
       en: "Nothing found. Try a different search.",
