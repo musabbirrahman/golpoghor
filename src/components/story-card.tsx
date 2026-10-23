@@ -57,19 +57,23 @@ export function StoryCard({ story }: { story: Story }) {
           {t("story", "by")} {story.original_author ?? story.author?.display_name}
         </p>
         <p className="text-sm text-ink-soft clamp-3">{story.summary}</p>
-        <div className="mt-auto flex flex-wrap items-center gap-2 pt-2 text-xs text-ink-faint">
-          <StatusBadge status={story.status} />
-          <span>
-            {story.chapter_count ?? 0}{" "}
-            {(story.chapter_count ?? 0) === 1 ? t("story", "chapterSingular") : t("story", "chapters")}
-          </span>
-          {minutes > 0 && (
-            <span className="whitespace-nowrap">· ~{minutes} {t("story", "minRead")}</span>
-          )}
+        <div className="mt-auto flex flex-col gap-1 pt-2 text-xs text-ink-faint">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="whitespace-nowrap">
+              {story.chapter_count ?? 0}{" "}
+              {(story.chapter_count ?? 0) === 1 ? t("story", "chapterSingular") : t("story", "chapters")}
+            </span>
+            {minutes > 0 && (
+              <span className="whitespace-nowrap">· ~{minutes} {t("story", "minRead")}</span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={story.status} />
+            <span className="whitespace-nowrap">
+              · {story.published_at ? timeAgo(story.published_at, locale) : formatDate(story.created_at, locale)}
+            </span>
+          </div>
         </div>
-        <p className="text-xs text-ink-faint">
-          {story.published_at ? timeAgo(story.published_at, locale) : formatDate(story.created_at, locale)}
-        </p>
       </div>
     </Link>
   );
