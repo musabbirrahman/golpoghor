@@ -173,7 +173,7 @@ export function SettingsPage() {
                   id="set-avatar"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
-                  className="block text-sm"
+                  className="block w-full text-sm"
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file || !profile) return;
