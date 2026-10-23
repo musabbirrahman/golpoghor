@@ -168,6 +168,10 @@ export class SupabaseProvider implements DataProvider {
     if (input.password.length < 6) throw new AppError("weakPassword", "Password too short");
     const { data: taken } = await this.sb.from("profiles").select("id").eq("username", username).maybeSingle();
     if (taken) throw new AppError("usernameTaken", "This username is taken.");
+    // A live redirect means the handle was recently in use and is still
+    // reserved for its former owner — fail here with a friendly error
+    // instead of letting the signup trigger fall back to a reader_ name.
+    if (await this.resolveUsername(username)) throw new AppError("usernameReserved", "This username is reserved.");
 
     const { data, error } = await this.sb.auth.signUp({
       email: input.email,

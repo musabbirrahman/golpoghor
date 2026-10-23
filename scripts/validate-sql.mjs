@@ -132,6 +132,7 @@ const files = [
   "supabase/migrations/20261021170001_comment_edited_at.sql",
   "supabase/migrations/20261023140000_licence_author_gate.sql",
   "supabase/migrations/20261023150000_featured_stories.sql",
+  "supabase/migrations/20261024010000_argon_round2_security_fixes.sql",
   "supabase/seed.sql",
 ];
 
