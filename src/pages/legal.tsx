@@ -268,8 +268,8 @@ const DOCS: Record<string, LegalDoc> = {
         h: { bn: "এই লাইসেন্স কী", en: "What this licence is" },
         paras: [
           {
-            bn: "এই লাইসেন্সটি একটি গল্পের লেখকের দেওয়া একটি নির্দিষ্ট অনুমতি: পাঠকরা আপনার এই গল্প থেকে কিপসেক কার্ড বানিয়ে প্রকাশ্যে শেয়ার করতে পারবেন। এটি শুধু এই একটি গল্পের জন্য প্রযোজ্য, এবং আপনি প্রতিটি গল্পের জন্য আলাদাভাবে গ্রহণ বা প্রত্যাহার করতে পারেন। গ্রহণ না করা পর্যন্ত কোনো পাঠক আপনার এই গল্প থেকে কিপসেক প্রকাশ্যে শেয়ার করতে পারবেন না।",
-            en: "This licence is a specific permission from a story's author: readers may make Keepsake cards from this story and share them publicly. It applies to this one story only, and you accept or withdraw it per story. Until you accept, no reader can publicly share a Keepsake from this story.",
+            bn: "এই লাইসেন্সটি একটি গল্পের লেখকের দেওয়া একটি নির্দিষ্ট অনুমতি: পাঠকরা আপনার এই গল্প থেকে কিপসেক কার্ড বানিয়ে গল্পনীড়ের প্রকাশ্য কিপসেক শেলফে শেয়ার করতে পারবেন। এটি শুধু এই একটি গল্পের জন্য প্রযোজ্য, এবং আপনি প্রতিটি গল্পের জন্য আলাদাভাবে গ্রহণ বা প্রত্যাহার করতে পারেন। গ্রহণ না করা পর্যন্ত কোনো পাঠক আপনার এই গল্প থেকে কিপসেক প্রকাশ্যে শেয়ার করতে পারবেন না। গ্রহণ না করলে আর কিছু বদলায় না: আপনার গল্প আগের মতোই পড়া যাবে, আর তা থেকে কিপসেক প্রকাশ্যে শেয়ার করা বন্ধ থাকবে।",
+            en: "This licence is a specific permission from a story's author: readers may make Keepsake cards from this story and share them publicly on GolpoNeer's public Keepsake Shelf. It applies to this one story only, and you accept or withdraw it per story. Until you accept, no reader can publicly share a Keepsake from this story. Not accepting changes nothing else: your story stays readable, and public Keepsake publishing from it stays blocked.",
           },
         ],
       },
@@ -277,8 +277,8 @@ const DOCS: Record<string, LegalDoc> = {
         h: { bn: "অনুমতির সীমা", en: "Scope of the permission" },
         paras: [
           {
-            bn: "একটি কিপসেকে আপনার গল্পের সর্বোচ্চ ১,০০০ অক্ষরের উদ্ধৃতি থাকতে পারে। কার্ডটি ছবি হিসেবে প্রকাশিত হয়, আপনার নাম ও গল্পের লিংকসহ — কৃতিত্ব মুছে ফেলা যাবে না। এই অনুমতি অনন্য নয় (non-exclusive): আপনি আপনার গল্পের সব অধিকার ধরে রাখেন এবং অন্যত্র যেকোনোভাবে ব্যবহার করতে পারেন।",
-            en: "A Keepsake may quote at most 1,000 characters from your story. The card is published as an image, with your name and a link to the story — attribution may not be removed. The permission is non-exclusive: you keep all rights in your story and may use it anywhere else in any way.",
+            bn: "একটি কিপসেকে আপনার গল্পের সর্বোচ্চ ১,০০০ অক্ষরের উদ্ধৃতি থাকতে পারে। কার্ডটি ছবি হিসেবে প্রকাশিত হয়, আপনার নাম ও গল্পের লিংকসহ — কৃতিত্ব মুছে ফেলা যাবে না। এই অনুমতি অনন্য নয় (non-exclusive): আপনি আপনার গল্পের সব অধিকার ধরে রাখেন এবং অন্যত্র যেকোনোভাবে ব্যবহার করতে পারেন। এই লাইসেন্স গ্রহণ করলে আপনার গল্পের মালিকানা গল্পনীড়ের কাছে হস্তান্তর হয় না। গ্রহণ করার মাধ্যমে আপনি নিশ্চিত করছেন যে এই গল্পের জন্য এই অনুমতি দেওয়ার অধিকার বা অনুমতি আপনার আছে।",
+            en: "A Keepsake may quote at most 1,000 characters from your story. The card is published as an image, with your name and a link to the story — attribution may not be removed. The permission is non-exclusive: you keep all rights in your story and may use it anywhere else in any way. Accepting this licence does not transfer ownership of your story to GolpoNeer. By accepting, you confirm that you hold the rights, or have the permission, needed to grant this permission for this story.",
           },
         ],
       },
@@ -295,8 +295,8 @@ const DOCS: Record<string, LegalDoc> = {
         h: { bn: "মেয়াদ ও প্রত্যাহার", en: "Duration and withdrawal" },
         paras: [
           {
-            bn: "লাইসেন্সটি আপনার গল্প প্রকাশিত থাকা পর্যন্ত কার্যকর। গল্পের সেটিংস থেকে যেকোনো সময় প্রত্যাহার করতে পারেন — প্রত্যাহারের পর থেকে নতুন প্রকাশনা বন্ধ হয়ে যাবে। আগে প্রকাশিত কিপসেকগুলো প্রকাশিতই থাকবে, যদি না আপনি সেগুলোর অপসারণ চান (যোগাযোগ পেজের মাধ্যমে জানালে যাচাই করে ব্যবস্থা নেওয়া হবে)। আপনার ব্যক্তিগত কিপসেকগুলো কখনোই এই লাইসেন্সের দ্বারা প্রভাবিত হয় না।",
-            en: "The licence lasts while your story is published. You may withdraw it at any time from the story's settings — withdrawal stops new publications immediately. Keepsakes published before withdrawal stay public unless you ask for their removal (tell us via the Contact page and we will act after verification). Your own private Keepsakes are never affected by this licence.",
+            bn: "লাইসেন্সটি আপনার গল্প প্রকাশিত থাকা পর্যন্ত প্রযোজ্য। গল্পের সম্পাদনা পেজ থেকে যেকোনো সময় প্রত্যাহার করতে পারেন — প্রত্যাহারের পর থেকে নতুন প্রকাশনা বন্ধ হয়ে যাবে। আগে প্রকাশিত কিপসেকগুলো প্রকাশিতই থাকবে, যদি না আপনি সেগুলোর অপসারণ চান (যোগাযোগ পেজের মাধ্যমে জানালে যাচাই করে ব্যবস্থা নেওয়া হবে)। আপনার ব্যক্তিগত কিপসেকগুলো কখনোই এই লাইসেন্সের দ্বারা প্রভাবিত হয় না।",
+            en: "The licence applies while your story is published. You may withdraw it at any time from the story's edit page — withdrawal stops new publications immediately. Keepsakes published before withdrawal stay public unless you ask for their removal (tell us via the Contact page and we will act after verification). Your own private Keepsakes are never affected by this licence.",
           },
         ],
       },
@@ -304,8 +304,8 @@ const DOCS: Record<string, LegalDoc> = {
         h: { bn: "অভিযোগ ও অপসারণ", en: "Complaints and removal" },
         paras: [
           {
-            bn: "কোনো প্রকাশিত কিপসেক নিয়ে অধিকারের অভিযোগ থাকলে যোগাযোগ পেজে জানান। যাচাইকৃত অভিযোগে কিপসেকটি সীমাবদ্ধ (restricted) করা হবে এবং মালিককে কারণসহ জানানো হবে।",
-            en: "If you have a rights complaint about a published Keepsake, tell us via the Contact page. Verified complaints lead to the Keepsake being restricted, and its owner is told why.",
+            bn: "কোনো প্রকাশিত কিপসেক নিয়ে অধিকারের অভিযোগ থাকলে যোগাযোগ পেজে জানান। যাচাইকৃত অভিযোগে কিপসেকটি সীমাবদ্ধ (restricted) করা হবে। আপনার কিপসেক সীমাবদ্ধ হলে সে বিষয়ে জানতে যোগাযোগ পেজে আমাদের লিখতে পারেন।",
+            en: "If you have a rights complaint about a published Keepsake, tell us via the Contact page. Verified complaints lead to the Keepsake being restricted. If your Keepsake is restricted, you can contact us via the Contact page for information about it.",
           },
         ],
       },
@@ -327,8 +327,17 @@ const DOCS: Record<string, LegalDoc> = {
         h: { bn: "কে বানাতে ও শেয়ার করতে পারে", en: "Who may create and share" },
         paras: [
           {
-            bn: "আপনি পড়তে পারেন এমন যেকোনো গল্প থেকে ব্যক্তিগত ব্যবহারের জন্য কিপসেক বানানো, সংরক্ষণ ও ডাউনলোড করা সবসময় যায় — এটি কখনো সীমাবদ্ধ নয়। প্রকাশ্যে শেয়ার করা অধিকার-নির্ভর: নিজের গল্প থেকে সবসময় যায়; যাচাইকৃত পাবলিক ডোমেইন লেখা থেকে (নির্দিষ্ট লেখা/সংস্করণের জন্য যাচাই থাকলে) যায়; অন্য লেখকের মৌলিক গল্প থেকে শুধু তখনই যায় যখন লেখক সেই গল্পের জন্য Keepsake Sharing Licence গ্রহণ করেছেন। শুধু ‘ক্লাসিক’ ট্যাগ থাকা প্রমাণ নয়।",
-            en: "You may always create, save and download Keepsakes for private use from any story you can read — that is never gated. Public sharing is rights-gated: always allowed from your own stories; allowed by default from verified public-domain texts (verified for the specific text/edition); and from another author's original story only where that author has accepted the Keepsake Sharing Licence for that story. A 'Classics' tag alone is not proof.",
+            bn: "আপনি পড়তে পারেন এমন যেকোনো গল্প থেকে ব্যক্তিগত ব্যবহারের জন্য কিপসেক বানানো, সংরক্ষণ ও ডাউনলোড করা সবসময় যায় — এটি কখনো সীমাবদ্ধ নয়। কিপসেক ডাউনলোড করা আপনার ব্যক্তিগত ব্যবহারের জন্য। ডাউনলোড করলেই গল্প বা উদ্ধৃতি অন্যত্র পুনরায় বিতরণ, পুনঃপ্রকাশ বা প্রকাশ্যে প্রদর্শনের অনুমতি মেলে না। প্রকাশ্যে শেয়ার করা অধিকার-নির্ভর: নিজের গল্প থেকে সবসময় যায়; যাচাইকৃত পাবলিক ডোমেইন লেখা থেকে (নির্দিষ্ট লেখা/সংস্করণের জন্য যাচাই থাকলে) যায়; অন্য লেখকের মৌলিক গল্প থেকে শুধু তখনই যায় যখন লেখক সেই গল্পের জন্য Keepsake Sharing Licence গ্রহণ করেছেন। শুধু ‘ক্লাসিক’ ট্যাগ থাকা প্রমাণ নয়।",
+            en: "You may always create, save and download Keepsakes for private use from any story you can read — that is never gated. Downloading a Keepsake is for your private, personal use. A download does not itself give you permission to redistribute, republish, or publicly display the story or excerpt anywhere else. Public sharing is rights-gated: always allowed from your own stories; allowed by default from verified public-domain texts (verified for the specific text/edition); and from another author's original story only where that author has accepted the Keepsake Sharing Licence for that story. A 'Classics' tag alone is not proof.",
+          },
+        ],
+      },
+      {
+        h: { bn: "ডাউনলোড করা কিপসেক গল্পনীড়ের বাইরে শেয়ার করা", en: "Sharing a downloaded Keepsake outside GolpoNeer" },
+        paras: [
+          {
+            bn: "শুধু ডাউনলোড দেওয়ার কারণে গল্পনীড় ডাউনলোড করা কিপসেক গল্পনীড়ের বাইরে প্রকাশ্যে শেয়ার করার অনুমতি দেয় না। Keepsake Sharing Licence এবং যাচাইকৃত পাবলিক ডোমেইন শেয়ারিং গল্পনীড়ের প্রকাশ্য কিপসেক শেলফের ক্ষেত্রে প্রযোজ্য; এগুলো অন্যত্র পুনরায় বিতরণের অনুমতি নয়। অন্য কোনো প্ল্যাটফর্মে ডাউনলোড করা কিপসেক প্রকাশ্যে শেয়ার করলে, সেই ব্যবহার সংশ্লিষ্ট অধিকারধারীর অনুমোদিত বা আইনগতভাবে অনুমোদিত কি না, তা নিশ্চিত করার দায়িত্ব আপনার। কোনো নির্দিষ্ট শেয়ার বৈধ কি না, তা নির্ভর করে অধিকার, অনুমতি ও পরিস্থিতির ওপর — যেমন, নিজের গল্পের বা যাচাইকৃত পাবলিক ডোমেইন লেখার কিপসেক শেয়ার করা আর অন্য লেখকের মৌলিক লেখা অনুমতি ছাড়া শেয়ার করা এক কথা নয়। একবার ডাউনলোড হয়ে গেলে ফাইলটি বাইরে কীভাবে ব্যবহৃত হবে, তা গল্পনীড় নিয়ন্ত্রণ করতে পারে না; আর অনুমতি ছাড়া ব্যবহৃত হলে অধিকারধারী প্রযোজ্য আইন অনুযায়ী প্রতিকার চাইতে পারেন। গল্পনীড়ের নিজস্ব প্রকাশ্য শেলফে শেয়ার করা আলাদা বিষয়: তা এই লাইসেন্স ও নীতির আওতায়, এবং গল্পনীড়ের ভেতরে আমরা সেই নিয়ম প্রয়োগ করতে পারি ও যাচাইকৃত অভিযোগে ব্যবস্থা নিতে পারি। লেখকের গ্রহণ গল্পনীড়ের প্রযোজ্য আইনগত দায়িত্ব মুছে দেয় না।",
+            en: "GolpoNeer does not grant permission to share a downloaded Keepsake publicly outside GolpoNeer merely by providing the download. The Keepsake Sharing Licence and verified public-domain sharing apply to GolpoNeer's public Keepsake Shelf; they are not permission to redistribute elsewhere. If you share a downloaded Keepsake publicly on another platform, you are responsible for making sure that use is authorized by the applicable rights holder or permitted by law. Whether a particular share is lawful depends on the rights, permissions, and circumstances — for example, sharing a Keepsake from your own story, or from a verified public-domain text, is a different matter from sharing another author's original work without permission. Once downloaded, GolpoNeer cannot control how a file is used elsewhere, and a rights holder whose work is used without authorization may pursue the remedies available under applicable law. Sharing on GolpoNeer's own public shelf is a different matter: it is governed by the licence and this policy, and within GolpoNeer we can enforce those rules and act on verified complaints. An author's acceptance does not remove GolpoNeer's responsibilities under applicable law.",
           },
         ],
       },
@@ -336,8 +345,8 @@ const DOCS: Record<string, LegalDoc> = {
         h: { bn: "উৎস পরিবর্তন হলে কী হয়", en: "When the source changes" },
         paras: [
           {
-            bn: "প্রকাশিত কিপসেক পেজগুলো প্রকাশনার সময়ের স্ন্যাপশট থেকে দেখানো হয়। উৎস গল্পটি লুকানো, মুছে ফেলা বা অযোগ্য হয়ে গেলে তার প্রকাশিত কিপসেকগুলো স্বয়ংক্রিয়ভাবে সীমাবদ্ধ হয়ে যায় — মালিকের ব্যক্তিগত কপিগুলো মুছে যায় না। লাইসেন্স প্রত্যাহার করলে নতুন প্রকাশনা বন্ধ হয়; আগে প্রকাশিতগুলো থাকে, যদি না লেখক অপসারণ চান।",
-            en: "Public Keepsake pages render from a snapshot taken at publication time. If the source story is hidden, deleted or becomes ineligible, its public Keepsakes are automatically restricted — the owner's private copies are not deleted. Withdrawing a licence stops new publication; already-public Keepsakes stay unless the author asks for removal.",
+            bn: "প্রকাশিত কিপসেক পেজগুলো প্রকাশনার সময়ের স্ন্যাপশট থেকে দেখানো হয়। মূল গল্পটি লুকানো হলে বা অযোগ্য হয়ে গেলে, সেই গল্পের প্রকাশ্য কিপসেকগুলো আর প্রকাশ্যে দেখা যাবে না। মূল গল্পটি মুছে ফেলা হলে, তার সঙ্গে যুক্ত কিপসেকগুলোও মুছে যাবে। লাইসেন্স প্রত্যাহার করলে নতুন কিপসেক প্রকাশ বন্ধ হয়; আগে থেকেই প্রকাশ্য কিপসেকগুলো লেখক অপসারণের অনুরোধ না করা পর্যন্ত, অথবা অন্য কোনো প্রযোজ্য নীতি বা আইনগত ভিত্তিতে ব্যবস্থা নেওয়া প্রয়োজন না হলে, প্রকাশ্যই থাকবে।",
+            en: "Public Keepsake pages render from a snapshot taken at publication time. If the source story is hidden or becomes ineligible, its public Keepsakes stop appearing publicly. If the source story is deleted, its Keepsakes are deleted with it. Withdrawing a licence stops new publication; already-public Keepsakes stay public unless the author asks for removal or another applicable policy or legal basis requires action.",
           },
         ],
       },
@@ -354,8 +363,8 @@ const DOCS: Record<string, LegalDoc> = {
         h: { bn: "অপসারণ", en: "Takedown" },
         paras: [
           {
-            bn: `কোনো প্রকাশিত কিপসেক নিয়ে অধিকারের অভিযোগ থাকলে যোগাযোগ পেজে (${EMAIL}) লিখুন। যাচাইকৃত অভিযোগে কিপসেকটি সীমাবদ্ধ করা হবে এবং মালিককে কারণসহ জানানো হবে।`,
-            en: `Rights holders may request removal of a public Keepsake via the Contact page (${EMAIL}). Verified requests are actioned by restricting the Keepsake; the owner is notified with the reason.`,
+            bn: `কোনো প্রকাশিত কিপসেক নিয়ে অধিকারের অভিযোগ থাকলে যোগাযোগ পেজে (${EMAIL}) লিখুন। যাচাইকৃত অভিযোগে কিপসেকটি সীমাবদ্ধ করা হবে। প্রকাশ্য কিপসেক সীমাবদ্ধ করলেই মালিকের সংরক্ষিত কিপসেক মুছে যায় না। আপনার কিপসেক সীমাবদ্ধ হলে সে বিষয়ে জানতে যোগাযোগ পেজে আমাদের লিখতে পারেন। লাইসেন্স গ্রহণ করা থাকলেও অধিকারধারী অভিযোগ তুলতে পারেন: অভিযোগ প্রমাণিত হলে গল্প লাইসেন্সের আওতায় থাকলেও প্রকাশ্য কিপসেকটি সীমাবদ্ধ করা যেতে পারে।`,
+            en: `Rights holders may request removal of a public Keepsake via the Contact page (${EMAIL}). Verified requests are actioned by restricting the Keepsake. Restricting a public Keepsake does not itself delete the owner's saved Keepsake. If your Keepsake is restricted, you can contact us via the Contact page for information about it. A licence acceptance does not prevent a rights holder from raising a complaint: an upheld complaint can restrict a public Keepsake even if the story was covered.`,
           },
         ],
       },
