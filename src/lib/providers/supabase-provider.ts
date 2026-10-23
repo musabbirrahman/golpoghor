@@ -635,7 +635,15 @@ export class SupabaseProvider implements DataProvider {
     if (idx < 0 || swapIdx < 0 || swapIdx >= list.length) return current as Chapter;
     const other = list[swapIdx];
     const curPos = (current as Chapter).position;
-    const { error: e1 } = await this.sb.from("chapters").update({ position: curPos }).eq("id", other.id);
+    // The (story_id, position) unique constraint rejects a two-step swap:
+    // moving the other chapter onto curPos first collides with the position
+    // the current chapter still holds. Park the other chapter on a temporary
+    // position above every sibling, then complete the swap. Each step keeps
+    // positions unique and non-negative. If a later step fails, the error
+    // surfaces to the caller and the list refetches server truth; the parked
+    // chapter simply sits at the end until the move is retried.
+    const tempPos = Math.max(...list.map((c) => c.position)) + 1;
+    const { error: e1 } = await this.sb.from("chapters").update({ position: tempPos }).eq("id", other.id);
     if (e1) throw toAppError(e1);
     const { data: moved, error: e2 } = await this.sb
       .from("chapters")
@@ -644,6 +652,8 @@ export class SupabaseProvider implements DataProvider {
       .select()
       .single();
     if (e2) throw toAppError(e2);
+    const { error: e3 } = await this.sb.from("chapters").update({ position: curPos }).eq("id", other.id);
+    if (e3) throw toAppError(e3);
     return moved as Chapter;
   }
 

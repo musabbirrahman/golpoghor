@@ -694,6 +694,10 @@ const dict = {
       bn: "শুধু মডারেটররা এই পেজ দেখতে পারেন।",
       en: "Only moderators can view this page.",
     },
+    notOwner: {
+      bn: "শুধু গল্পের লেখক এই পেজ সম্পাদনা করতে পারেন।",
+      en: "Only the story's author can edit this page.",
+    },
   },
 } as const;
 

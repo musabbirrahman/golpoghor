@@ -119,7 +119,7 @@ function PublishStoryButton({ storyId, onPublish, label }: { storyId: string; on
 export function StoryFormPage() {
   const { id } = useParams();
   const isNew = !id;
-  const { t, dp, locale } = useApp();
+  const { t, dp, locale, session, sessionLoading } = useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -167,8 +167,10 @@ export function StoryFormPage() {
     return () => { cancelled = true; };
   }, [dp, story?.cover_path]);
 
-  // hydrate once
-  if (!isNew && story && !initialized) {
+  // hydrate once — owners only, and only once the session has settled, so
+  // a non-owner never gets the form state filled (the denial return below
+  // renders instead; the RequireAuthor wrapper covers signed-out users).
+  if (!isNew && story && !initialized && !sessionLoading && session && session.user.id === story.author_id) {
     setTitle(story.title);
     setSlug(story.slug);
     setSlugTouched(true);
@@ -279,6 +281,23 @@ export function StoryFormPage() {
     return (
       <RequireAuthor>
         <Layout><EmptyState title={t("errors", "notFound")} action={<ButtonLink to="/write">{t("common", "back")}</ButtonLink>} /></Layout>
+      </RequireAuthor>
+    );
+  }
+
+  // Owner gate: the story form (including the licence card, chapter list,
+  // and delete/publish controls) is the author's surface only. Signed-out
+  // users are already handled by the RequireAuthor wrapper; this denies
+  // signed-in non-owners before any of the form renders.
+  if (!isNew && story && session && session.user.id !== story.author_id) {
+    return (
+      <RequireAuthor>
+        <Layout>
+          <EmptyState
+            title={t("errors", "notOwner")}
+            action={<ButtonLink to="/">{t("nav", "home")}</ButtonLink>}
+          />
+        </Layout>
       </RequireAuthor>
     );
   }
@@ -693,9 +712,20 @@ function ChapterListCard({ storyId }: { storyId: string }) {
     queryFn: () => dp.listChapters(storyId, { publishedOnly: false }),
   });
   const chapters = chaptersQuery.data ?? [];
+  const [moveError, setMoveError] = useState<string | null>(null);
   const moveMutation = useMutation({
     mutationFn: ({ id, direction }: { id: string; direction: "up" | "down" }) => dp.moveChapter(id, direction),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["chapters", storyId, "all"] }),
+    onSuccess: () => {
+      setMoveError(null);
+      queryClient.invalidateQueries({ queryKey: ["chapters", storyId, "all"] });
+    },
+    onError: (err) => {
+      // A failed swap must never look like a silent no-op again: show the
+      // error and refetch the server order (a chapter parked mid-swap by a
+      // partial failure simply shows at its true position until retried).
+      setMoveError(err instanceof AppError ? t("errors", err.code) : t("errors", "generic"));
+      queryClient.invalidateQueries({ queryKey: ["chapters", storyId, "all"] });
+    },
   });
 
   return (
@@ -738,6 +768,7 @@ function ChapterListCard({ storyId }: { storyId: string }) {
         ) : (
           <p className="text-sm text-ink-faint">{t("story", "noChapters")}</p>
         )}
+        {moveError && <p className="mt-3 text-sm text-clay">{moveError}</p>}
       </div>
     </Card>
   );

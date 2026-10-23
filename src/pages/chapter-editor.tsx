@@ -57,7 +57,7 @@ function LastChapterWarning({ storyId, chapterId }: { storyId: string; chapterId
 export function ChapterEditorPage() {
   const { storyId, chapterId } = useParams();
   const isNew = !chapterId;
-  const { t, locale, dp } = useApp();
+  const { t, locale, dp, session, sessionLoading } = useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -98,6 +98,14 @@ export function ChapterEditorPage() {
   });
   const story: Story | null = storyQuery.data ?? null;
 
+  // Owner gate: the editor is the author's surface only. `denied` is false
+  // while anything is still loading (the loading return below covers that
+  // window), so a non-owner never sees the editor, its hydration never
+  // runs, and no autosave can fire for them. Signed-out users get the
+  // sign-in state instead. Moderators are denied here too — their hide
+  // powers live on the admin surface, not in this editor.
+  const denied = !!story && !!session && session.user.id !== story.author_id;
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [2, 3] } }),
@@ -117,7 +125,7 @@ export function ChapterEditorPage() {
   // Hydrate editor once, and re-hydrate if fresher server data arrives
   // while the user has no unsaved edits (never clobber in-progress work).
   useEffect(() => {
-    if (isNew || !existingQuery.data || !editor) return;
+    if (denied || isNew || !existingQuery.data || !editor) return;
     const c = existingQuery.data;
     if (initialized && (dirtyRef.current || chapterRef.current?.updated_at === c.updated_at)) return;
     setChapter(c);
@@ -128,10 +136,10 @@ export function ChapterEditorPage() {
     setSaveState("saved");
     setInitialized(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existingQuery.data, editor, isNew, initialized]);
+  }, [existingQuery.data, editor, isNew, initialized, denied]);
 
   const doSave = useCallback(async () => {
-    if (!story || !editor) return;
+    if (!story || !editor || denied) return;
     dirtyRef.current = false;
     setSaveState("saving");
     setError(null);
@@ -172,7 +180,7 @@ export function ChapterEditorPage() {
       setError(err instanceof AppError ? t("errors", err.code) : t("errors", "generic"));
       dirtyRef.current = true; // retry will pick it up
     }
-  }, [story, editor, dp, locale, navigate, queryClient, t]);
+  }, [story, editor, dp, locale, navigate, queryClient, t, denied]);
 
   const saveNow = useCallback(() => {
     saveChain.current = saveChain.current.then(doSave);
@@ -249,13 +257,33 @@ export function ChapterEditorPage() {
     }
   }
 
-  if (storyQuery.isLoading || (!isNew && existingQuery.isLoading)) {
+  if (sessionLoading || storyQuery.isLoading || (!isNew && existingQuery.isLoading)) {
     return <Layout><Spinner /></Layout>;
   }
   if (!story || (!isNew && !existingQuery.data)) {
     return (
       <Layout>
         <EmptyState title={t("errors", "notFound")} action={<ButtonLink to="/write">{t("common", "back")}</ButtonLink>} />
+      </Layout>
+    );
+  }
+  if (!session) {
+    return (
+      <Layout>
+        <EmptyState
+          title={t("errors", "signInRequired")}
+          action={<ButtonLink to={`/login?next=${encodeURIComponent(window.location.pathname)}`}>{t("nav", "signIn")}</ButtonLink>}
+        />
+      </Layout>
+    );
+  }
+  if (denied) {
+    return (
+      <Layout>
+        <EmptyState
+          title={t("errors", "notOwner")}
+          action={<ButtonLink to="/">{t("nav", "home")}</ButtonLink>}
+        />
       </Layout>
     );
   }

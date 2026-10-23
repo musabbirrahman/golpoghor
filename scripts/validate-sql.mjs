@@ -130,6 +130,7 @@ const files = [
   "supabase/migrations/20261021160000_keepsake_keeper_credit.sql",
   "supabase/migrations/20261021170000_admin_metrics.sql",
   "supabase/migrations/20261021170001_comment_edited_at.sql",
+  "supabase/migrations/20261023140000_licence_author_gate.sql",
   "supabase/seed.sql",
 ];
 
