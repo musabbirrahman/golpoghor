@@ -61,6 +61,7 @@ const dict = {
     stories: { bn: "গল্পসমূহ", en: "Stories" },
     chapters: { bn: "অধ্যায়", en: "chapters" },
     chapter: { bn: "অধ্যায়", en: "Chapter" },
+    chapterSingular: { bn: "অধ্যায়", en: "chapter" },
     ongoing: { bn: "চলমান", en: "Ongoing" },
     complete: { bn: "সমাপ্ত", en: "Complete" },
     draft: { bn: "খসড়া", en: "Draft" },

@@ -60,15 +60,11 @@ export function StoryCard({ story }: { story: Story }) {
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-2 text-xs text-ink-faint">
           <StatusBadge status={story.status} />
           <span>
-            {story.chapter_count ?? 0} {t("story", "chapters")}
+            {story.chapter_count ?? 0}{" "}
+            {(story.chapter_count ?? 0) === 1 ? t("story", "chapterSingular") : t("story", "chapters")}
           </span>
           {minutes > 0 && (
-            <>
-              <span aria-hidden>·</span>
-              <span>
-                ~{minutes} {t("story", "minRead")}
-              </span>
-            </>
+            <span className="whitespace-nowrap">· ~{minutes} {t("story", "minRead")}</span>
           )}
         </div>
         <p className="text-xs text-ink-faint">
@@ -101,7 +97,8 @@ export function StoryRow({ story }: { story: Story }) {
         </p>
         <p className="text-sm text-ink-soft clamp-2">{story.summary}</p>
         <p className="mt-auto text-xs text-ink-faint">
-          {story.chapter_count ?? 0} {t("story", "chapters")}
+          {story.chapter_count ?? 0}{" "}
+          {(story.chapter_count ?? 0) === 1 ? t("story", "chapterSingular") : t("story", "chapters")}
           {minutes > 0 ? ` · ~${minutes} ${t("story", "minRead")}` : ""}
           {story.published_at ? ` · ${timeAgo(story.published_at, locale)}` : ""}
         </p>

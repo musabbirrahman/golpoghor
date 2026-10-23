@@ -57,7 +57,8 @@ export function WriteDashboard() {
                       </div>
                       <h3 className="mt-1.5 truncate font-serif text-lg font-semibold">{s.title}</h3>
                       <p className="text-sm text-ink-faint">
-                        {s.chapter_count ?? 0} {t("story", "chapters")}
+                        {s.chapter_count ?? 0}{" "}
+                        {(s.chapter_count ?? 0) === 1 ? t("story", "chapterSingular") : t("story", "chapters")}
                       </p>
                     </div>
                   </Card>

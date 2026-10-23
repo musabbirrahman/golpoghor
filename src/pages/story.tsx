@@ -176,9 +176,8 @@ export function StoryPage() {
           )}
 
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-faint">
-            <span>{chapters.length} {t("story", "chapters")}</span>
+            <span>{chapters.length} {chapters.length === 1 ? t("story", "chapterSingular") : t("story", "chapters")}</span>
             {totalMinutes > 0 && <span>~{totalMinutes} {t("story", "minRead")}</span>}
-            <span>♥ {likeQuery.data?.count ?? story.like_count ?? 0}</span>
             {story.published_at && <span>{t("story", "publishedOn")} {formatDate(story.published_at, locale)}</span>}
           </div>
 
