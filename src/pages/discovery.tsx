@@ -184,8 +184,6 @@ export function DiscoverPage() {
         </select>
         <select aria-label={t("discover", "sort")} className={selectCls} value={sort} onChange={(e) => set({ sort: e.target.value })}>
           <option value="newest">{t("discover", "newest")}</option>
-          <option value="popular">{t("discover", "popular")}</option>
-          <option value="most_viewed">{t("discover", "mostViewed")}</option>
           <option value="featured">{t("discover", "featured")}</option>
         </select>
       </div>
