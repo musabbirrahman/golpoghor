@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import type { Story } from "../lib/types";
 import { useApp } from "../lib/app-context";
 import { genreLabel } from "../lib/genres";
-import { formatCount, formatDate, readingMinutes, timeAgo } from "../lib/utils";
+import { formatDate, readingMinutes, timeAgo } from "../lib/utils";
 import { LanguageBadge, StatusBadge } from "./ui";
 
 export function storyPath(s: Story): string {
@@ -70,10 +70,6 @@ export function StoryCard({ story }: { story: Story }) {
               </span>
             </>
           )}
-          <span aria-hidden>·</span>
-          <span title={`${story.view_count} ${t("story", "views")}`}>
-            👁 {formatCount(story.view_count)} {t("story", "views")}
-          </span>
         </div>
         <p className="text-xs text-ink-faint">
           {story.published_at ? timeAgo(story.published_at, locale) : formatDate(story.created_at, locale)}
@@ -107,7 +103,6 @@ export function StoryRow({ story }: { story: Story }) {
         <p className="mt-auto text-xs text-ink-faint">
           {story.chapter_count ?? 0} {t("story", "chapters")}
           {minutes > 0 ? ` · ~${minutes} ${t("story", "minRead")}` : ""}
-          {` · 👁 ${formatCount(story.view_count)} ${t("story", "views")}`}
           {story.published_at ? ` · ${timeAgo(story.published_at, locale)}` : ""}
         </p>
       </div>

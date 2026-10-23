@@ -8,7 +8,7 @@ import { Layout } from "../components/layout";
 import { Avatar, Badge, Button, ButtonLink, EmptyState, Spinner, StatusBadge, LanguageBadge } from "../components/ui";
 import { Cover } from "../components/story-card";
 import { ReportDialog } from "../components/report-dialog";
-import { formatCount, formatDate, readingMinutes, timeAgo } from "../lib/utils";
+import { formatDate, readingMinutes, timeAgo } from "../lib/utils";
 
 export function StoryPage() {
   const { username = "", slug = "" } = useParams();
@@ -178,7 +178,6 @@ export function StoryPage() {
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-faint">
             <span>{chapters.length} {t("story", "chapters")}</span>
             {totalMinutes > 0 && <span>~{totalMinutes} {t("story", "minRead")}</span>}
-            <span>👁 {formatCount(story.view_count)} {t("story", "views")}</span>
             <span>♥ {likeQuery.data?.count ?? story.like_count ?? 0}</span>
             {story.published_at && <span>{t("story", "publishedOn")} {formatDate(story.published_at, locale)}</span>}
           </div>
