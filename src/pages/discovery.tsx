@@ -51,7 +51,7 @@ function Shelf({ title, action, children }: { title: string; action?: React.Reac
 
 export function HomePage() {
   const { t, dp } = useApp();
-  const featured = useQuery({ queryKey: ["stories", { sort: "popular", limit: 4 }], queryFn: () => dp.listStories({ sort: "popular", limit: 4 }) });
+  const featured = useQuery({ queryKey: ["stories", { sort: "newest", limit: 4 }], queryFn: () => dp.listStories({ sort: "newest", limit: 4 }) });
   const bn = useQuery({ queryKey: ["stories", { language: "bn", limit: 8 }], queryFn: () => dp.listStories({ language: "bn", limit: 8 }) });
   const en = useQuery({ queryKey: ["stories", { language: "en", limit: 8 }], queryFn: () => dp.listStories({ language: "en", limit: 8 }) });
   const keepsakes = useQuery({ queryKey: ["public-keepsakes"], queryFn: () => dp.listPublicKeepsakes() });
@@ -77,7 +77,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <Shelf title={t("home", "featured")} action={<Link to="/discover?sort=popular" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
+      <Shelf title={t("home", "featured")} action={<Link to="/discover?sort=newest" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
         {featured.isLoading ? <Spinner /> : (
           <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
             {(featured.data?.stories ?? []).map((s) => <StoryCard key={s.id} story={s} />)}
