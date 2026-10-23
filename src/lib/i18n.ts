@@ -206,7 +206,7 @@ const dict = {
     notFound: { bn: "এই কিপসেকটি প্রকাশিত নয় বা আর নেই।", en: "This keepsake is not public or no longer exists." },
     report: { bn: "রিপোর্ট করুন", en: "Report" },
     echoPublicNote: { bn: "মালিকের প্রতিধ্বনি (প্রকাশ্য)", en: "The owner's echo (shared publicly)" },
-    licenceTitle: { bn: "Keepsake Sharing Licence", en: "Keepsake Sharing Licence" },
+    licenceTitle: { bn: "কিপসেক শেয়ারিং লাইসেন্স", en: "Keepsake Sharing Licence" },
     shelfTitle: { bn: "কিপসেক শেলফ", en: "Keepsakes shelf" },
     shelfSubtitle: {
       bn: "পাঠকদের প্রকাশ্যে শেয়ার করা প্রিয় লাইনগুলো — কার্ড দেখতে যেকোনো একটিতে চাপ দিন।",

@@ -165,7 +165,7 @@ export function SettingsPage() {
           >
             <div className="flex items-center gap-4">
               <Avatar name={profile?.display_name ?? "?"} size="lg" src={dp.avatarUrl(profile?.avatar_path ?? null)} />
-              <div>
+              <div className="min-w-0 flex-1">
                 <label className="mb-1 block text-sm font-medium text-ink-soft" htmlFor="set-avatar">
                   {t("settings", "profilePicture")}
                 </label>

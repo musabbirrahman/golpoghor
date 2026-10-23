@@ -262,7 +262,7 @@ const DOCS: Record<string, LegalDoc> = {
     ],
   },
   licence: {
-    title: { bn: "Keepsake Sharing Licence (v1)", en: "Keepsake Sharing Licence (v1)" },
+    title: { bn: "কিপসেক শেয়ারিং লাইসেন্স (v1)", en: "Keepsake Sharing Licence (v1)" },
     sections: [
       {
         h: { bn: "এই লাইসেন্স কী", en: "What this licence is" },
@@ -397,7 +397,7 @@ export function LegalPage({ slug }: { slug: keyof typeof DOCS }) {
         </div>
         <nav className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm text-river" aria-label="Legal">
           {others.map((k) => (
-            <Link key={k} to={`/${k}`} className="hover:underline">
+            <Link key={k} to={k === "keepsakes" ? "/keepsakes-policy" : `/${k}`} className="hover:underline">
               {DOCS[k].title[locale]}
             </Link>
           ))}
