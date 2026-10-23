@@ -9,7 +9,7 @@ import { Button, ButtonLink, Modal } from "./ui";
  * a strip or shelf card — the private equivalent of the /k/ page.
  * Shows the rendered card canvas, the FULL excerpt and echo (no
  * truncation, no Show more/less), and every action: download,
- * publish/unpublish, echo editing, delete.
+ * publish/unpublish, echo editing, echo-public toggle, delete.
  */
 export function KeepsakeViewer({
   keepsake,
@@ -21,6 +21,7 @@ export function KeepsakeViewer({
   onUnpublish,
   onDelete,
   onSaveEcho,
+  onToggleEchoPublic,
 }: {
   keepsake: Keepsake;
   busy: boolean;
@@ -31,6 +32,7 @@ export function KeepsakeViewer({
   onUnpublish: (k: Keepsake) => void;
   onDelete: (k: Keepsake) => void;
   onSaveEcho: (k: Keepsake, draft: string) => Promise<void>;
+  onToggleEchoPublic: (k: Keepsake, value: boolean) => Promise<void>;
 }) {
   const { t, locale } = useApp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -124,6 +126,15 @@ export function KeepsakeViewer({
             >
               {t("keepsakes", "editEcho")}
             </Button>
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={keepsake.echo_public}
+                disabled={busy}
+                onChange={(e) => onToggleEchoPublic(keepsake, e.target.checked)}
+              />
+              {t("keepsakes", "shareEchoPublicly")}
+            </label>
           </div>
         ) : (
           <Button

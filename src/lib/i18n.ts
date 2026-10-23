@@ -170,6 +170,7 @@ const dict = {
     editEcho: { bn: "প্রতিধ্বনি সম্পাদনা", en: "Edit echo" },
     echoHeading: { bn: "প্রতিধ্বনি", en: "Echo" },
     includeEchoOnCard: { bn: "কার্ডে প্রতিধ্বনি রাখুন", en: "Include echo on the card" },
+    shareEchoPublicly: { bn: "প্রতিধ্বনি প্রকাশ্যে শেয়ার করুন", en: "Share echo publicly" },
     addEcho: { bn: "প্রতিধ্বনি যোগ করুন", en: "Add echo" },
     showMore: { bn: "আরো দেখুন", en: "Show more" },
     showLess: { bn: "কম দেখুন", en: "Show less" },

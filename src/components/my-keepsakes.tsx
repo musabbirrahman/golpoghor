@@ -109,16 +109,34 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
     }
   };
 
-  /** Echoes are private notes: shown only to their owner, in this list and the viewer. */
+  /** Echoes are private by default; the owner may share one publicly
+   *  with the viewer toggle. Clearing the echo also clears the flag,
+   *  so a later echo does not go public on its own. */
   const saveEcho = async (k: Keepsake, draft: string) => {
     setKeepsakeBusy(true);
     setKeepsakeError(null);
     try {
-      await dp.updateKeepsake(k.id, { echo: draft.trim() ? draft.trim() : null });
+      const echo = draft.trim() ? draft.trim() : null;
+      await dp.updateKeepsake(k.id, echo ? { echo } : { echo: null, echo_public: false });
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
     } catch (e) {
       setKeepsakeError({ id: k.id, message: e instanceof AppError ? t("errors", e.code) : t("errors", "generic") });
       throw e;
+    } finally {
+      setKeepsakeBusy(false);
+    }
+  };
+
+  /** Per-keepsake opt-in: share this keepsake's echo on its public
+   *  page and shelf card (the projection shows it only when true). */
+  const toggleEchoPublic = async (k: Keepsake, value: boolean) => {
+    setKeepsakeBusy(true);
+    setKeepsakeError(null);
+    try {
+      await dp.updateKeepsake(k.id, { echo_public: value });
+      queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
+    } catch (e) {
+      setKeepsakeError({ id: k.id, message: e instanceof AppError ? t("errors", e.code) : t("errors", "generic") });
     } finally {
       setKeepsakeBusy(false);
     }
@@ -276,6 +294,7 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
           onUnpublish={unpublishKeepsake}
           onDelete={deleteKeepsake}
           onSaveEcho={saveEcho}
+          onToggleEchoPublic={toggleEchoPublic}
         />
       )}
     </section>
