@@ -97,6 +97,7 @@ function mapEvent(row: any): ModerationEvent {
 function toAppError(e: any, fallbackCode = "generic"): AppError {
   const msg = e?.message ?? "Unknown error";
   if (msg.includes("RATE_LIMITED")) return new AppError("rateLimited", msg);
+  if (msg.includes("FEATURED_NOT_ALLOWED")) return new AppError("notAllowed", msg);
   if (e?.code === "23505") {
     if (/username/i.test(msg)) return new AppError("usernameTaken", msg);
     return new AppError("conflict", msg);
@@ -375,6 +376,53 @@ export class SupabaseProvider implements DataProvider {
     const stories = (data ?? []).map(mapStory);
     await this.attachCounts(stories);
     return { stories, total: count ?? stories.length };
+  }
+
+  async listFeaturedStories(limit: number): Promise<Story[]> {
+    const { data: picked, error } = await this.sb
+      .from("stories")
+      .select(STORY_JOIN)
+      .not("featured_position", "is", null)
+      .in("status", ["ongoing", "complete"])
+      .order("featured_position", { ascending: true })
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .limit(limit);
+    if (error) throw toAppError(error);
+    const stories = (picked ?? []).map(mapStory);
+    if (stories.length < limit) {
+      // Fill remaining slots with newest public stories (picked ones excluded).
+      // Fetching `limit` newest always suffices: at most `picked` of them are picks.
+      const pickedIds = new Set(stories.map((s) => s.id));
+      const { data: newest, error: newestError } = await this.sb
+        .from("stories")
+        .select(STORY_JOIN)
+        .in("status", ["ongoing", "complete"])
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .limit(limit);
+      if (newestError) throw toAppError(newestError);
+      for (const s of (newest ?? []).map(mapStory)) {
+        if (stories.length >= limit) break;
+        if (!pickedIds.has(s.id)) stories.push(s);
+      }
+    }
+    await this.attachCounts(stories);
+    return stories;
+  }
+
+  async listAllFeatured(): Promise<Story[]> {
+    const { data, error } = await this.sb
+      .from("stories")
+      .select(STORY_JOIN)
+      .not("featured_position", "is", null)
+      .order("featured_position", { ascending: true })
+      .order("published_at", { ascending: false, nullsFirst: false });
+    if (error) throw toAppError(error);
+    return (data ?? []).map(mapStory);
+  }
+
+  async setFeaturedPosition(id: string, position: number | null): Promise<void> {
+    const { error } = await this.sb.from("stories").update({ featured_position: position }).eq("id", id);
+    if (error) throw toAppError(error);
   }
 
   private async attachCounts(stories: Story[]): Promise<void> {

@@ -132,6 +132,13 @@ export interface DataProvider {
 
   // ----------------------------------------------------------- stories
   listStories(filters: StoryFilters): Promise<{ stories: Story[]; total: number }>;
+  /** Homepage shelf: admin picks in position order, newest public stories fill
+   *  remaining slots up to limit. */
+  listFeaturedStories(limit: number): Promise<Story[]>;
+  /** Admin only: every featured story in position order, any status. */
+  listAllFeatured(): Promise<Story[]>;
+  /** Moderator only (DB trigger blocks anyone else): set position or null to unfeature. */
+  setFeaturedPosition(id: string, position: number | null): Promise<void>;
   getStory(id: string): Promise<Story | null>;
   /** Public lookup by author username + slug. Returns null for drafts unless owner. */
   getStoryBySlug(authorUsername: string, slug: string): Promise<Story | null>;

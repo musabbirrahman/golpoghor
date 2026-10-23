@@ -5,7 +5,8 @@ import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
 import { Badge, Button, ButtonLink, Card, EmptyState, Modal, Spinner, Textarea } from "../components/ui";
 import { formatDate, timeAgo } from "../lib/utils";
-import type { Appeal, Report, ReportTarget } from "../lib/types";
+import type { Appeal, Report, ReportTarget, Story } from "../lib/types";
+import { storyPath } from "../components/story-card";
 
 function RequireModerator({ children }: { children: React.ReactNode }) {
   const { t, session, sessionLoading, isModerator } = useApp();
@@ -279,9 +280,126 @@ function AppealCard({ appeal }: { appeal: Appeal }) {
   );
 }
 
+function FeaturedTab() {
+  const { t, dp } = useApp();
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const featuredQuery = useQuery({ queryKey: ["admin-featured"], queryFn: () => dp.listAllFeatured() });
+  const publicQuery = useQuery({ queryKey: ["admin-public-stories"], queryFn: () => dp.listStories({ limit: 100 }) });
+
+  const featured = featuredQuery.data ?? [];
+  const featuredIds = new Set(featured.map((s) => s.id));
+  const candidates = (publicQuery.data?.stories ?? []).filter((s) => !featuredIds.has(s.id));
+
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["admin-featured"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-public-stories"] });
+    queryClient.invalidateQueries({ queryKey: ["stories"] });
+  };
+
+  async function act(label: string, fn: () => Promise<unknown>) {
+    setBusy(label);
+    setError(null);
+    try {
+      await fn();
+      refresh();
+    } catch (e: any) {
+      setError(e?.code ?? "generic");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function feature() {
+    if (!selected) return;
+    const pos = Math.max(0, ...featured.map((s) => s.featured_position ?? 0)) + 1;
+    await act("feature", () => dp.setFeaturedPosition(selected, pos));
+    setSelected("");
+  }
+
+  async function move(story: Story, dir: -1 | 1) {
+    const idx = featured.findIndex((s) => s.id === story.id);
+    const neighbor = featured[idx + dir];
+    if (idx < 0 || !neighbor) return;
+    const a = story.featured_position ?? 0;
+    const b = neighbor.featured_position ?? 0;
+    // No unique constraint on positions, so a plain two-step swap cannot collide.
+    await act("move", async () => {
+      await dp.setFeaturedPosition(story.id, b);
+      await dp.setFeaturedPosition(neighbor.id, a);
+    });
+  }
+
+  async function remove(story: Story) {
+    const pos = story.featured_position ?? 0;
+    await act("remove", async () => {
+      await dp.setFeaturedPosition(story.id, null);
+      // Renumber so positions stay dense 1..N.
+      for (const s of featured) {
+        if (s.id !== story.id && (s.featured_position ?? 0) > pos) {
+          await dp.setFeaturedPosition(s.id, (s.featured_position ?? 0) - 1);
+        }
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Card className="p-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            aria-label={t("moderation", "featureStory")}
+            className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+          >
+            <option value="">{t("moderation", "chooseStory")}</option>
+            {candidates.map((s) => (
+              <option key={s.id} value={s.id}>{s.title}</option>
+            ))}
+          </select>
+          <Button size="sm" disabled={!selected || busy !== null} onClick={feature}>
+            {t("moderation", "featureStory")}
+          </Button>
+        </div>
+        {error ? <p className="mt-2 text-sm text-clay">{t("errors", error)}</p> : null}
+      </Card>
+      {featuredQuery.isLoading ? (
+        <Spinner />
+      ) : featured.length ? (
+        <Card className="divide-y divide-ink/10">
+          {featured.map((s, i) => (
+            <div key={s.id} className="flex flex-wrap items-center gap-2 px-5 py-3 text-sm">
+              <span className="font-serif font-bold">#{s.featured_position}</span>
+              <Link to={storyPath(s)} className="font-medium hover:underline">{s.title}</Link>
+              <span className="text-ink-faint">{s.author?.display_name ?? ""}</span>
+              <span className="ml-auto flex gap-2">
+                <Button size="sm" variant="secondary" disabled={i === 0 || busy !== null} onClick={() => move(s, -1)}>
+                  ↑ {t("moderation", "moveUp")}
+                </Button>
+                <Button size="sm" variant="secondary" disabled={i === featured.length - 1 || busy !== null} onClick={() => move(s, 1)}>
+                  ↓ {t("moderation", "moveDown")}
+                </Button>
+                <Button size="sm" variant="danger" disabled={busy !== null} onClick={() => remove(s)}>
+                  {t("moderation", "removeFeatured")}
+                </Button>
+              </span>
+            </div>
+          ))}
+        </Card>
+      ) : (
+        <EmptyState title={t("moderation", "featuredEmpty")} />
+      )}
+    </div>
+  );
+}
+
 export function AdminPage() {
   const { t, locale, dp } = useApp();
-  const [tab, setTab] = useState<"queue" | "appeals" | "resolved" | "audit" | "metrics">("queue");
+  const [tab, setTab] = useState<"queue" | "appeals" | "resolved" | "audit" | "metrics" | "featured">("queue");
 
   const reportsQuery = useQuery({ queryKey: ["reports"], queryFn: () => dp.listReports() });
   const metricsQuery = useQuery({
@@ -330,6 +448,9 @@ export function AdminPage() {
           <button role="tab" aria-selected={tab === "metrics"} className={tabBtn(tab === "metrics")} onClick={() => setTab("metrics")}>
             {t("moderation", "metrics")}
           </button>
+          <button role="tab" aria-selected={tab === "featured"} className={tabBtn(tab === "featured")} onClick={() => setTab("featured")}>
+            {t("moderation", "featured")}
+          </button>
         </div>
 
         <div className="mt-6">
@@ -362,6 +483,8 @@ export function AdminPage() {
             ) : (
               <EmptyState title={t("appeals", "empty")} />
             )
+          ) : tab === "featured" ? (
+            <FeaturedTab />
           ) : tab !== "audit" ? (
             reportsQuery.isLoading ? <Spinner /> : (tab === "queue" ? queue : resolved).length ? (
               <div className="flex flex-col gap-4">

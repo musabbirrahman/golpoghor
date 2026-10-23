@@ -408,6 +408,13 @@ const dict = {
       bn: "কোনো খোলা রিপোর্ট নেই।",
       en: "No open reports. All quiet.",
     },
+    featured: { bn: "নির্বাচিত", en: "Featured" },
+    featuredEmpty: { bn: "কোনো নির্বাচিত গল্প নেই।", en: "No featured stories yet." },
+    featureStory: { bn: "নির্বাচিত করুন", en: "Feature story" },
+    chooseStory: { bn: "গল্প বেছে নিন", en: "Choose a story" },
+    moveUp: { bn: "উপরে তুলুন", en: "Move up" },
+    moveDown: { bn: "নিচে নামান", en: "Move down" },
+    removeFeatured: { bn: "সরান", en: "Remove" },
     reportedBy: { bn: "রিপোর্টকারী", en: "Reported by" },
     target: { bn: "লক্ষ্য", en: "Target" },
     action: { bn: "পদক্ষেপ", en: "Action" },
@@ -634,6 +641,10 @@ const dict = {
     rateLimited: {
       bn: "এক ঘণ্টায় অনেক বেশিবার করা হয়েছে। কিছুক্ষণ অপেক্ষা করে আবার চেষ্টা করুন।",
       en: "You've done that a lot in the last hour. Please wait a while and try again.",
+    },
+    notAllowed: {
+      bn: "এই কাজের অনুমতি আপনার নেই।",
+      en: "You don't have permission for this.",
     },
     emailTaken: {
       bn: "এই ইমেইলে ইতিমধ্যে অ্যাকাউন্ট আছে।",

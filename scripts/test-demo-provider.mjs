@@ -78,6 +78,41 @@ const check = (name, cond) => {
   check("language filter", r4.stories.every((s) => s.language === "bn") && r4.total === 2);
 }
 
+// 3b. featured stories (seed: first two published stories featured 1, 2)
+{
+  const picks = await dp.listAllFeatured();
+  check("seed has 2 featured stories", picks.length === 2);
+  check("seed featured positions are 1, 2", picks.map((s) => s.featured_position).join(",") === "1,2");
+  const shelf = await dp.listFeaturedStories(4);
+  check("shelf shows 4 (picks + newest fill)", shelf.length === 4);
+  check("shelf starts with picks in order", shelf[0].id === picks[0].id && shelf[1].id === picks[1].id);
+  check("shelf fill excludes picks", !shelf.slice(2).some((s) => picks.some((p) => p.id === s.id)));
+  check("shelf is all public", shelf.every((s) => s.status === "ongoing" || s.status === "complete"));
+
+  // moderator: feature a third story, swap it to first, then unfeature
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  const pub = await dp.listStories({});
+  const third = pub.stories.find((s) => !picks.some((p) => p.id === s.id));
+  await dp.setFeaturedPosition(third.id, 3);
+  let after = await dp.listAllFeatured();
+  check("featuring appends at position 3", after.length === 3 && after[2].id === third.id);
+  await dp.setFeaturedPosition(third.id, 1);
+  await dp.setFeaturedPosition(picks[0].id, 3);
+  after = await dp.listAllFeatured();
+  check("swap moves third story first", after[0].id === third.id && after[2].id === picks[0].id);
+  await dp.setFeaturedPosition(third.id, null);
+  after = await dp.listAllFeatured();
+  check("unfeature removes from list", after.length === 2 && !after.some((s) => s.id === third.id));
+  await dp.signOut();
+
+  // author cannot feature (demo mirror of the DB guard trigger)
+  await dp.signIn("tanvir@golpoghor.demo", "golpoghor-demo-2026");
+  let blocked = false;
+  try { await dp.setFeaturedPosition(third.id, 1); } catch (e) { blocked = e?.code === "notAllowed"; }
+  check("author cannot feature (guard)", blocked);
+  await dp.signOut();
+}
+
 // 4. signup + signin
 {
   await dp.signUp({ email: "test@example.com", password: "secret12", username: "test_author", displayName: "Test Author" });

@@ -68,6 +68,8 @@ export interface Story {
   content_notice: string;
   cover_path: string | null;
   view_count: number;
+  /** Admin-picked homepage order: null when not featured, otherwise 1-based position. */
+  featured_position?: number | null;
   created_at: string;
   updated_at: string;
   published_at: string | null;

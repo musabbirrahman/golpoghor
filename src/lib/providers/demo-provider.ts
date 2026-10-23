@@ -166,6 +166,11 @@ function seed(): DemoDB {
     });
     day -= 2;
   }
+  // Demo shelf: first two published stories start featured, so the demo
+  // homepage exercises picks-first ordering plus newest fill.
+  const publishedSeed = stories.filter((s) => s.status === "ongoing" || s.status === "complete");
+  if (publishedSeed[0]) publishedSeed[0].featured_position = 1;
+  if (publishedSeed[1]) publishedSeed[1].featured_position = 2;
   return {
     users,
     profiles,
@@ -577,6 +582,54 @@ export class DemoProvider implements DataProvider {
     const page = rows.slice(offset, offset + limit).map((s) => this.withAuthor(s));
     this.attachCounts(page);
     return { stories: page, total };
+  }
+
+  async listFeaturedStories(limit: number): Promise<Story[]> {
+    const byPosition = (a: Story, b: Story) =>
+      (a.featured_position ?? Infinity) - (b.featured_position ?? Infinity) ||
+      (b.published_at ?? b.created_at).localeCompare(a.published_at ?? a.created_at);
+    const picked = this.db.stories
+      .filter((s) => s.featured_position != null && this.isPublicStory(s))
+      .sort(byPosition)
+      .slice(0, limit);
+    const stories = picked.map((s) => this.withAuthor(s));
+    if (stories.length < limit) {
+      const pickedIds = new Set(stories.map((s) => s.id));
+      const newest = this.db.stories
+        .filter((s) => this.isPublicStory(s) && !pickedIds.has(s.id))
+        .sort((a, b) => (b.published_at ?? b.created_at).localeCompare(a.published_at ?? a.created_at));
+      for (const s of newest) {
+        if (stories.length >= limit) break;
+        stories.push(this.withAuthor(s));
+      }
+    }
+    this.attachCounts(stories);
+    return stories;
+  }
+
+  async listAllFeatured(): Promise<Story[]> {
+    return this.db.stories
+      .filter((s) => s.featured_position != null)
+      .sort(
+        (a, b) =>
+          (a.featured_position ?? Infinity) - (b.featured_position ?? Infinity) ||
+          (b.published_at ?? b.created_at).localeCompare(a.published_at ?? a.created_at),
+      )
+      .map((s) => this.withAuthor(s));
+  }
+
+  async setFeaturedPosition(id: string, position: number | null): Promise<void> {
+    const me = await this.requireUid();
+    const actor = this.db.profiles.find((p) => p.id === me);
+    const isMod = actor?.role === "moderator" || actor?.role === "admin";
+    if (!isMod) throw new AppError("notAllowed", "Only moderators can change featured stories");
+    const s = this.db.stories.find((x) => x.id === id);
+    if (!s) throw new AppError("notFound", "Story not found");
+    if (position !== null && (!Number.isInteger(position) || position < 1))
+      throw new AppError("generic", "Invalid featured position");
+    s.featured_position = position;
+    s.updated_at = new Date().toISOString();
+    this.persist();
   }
 
   async getStory(id: string): Promise<Story | null> {
