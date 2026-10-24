@@ -65,6 +65,16 @@ export function QuoteStudio({
   const [template, setTemplate] = useState<KeepsakeTemplate>(initialTemplate ?? "classic-paper");
   const [echo, setEcho] = useState(initialEcho ?? "");
   const [savedId, setSavedId] = useState<string | null>(null);
+  // Snapshot of the last saved values. The Save button used to read
+  // "Saved" after the first save even when the template/echo/excerpt
+  // had since changed — edits after that point looked saved but were
+  // not, until Save was clicked again. Tracking the snapshot lets the
+  // button flip back to "Save privately" while edits are unsaved.
+  const [savedSnapshot, setSavedSnapshot] = useState<{
+    excerpt: string;
+    template: KeepsakeTemplate;
+    echo: string;
+  } | null>(null);
   const [published, setPublished] = useState(false);
   const [trimmed, setTrimmed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -81,6 +91,7 @@ export function QuoteStudio({
     setTemplate(initialTemplate ?? "classic-paper");
     setEcho(initialEcho ?? "");
     setSavedId(null);
+    setSavedSnapshot(null);
     setPublished(false);
     setError(null);
     setNotice(null);
@@ -135,6 +146,7 @@ export function QuoteStudio({
         // on its own.
         ...(echoValue ? {} : { echo_public: false }),
       });
+      setSavedSnapshot({ excerpt, template, echo: echo.trim() });
       setNotice(t("keepsakes", "saved"));
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
       queryClient.invalidateQueries({ queryKey: ["public-keepsakes"] });
@@ -149,6 +161,7 @@ export function QuoteStudio({
       echo: echo.trim() ? echo : null,
     });
     setSavedId(k.id);
+    setSavedSnapshot({ excerpt, template, echo: echo.trim() });
     setNotice(t("keepsakes", "saved"));
     queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
     return k.id;
@@ -191,6 +204,14 @@ export function QuoteStudio({
       setBusy(false);
     }
   };
+
+  // Unsaved edits after a save flip the button back to "Save privately".
+  const dirtyAfterSave =
+    savedId !== null &&
+    savedSnapshot !== null &&
+    (excerpt !== savedSnapshot.excerpt ||
+      template !== savedSnapshot.template ||
+      echo.trim() !== savedSnapshot.echo);
 
   return (
     <Modal open={open} onClose={onClose} title={t("keepsakes", "title")}>
@@ -252,7 +273,7 @@ export function QuoteStudio({
         />
 
         {!session && <p className="mt-3 text-sm text-ink-soft">{t("keepsakes", "signInToSave")}</p>}
-        {notice && <p className="mt-3 text-sm font-medium text-river">{notice}</p>}
+        {notice && !dirtyAfterSave && <p className="mt-3 text-sm font-medium text-river">{notice}</p>}
         <FieldError message={error} />
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -260,7 +281,7 @@ export function QuoteStudio({
             {t("keepsakes", "download")}
           </Button>
           <Button variant="secondary" onClick={onSave} disabled={busy || !excerpt}>
-            {savedId ? t("keepsakes", "saved") : t("keepsakes", "savePrivate")}
+            {!savedId || dirtyAfterSave ? t("keepsakes", "savePrivate") : t("keepsakes", "saved")}
           </Button>
           <Button variant="ghost" onClick={onPublish} disabled={busy || !excerpt || published}>
             {published ? t("keepsakes", "published") : t("keepsakes", "publish")}

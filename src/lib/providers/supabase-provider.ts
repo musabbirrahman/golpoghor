@@ -254,6 +254,35 @@ export class SupabaseProvider implements DataProvider {
   }
 
   async deleteAccount(): Promise<void> {
+    const me = await this.uid();
+    // R2-11: delete_my_account cascades the DB rows but leaves Storage
+    // objects behind — and the avatars bucket is public, so a deleted
+    // user's avatar would stay reachable by URL. Remove everything
+    // under the user's own folder FIRST: covers and avatars are both
+    // namespaced `${uid}/...` at upload, and every story (hence every
+    // cover) cascades with the profile, so nothing under this prefix
+    // can belong to a surviving story. Cleanup must run before the
+    // RPC because after it the session is dead and owner RLS would
+    // refuse. If cleanup fails, abort before the RPC so the account
+    // is never deleted with files silently left behind.
+    for (const bucket of ["covers", "avatars"] as const) {
+      const paths: string[] = [];
+      const PAGE = 1000;
+      let offset = 0;
+      for (;;) {
+        const { data, error } = await this.sb.storage
+          .from(bucket)
+          .list(`${me}`, { limit: PAGE, offset });
+        if (error) throw toAppError(error);
+        for (const o of data ?? []) if (o.name) paths.push(`${me}/${o.name}`);
+        if ((data ?? []).length < PAGE) break;
+        offset += PAGE;
+      }
+      if (paths.length) {
+        const { error } = await this.sb.storage.from(bucket).remove(paths);
+        if (error) throw toAppError(error);
+      }
+    }
     const { error } = await this.sb.rpc("delete_my_account");
     if (error) throw toAppError(error);
     // The auth user is gone; clear the now-dead local session.

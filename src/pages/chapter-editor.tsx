@@ -152,6 +152,10 @@ export function ChapterEditorPage() {
         setSavedAt(created.updated_at);
         queryClient.setQueryData(["chapter", "edit", created.id], created);
         queryClient.invalidateQueries({ queryKey: ["chapters", story.id] });
+        // The /write dashboard count comes from ["myStories"] — without
+        // this, a new chapter left the dashboard one behind until reload
+        // (15s staleTime serves the cached list on nav-back).
+        queryClient.invalidateQueries({ queryKey: ["myStories"] });
         // Move to the canonical URL WITHOUT a router navigation: navigate()
         // would flip isNew, re-run the hydrate effect and reset the editor
         // to the pre-save snapshot, dropping keystrokes typed during the
@@ -172,6 +176,8 @@ export function ChapterEditorPage() {
         // never shows pre-save content.
         queryClient.setQueryData(["chapter", "edit", cur.id], updated);
         queryClient.invalidateQueries({ queryKey: ["chapters", story.id] });
+        // Keep the /write dashboard count fresh (see create branch).
+        queryClient.invalidateQueries({ queryKey: ["myStories"] });
       }
       setSaveState("saved");
     } catch (err) {
@@ -228,6 +234,8 @@ export function ChapterEditorPage() {
         queryClient.invalidateQueries({ queryKey: ["chapters", story?.id] });
         // Chapter count on public cards/shelves must update too.
         queryClient.invalidateQueries({ queryKey: ["stories"] });
+        // And the /write dashboard count (["myStories"]) as well.
+        queryClient.invalidateQueries({ queryKey: ["myStories"] });
         navigate(`/write/stories/${story?.id}`);
         return;
       }
@@ -262,6 +270,8 @@ export function ChapterEditorPage() {
       // Publishing/unpublishing changes the public chapter count (and can
       // hide a story that lost its last published chapter) — refresh lists.
       queryClient.invalidateQueries({ queryKey: ["stories"] });
+      // And the /write dashboard count (["myStories"]) as well.
+      queryClient.invalidateQueries({ queryKey: ["myStories"] });
     } catch (err) {
       setError(err instanceof AppError ? t("errors", err.code) : t("errors", "generic"));
       setConfirmAction(null);
