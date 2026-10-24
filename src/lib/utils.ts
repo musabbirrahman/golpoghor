@@ -127,6 +127,25 @@ export function formatDate(iso: string, locale: "bn" | "en" = "en"): string {
   return d.toLocaleDateString(loc, { day: "numeric", month: "short", year: "numeric" });
 }
 
+/**
+ * Phase 1A: derive a story cover's thumbnail path from its original path.
+ * Convention: `uid/name.ext` -> `uid/thumb-name.ext` — same bucket, same
+ * owner folder, so the existing covers policies and the account-deletion
+ * cleanup (which lists the whole `${uid}/` prefix) apply unchanged.
+ * Returns null for non-storage paths (data:/demo: URLs) and for paths
+ * that already name a thumbnail.
+ */
+export function thumbPath(coverPath: string): string | null {
+  // Non-storage cover values (data: uploads in demo, demo: generated
+  // placeholders) contain a ":" before any "/" — they have no thumb.
+  if (coverPath.startsWith("data:") || coverPath.startsWith("demo:")) return null;
+  const slash = coverPath.indexOf("/");
+  if (slash <= 0) return null;
+  const file = coverPath.slice(slash + 1);
+  if (!file || file.startsWith("thumb-")) return null;
+  return `${coverPath.slice(0, slash)}/thumb-${file}`;
+}
+
 export class AppError extends Error {
   code: string;
   constructor(code: string, message: string) {

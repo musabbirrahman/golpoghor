@@ -1083,6 +1083,37 @@ let appealId;
   await dp.signOut();
 }
 
+// Phase 1A: cover thumbnails (demo parity of the guard state machine)
+{
+  const { thumbPath } = utils;
+  check("thumb: derives thumb- name", thumbPath("uid123/1699999-abc.jpeg") === "uid123/thumb-1699999-abc.jpeg");
+  check("thumb: data: URL has no thumb", thumbPath("data:image/png;base64,AAA") === null);
+  check("thumb: path without folder has no thumb", thumbPath("cover.jpeg") === null);
+  check("thumb: existing thumb is not re-derived", thumbPath("uid123/thumb-1699999-abc.jpeg") === null);
+  const tiny = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  const other = { id: "x", author_id: "someone-else", cover_path: tiny };
+  check("thumb: signed-out backfill refused", (await dp.ensureCoverThumbnail(other)) === "refused");
+  await dp.signUp({ email: "thumb@example.com", password: "secret12", username: "thumb_user", displayName: "Thumb User" });
+  const me = (await dp.getSession())?.user.id;
+  check("thumb: non-author backfill refused", (await dp.ensureCoverThumbnail(other)) === "refused");
+  check("thumb: missing thumbnail reads null", (await dp.coverThumbUrl(tiny)) === null);
+  const mine = { id: "y", author_id: me, cover_path: tiny };
+  check("thumb: owner backfill creates", (await dp.ensureCoverThumbnail(mine)) === "created");
+  check("thumb: created thumbnail readable", (await dp.coverThumbUrl(tiny)) === tiny);
+  check("thumb: second backfill is already, not a retry", (await dp.ensureCoverThumbnail(mine)) === "already");
+  const demoCover = { id: "z", author_id: me, cover_path: "demo:Some Title:en" };
+  check("thumb: generated placeholder has no derivation, refused", (await dp.ensureCoverThumbnail(demoCover)) === "refused");
+  const storageLike = { id: "w", author_id: me, cover_path: "someuid/cover.jpeg" };
+  check("thumb: non-data storage path fails in demo", (await dp.ensureCoverThumbnail(storageLike)) === "failed");
+  check("thumb: failed backfill stays failed, no loop", (await dp.ensureCoverThumbnail(storageLike)) === "failed");
+  const real = await dp.createStory({ title: "Thumb Tale", summary: "x", language: "en", genre: "general", tags: [] });
+  const tiny2 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+  const withCover = await dp.updateStory(real.id, { cover_path: tiny2 });
+  check("thumb: real story backfill creates", (await dp.ensureCoverThumbnail(withCover)) === "created");
+  await dp.deleteAccount();
+  check("thumb: account deletion clears thumbnails", (await dp.coverThumbUrl(tiny2)) === null);
+}
+
 console.log("");
 for (const [st, name] of results) console.log(`${st}  ${name}`);
 const fails = results.filter((r) => r[0] === "FAIL").length;

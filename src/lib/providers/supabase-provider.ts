@@ -41,7 +41,7 @@ import {
   resolveNotificationPrefs,
 } from "../data-provider";
 import { genreAliases, normalizeGenre, sortGenres } from "../genres";
-import { AppError, countWords, docToText, slugify } from "../utils";
+import { AppError, countWords, docToText, slugify, thumbPath } from "../utils";
 
 function mapAppeal(row: any): Appeal {
   const { author, ...rest } = row ?? {};
@@ -1748,6 +1748,21 @@ export class SupabaseProvider implements DataProvider {
     const path = `${me}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const { error } = await this.sb.storage.from("covers").upload(path, file, { contentType: file.type, upsert: false });
     if (error) throw toAppError(error);
+    // Phase 1A: best-effort thumbnail. The original upload already
+    // succeeded, so a thumbnail failure must never fail the cover
+    // upload: cards fall back to the original (see <Cover>).
+    try {
+      const thumb = await generateCoverThumbnail(file);
+      const tp = thumb && thumbPath(path);
+      if (tp) {
+        const { error: terr } = await this.sb.storage
+          .from("covers")
+          .upload(tp, thumb, { contentType: "image/jpeg", upsert: false });
+        if (terr) console.warn("cover thumbnail upload failed:", terr.message);
+      }
+    } catch {
+      // Best-effort only; the original cover is already saved.
+    }
     return path;
   }
 
@@ -1794,10 +1809,148 @@ export class SupabaseProvider implements DataProvider {
     return p;
   }
 
+  // Phase 1A: thumbnails share the original's bucket, owner folder, and
+  // signed-URL cache pattern. A thumbnail object is signable only where
+  // the caller could SELECT it — see the Phase 1A report for the
+  // covers_published_read policy gap that gates anonymous card views.
+  private coverThumbUrlCache = new Map<string, Promise<string | null>>();
+
+  async coverThumbUrl(path: string | null): Promise<string | null> {
+    const tp = path ? thumbPath(path) : null;
+    if (!tp) return null;
+    const cached = this.coverThumbUrlCache.get(tp);
+    if (cached) return cached;
+    const p = (async () => {
+      const { data, error } = await this.sb.storage.from("covers").createSignedUrl(tp, 31536000);
+      if (error || !data) {
+        this.coverThumbUrlCache.delete(tp);
+        return null;
+      }
+      return data.signedUrl;
+    })();
+    this.coverThumbUrlCache.set(tp, p);
+    return p;
+  }
+
+  /**
+   * Phase 1A backfill, owner-session only. Creates the story's thumbnail
+   * from its original cover. Refuses (no network) when signed out, when
+   * the caller is not the story's author, or when the path has no thumb
+   * derivation. A cover already backfilled returns "already"; a failed
+   * cover is not retried for 7 days, so a broken cover can never spin
+   * an endless retry loop. The caller (<Cover>, thumb mode) fires this
+   * best-effort and never waits on it for rendering.
+   */
+  async ensureCoverThumbnail(story: {
+    id: string;
+    author_id: string;
+    cover_path: string | null;
+  }): Promise<"created" | "already" | "refused" | "failed"> {
+    let me: string;
+    try {
+      me = await this.uid();
+    } catch {
+      return "refused";
+    }
+    if (!story.cover_path || story.author_id !== me) return "refused";
+    const tp = thumbPath(story.cover_path);
+    if (!tp) return "refused";
+    const done = new Set<string>(readJson<string[]>(THUMB_DONE_KEY, []));
+    if (done.has(story.cover_path)) return "already";
+    const failed = readJson<Record<string, number>>(THUMB_FAILED_KEY, {});
+    const last = failed[story.cover_path];
+    if (last && Date.now() - last < THUMB_RETRY_AFTER_MS) return "failed";
+    try {
+      const url = await this.coverSignedUrl(story.cover_path);
+      if (!url) throw new Error("original not signable");
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("original download failed");
+      const blob = await res.blob();
+      const thumb = await generateCoverThumbnail(
+        new File([blob], "cover", { type: blob.type || "image/jpeg" })
+      );
+      if (!thumb) throw new Error("thumbnail generation failed");
+      const { error } = await this.sb.storage
+        .from("covers")
+        .upload(tp, thumb, { contentType: "image/jpeg", upsert: false });
+      if (error) {
+        // Another session may have created it first: that is success,
+        // not a failure, and must not be retried.
+        if (/already exists|duplicate/i.test(error.message ?? "")) {
+          done.add(story.cover_path);
+          writeJson(THUMB_DONE_KEY, [...done]);
+          return "already";
+        }
+        throw error;
+      }
+      done.add(story.cover_path);
+      writeJson(THUMB_DONE_KEY, [...done]);
+      return "created";
+    } catch {
+      failed[story.cover_path] = Date.now();
+      writeJson(THUMB_FAILED_KEY, failed);
+      return "failed";
+    }
+  }
+
   async coverSignedUrl(path: string | null): Promise<string | null> {
     if (!path) return null;
     const { data, error } = await this.sb.storage.from("covers").createSignedUrl(path, 3600);
     if (error) throw toAppError(error);
     return data.signedUrl;
+  }
+}
+
+// ------------------------------------------------- Phase 1A thumbnails
+/** Max thumbnail width (px). Smaller sources are never enlarged. */
+const THUMB_MAX_WIDTH = 640;
+/** JPEG quality for thumbnails (browser canvas output). */
+const THUMB_JPEG_QUALITY = 0.8;
+
+/**
+ * Resize an image file to a card-size JPEG using only browser APIs
+ * (no new dependency). Returns null on any failure — callers treat a
+ * null as "no thumbnail", never as an upload error.
+ */
+async function generateCoverThumbnail(file: File): Promise<Blob | null> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, THUMB_MAX_WIDTH / bitmap.width);
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+    return await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", THUMB_JPEG_QUALITY)
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Backfill bookkeeping lives in localStorage (per browser, per user). */
+const THUMB_DONE_KEY = "golponeer-thumb-done-v1";
+const THUMB_FAILED_KEY = "golponeer-thumb-failed-v1";
+/** Failed covers become retryable after this long (transient errors). */
+const THUMB_RETRY_AFTER_MS = 7 * 24 * 3600 * 1000;
+
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function writeJson(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Private mode / disabled storage: backfill just retries next mount.
   }
 }

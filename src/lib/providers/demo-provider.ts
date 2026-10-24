@@ -409,6 +409,12 @@ export class DemoProvider implements DataProvider {
     const myStoryIds = new Set(
       this.db.stories.filter((st) => st.author_id === uid).map((st) => st.id)
     );
+    const myCovers = new Set(
+      this.db.stories
+        .filter((st) => st.author_id === uid)
+        .map((st) => st.cover_path)
+        .filter((c): c is string => !!c)
+    );
     const myChapterIds = new Set(
       this.db.chapters.filter((c) => myStoryIds.has(c.story_id)).map((c) => c.id)
     );
@@ -448,6 +454,13 @@ export class DemoProvider implements DataProvider {
     this.db.keepsakes = this.db.keepsakes.filter((k) => k.owner_id !== uid && !myStoryIds.has(k.story_id));
     this.db.licences = this.db.licences.filter((l) => l.author_id !== uid && !myStoryIds.has(l.story_id));
     this.db.users = this.db.users.filter((u) => u.id !== uid);
+    // Phase 1A: demo thumbnails are keyed by original cover path, so
+    // they go with the account like the real prefix-listed objects.
+    for (const c of myCovers) {
+      this.thumbStore.delete(c);
+      this.thumbDone.delete(c);
+      this.thumbFailed.delete(c);
+    }
     this.db.sessionUserId = null;
     this.persist();
     this.emit();
@@ -2011,5 +2024,42 @@ export class DemoProvider implements DataProvider {
   async coverSignedUrl(path: string | null): Promise<string | null> {
     // demo has no private storage; same as public URL
     return this.coverUrl(path);
+  }
+
+  // Phase 1A (demo parity): thumbnails are recorded per original cover
+  // path; demo covers are data: URLs, so the "thumbnail" is the original
+  // bytes recorded under the thumb key (no canvas in the demo store).
+  // The guard state machine mirrors the Supabase provider so tests can
+  // verify owner-only, once-per-cover, no-retry behavior.
+  private thumbStore = new Map<string, string>();
+  private thumbDone = new Set<string>();
+  private thumbFailed = new Map<string, number>();
+
+  async coverThumbUrl(path: string | null): Promise<string | null> {
+    if (!path) return null;
+    return this.thumbStore.get(path) ?? null;
+  }
+
+  async ensureCoverThumbnail(story: {
+    id: string;
+    author_id: string;
+    cover_path: string | null;
+  }): Promise<"created" | "already" | "refused" | "failed"> {
+    const s = this.sessionSync();
+    if (!s || !story.cover_path || story.author_id !== s.user.id) return "refused";
+    // Demo: generated demo: placeholders have no bytes to thumbnail.
+    if (story.cover_path.startsWith("demo:")) return "refused";
+    if (this.thumbDone.has(story.cover_path)) return "already";
+    const last = this.thumbFailed.get(story.cover_path);
+    if (last && Date.now() - last < 7 * 24 * 3600 * 1000) return "failed";
+    // Demo: only data: covers can be "thumbnailed" (generated demo:
+    // placeholders have no bytes to resize in the demo store).
+    if (!story.cover_path.startsWith("data:")) {
+      this.thumbFailed.set(story.cover_path, Date.now());
+      return "failed";
+    }
+    this.thumbStore.set(story.cover_path, story.cover_path);
+    this.thumbDone.add(story.cover_path);
+    return "created";
   }
 }

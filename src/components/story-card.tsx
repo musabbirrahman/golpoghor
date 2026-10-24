@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Story } from "../lib/types";
 import { useApp } from "../lib/app-context";
@@ -10,20 +10,39 @@ export function storyPath(s: Story): string {
   return `/stories/${s.author?.username ?? "unknown"}/${s.slug}`;
 }
 
-export function Cover({ story, className = "" }: { story: Story; className?: string }) {
+export function Cover({ story, className = "", thumb = false }: { story: Story; className?: string; thumb?: boolean }) {
   const { dp } = useApp();
   const [url, setUrl] = useState<string | null>(null);
+  const [showingOriginal, setShowingOriginal] = useState(false);
+  const backfillFired = useRef(false);
   useEffect(() => {
     let cancelled = false;
-    if (story.cover_path) {
-      dp.coverUrl(story.cover_path)
-        .then((u) => { if (!cancelled) setUrl(u); })
-        .catch(() => { if (!cancelled) setUrl(null); });
-    } else {
+    backfillFired.current = false;
+    setShowingOriginal(false);
+    if (!story.cover_path) {
       setUrl(null);
+      return;
     }
+    (async () => {
+      // Thumbnail first in card mode; any miss falls back to the
+      // original, which is also the pre-1A behavior.
+      let u: string | null = null;
+      if (thumb) u = await dp.coverThumbUrl(story.cover_path).catch(() => null);
+      const usedThumb = !!u;
+      if (!u) u = await dp.coverUrl(story.cover_path).catch(() => null);
+      if (cancelled) return;
+      setUrl(u);
+      // Best-effort backfill, fire-and-forget: the provider refuses
+      // non-owners and signed-out viewers before any network use, and
+      // records attempts so a cover is not retried on every render.
+      // Trigger only when the thumbnail itself was missing.
+      if (thumb && !usedThumb && !backfillFired.current) {
+        backfillFired.current = true;
+        dp.ensureCoverThumbnail(story).catch(() => {});
+      }
+    })();
     return () => { cancelled = true; };
-  }, [dp, story.cover_path]);
+  }, [dp, story.cover_path, story.author_id, story.id, thumb]);
   if (!url) {
     return (
       <div className={`flex items-center justify-center bg-river-soft font-serif text-5xl text-river ${className}`} aria-hidden>
@@ -31,7 +50,28 @@ export function Cover({ story, className = "" }: { story: Story; className?: str
       </div>
     );
   }
-  return <img src={url} alt="" loading="lazy" className={`object-cover ${className}`} />;
+  return (
+    <img
+      src={url}
+      alt=""
+      loading="lazy"
+      className={`object-cover ${className}`}
+      onError={async () => {
+        // A signed thumbnail URL can exist while its object does not
+        // (or fail to load for any other reason); a failed thumbnail
+        // image falls back to the original exactly once — never a loop.
+        if (thumb && !showingOriginal) {
+          setShowingOriginal(true);
+          const orig = await dp.coverUrl(story.cover_path).catch(() => null);
+          if (orig) setUrl(orig);
+          if (!backfillFired.current) {
+            backfillFired.current = true;
+            dp.ensureCoverThumbnail(story).catch(() => {});
+          }
+        }
+      }}
+    />
+  );
 }
 
 export function StoryCard({ story }: { story: Story }) {
@@ -44,7 +84,7 @@ export function StoryCard({ story }: { story: Story }) {
       className="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl bg-white shadow-card transition-shadow hover:shadow-lift"
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-river-soft">
-        <Cover story={story} className="h-full w-full transition-transform duration-300 group-hover:scale-[1.03]" />
+        <Cover story={story} className="h-full w-full transition-transform duration-300 group-hover:scale-[1.03]" thumb />
         <div className="absolute left-2 top-2 flex gap-1.5">
           <LanguageBadge language={story.language} />
         </div>
@@ -87,7 +127,7 @@ export function StoryRow({ story }: { story: Story }) {
       to={storyPath(story)}
       className="group flex h-full min-w-0 gap-4 overflow-hidden rounded-xl bg-white p-3 shadow-card transition-shadow hover:shadow-lift"
     >
-      <Cover story={story} className="h-28 w-20 shrink-0 rounded-lg" />
+      <Cover story={story} className="h-28 w-20 shrink-0 rounded-lg" thumb />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-center gap-2">
           <LanguageBadge language={story.language} />

@@ -49,7 +49,7 @@ export function WriteDashboard() {
               {storiesQuery.data.stories.map((s) => (
                 <Link key={s.id} to={`/write/stories/${s.id}`} className="block">
                   <Card className="flex gap-4 p-4 transition-shadow hover:shadow-lift">
-                    <Cover story={s} className="h-24 w-16 shrink-0 rounded-lg" />
+                    <Cover story={s} className="h-24 w-16 shrink-0 rounded-lg" thumb />
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <StatusBadge status={s.status} />

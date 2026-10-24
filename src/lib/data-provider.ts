@@ -272,6 +272,18 @@ export interface DataProvider {
   coverUrl(path: string | null): Promise<string | null>;
   /** Signed URL for the owner's own cover (works for drafts too). */
   coverSignedUrl(path: string | null): Promise<string | null>;
+  /** Card-size thumbnail URL for a cover path (`thumb-` derivation); null when no thumbnail exists. */
+  coverThumbUrl(path: string | null): Promise<string | null>;
+  /**
+   * Phase 1A backfill: create the story's thumbnail from its original
+   * cover. Owner-session only; refuses anyone else before any network
+   * use. "already" = done before, "failed" = failed (retryable after 7 days).
+   */
+  ensureCoverThumbnail(story: {
+    id: string;
+    author_id: string;
+    cover_path: string | null;
+  }): Promise<"created" | "already" | "refused" | "failed">;
 
   // -------------------------------------------------------- moderation ux
   /** Human label + deep link + current status for a report/appeal target (moderators only). */
