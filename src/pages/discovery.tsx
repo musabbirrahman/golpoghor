@@ -54,7 +54,7 @@ export function HomePage() {
   const featured = useQuery({ queryKey: ["stories", { featured: true, limit: 4 }], queryFn: () => dp.listFeaturedStories(4) });
   const bn = useQuery({ queryKey: ["stories", { language: "bn", limit: 8 }], queryFn: () => dp.listStories({ language: "bn", limit: 8 }) });
   const en = useQuery({ queryKey: ["stories", { language: "en", limit: 8 }], queryFn: () => dp.listStories({ language: "en", limit: 8 }) });
-  const keepsakes = useQuery({ queryKey: ["public-keepsakes"], queryFn: () => dp.listPublicKeepsakes() });
+  const keepsakes = useQuery({ queryKey: ["public-keepsakes"], queryFn: () => dp.listPublicKeepsakes(8) });
 
   return (
     <Layout>

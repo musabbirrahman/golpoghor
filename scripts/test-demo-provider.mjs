@@ -331,10 +331,12 @@ let appealId;
   const decided = await dp.decideAppeal(appealId, "approved", "ঠিক আছে, ফিরিয়ে আনছি।");
   check("appeal approved with note", decided.status === "approved" && decided.decision_note.includes("ঠিক আছে"));
   check("appeal decision audited", (await dp.listModerationEvents("chapter", chapterId)).some((e) => e.action === "appeal_approved"));
-  // approving does NOT auto-restore
-  check("content still hidden after approval", (await dp.resolveReportTarget("chapter", chapterId))?.status === "hidden");
+  // approving auto-restores (the takedown was wrong) — Round 1 fix
+  check("content restored after approval", (await dp.resolveReportTarget("chapter", chapterId))?.status === "published");
+  // manual restore still works (queue RestoreButton path)
+  await dp.moderateChapter(chapterId, "hidden");
   await dp.restoreChapter(chapterId);
-  check("moderator restores after approval", (await dp.resolveReportTarget("chapter", chapterId))?.status === "published");
+  check("moderator restores manually", (await dp.resolveReportTarget("chapter", chapterId))?.status === "published");
   // writer sees the decision
   await dp.signOut();
   await dp.signIn("test@example.com", "secret12");

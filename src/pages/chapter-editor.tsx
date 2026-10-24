@@ -152,20 +152,19 @@ export function ChapterEditorPage() {
         setSavedAt(created.updated_at);
         queryClient.setQueryData(["chapter", "edit", created.id], created);
         queryClient.invalidateQueries({ queryKey: ["chapters", story.id] });
-        // move to the canonical URL without a full reload
-        navigate(`/write/chapters/${created.id}`, { replace: true });
+        // Move to the canonical URL WITHOUT a router navigation: navigate()
+        // would flip isNew, re-run the hydrate effect and reset the editor
+        // to the pre-save snapshot, dropping keystrokes typed during the
+        // create round-trip. replaceState only changes the URL bar.
+        window.history.replaceState(null, "", `/write/chapters/${created.id}`);
       } else {
         const cur = chapterRef.current!;
-        // Autosave creates the chapter before the title is typed, so the row
-        // can carry an auto "untitled-chapter" slug while the title is real.
-        // Regenerate the slug from the title once, while it is still a
-        // placeholder. Chapters with real slugs keep their URLs forever.
-        const placeholderSlug = isPlaceholderChapterSlug(cur.slug);
-        const realTitle = chTitle !== "Untitled chapter" && chTitle !== "শিরোনামহীন অধ্যায়";
+        // The slug is NOT renamed here: autosave must never rename, or a
+        // half-typed title would lock the URL. A placeholder slug is
+        // replaced with the title slug once, at publish (runAction).
         const updated = await dp.updateChapter(cur.id, {
           title: chTitle,
           body: doc,
-          ...(placeholderSlug && realTitle ? { slug: slugify(chTitle) } : {}),
         });
         setChapter(updated);
         setSavedAt(updated.updated_at);
@@ -180,7 +179,7 @@ export function ChapterEditorPage() {
       setError(err instanceof AppError ? t("errors", err.code) : t("errors", "generic"));
       dirtyRef.current = true; // retry will pick it up
     }
-  }, [story, editor, dp, locale, navigate, queryClient, t, denied]);
+  }, [story, editor, dp, locale, queryClient, t, denied]);
 
   const saveNow = useCallback(() => {
     saveChain.current = saveChain.current.then(doSave);
@@ -240,7 +239,19 @@ export function ChapterEditorPage() {
           return;
         }
         await saveNow();
-        const updated = await dp.updateChapter(chapter.id, { status: "published" });
+        // First publish gives a placeholder slug its real title slug.
+        // Autosave never renames (see doSave), so this is the only rename,
+        // and it uses the saved title — never a half-typed one.
+        const curTitle = titleRef.current.trim();
+        const renameSlug =
+          isPlaceholderChapterSlug(chapter.slug) &&
+          curTitle &&
+          curTitle !== "Untitled chapter" &&
+          curTitle !== "শিরোনামহীন অধ্যায়";
+        const updated = await dp.updateChapter(chapter.id, {
+          status: "published",
+          ...(renameSlug ? { slug: slugify(curTitle) } : {}),
+        });
         setChapter(updated);
       } else {
         const updated = await dp.updateChapter(chapter.id, { status: "unpublished" });

@@ -69,13 +69,16 @@ for (const s of SEED_STORIES) {
   const pub = s.status === "draft" ? "null" : `now() - interval '${dayOffset} days'`;
   dayOffset -= 2;
   sql += `insert into public.stories
-  (id, author_id, title, slug, summary, language, genre, tags, status, content_notice, published_at, created_at)
+  (id, author_id, title, slug, summary, language, genre, tags, status, content_notice, published_at, created_at,
+   origin_type, original_author, pd_verified)
 values
   (${q(storyId)}, ${q(authorId(s.author_username))}, ${q(s.title)}, ${q(s.slug)}, ${q(s.summary)},
    ${q(s.language)}, ${q(s.genre)}, ${arr(s.tags)}, ${q(s.status)}, ${q(s.content_notice)}, ${pub},
-   now() - interval '${dayOffset + 6} days')
+   now() - interval '${dayOffset + 6} days',
+   ${s.origin_type ? q(s.origin_type) : "null"}, ${s.original_author ? q(s.original_author) : "null"}, ${s.pd_verified ? "true" : "false"})
 on conflict (author_id, slug) do update set title = excluded.title, summary = excluded.summary,
-  language = excluded.language, genre = excluded.genre, tags = excluded.tags, status = excluded.status;\n`;
+  language = excluded.language, genre = excluded.genre, tags = excluded.tags, status = excluded.status,
+  origin_type = excluded.origin_type, original_author = excluded.original_author, pd_verified = excluded.pd_verified;\n`;
 
   s.chapters.forEach((c, i) => {
     const bodyText = c.paragraphs.join("\n\n");

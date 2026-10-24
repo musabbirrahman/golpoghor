@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
 import { Badge, Button, ButtonLink, Card, EmptyState, Modal, Spinner, Textarea } from "../components/ui";
-import { formatDate, timeAgo } from "../lib/utils";
+import { AppError, formatDate, timeAgo } from "../lib/utils";
 import type { Appeal, Report, ReportTarget, Story } from "../lib/types";
 import { storyPath } from "../components/story-card";
 
@@ -48,9 +48,11 @@ function RestoreButton({ targetType, targetId, onDone }: { targetType: ReportTar
   const { t, dp } = useApp();
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function restore() {
     setBusy(true);
+    setError(null);
     try {
       if (targetType === "story") await dp.restoreStory(targetId);
       else if (targetType === "chapter") await dp.restoreChapter(targetId);
@@ -58,6 +60,11 @@ function RestoreButton({ targetType, targetId, onDone }: { targetType: ReportTar
       else if (targetType === "keepsake") await dp.restoreKeepsake(targetId);
       setConfirm(false);
       onDone();
+    } catch (e) {
+      // Was try/finally with no catch: a failed restore left the modal
+      // open with no explanation. Now the failure is shown, and the
+      // moderator can retry or close.
+      setError(e instanceof AppError ? t("errors", e.code) : t("errors", "generic"));
     } finally {
       setBusy(false);
     }
@@ -70,6 +77,7 @@ function RestoreButton({ targetType, targetId, onDone }: { targetType: ReportTar
       </Button>
       <Modal open={confirm} onClose={() => setConfirm(false)} title={t("moderation", "restoreConfirmTitle")}>
         <p className="text-sm text-ink-soft">{t("moderation", "restoreConfirmBody")}</p>
+        {error && <p className="mt-3 text-sm text-clay">{error}</p>}
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setConfirm(false)}>{t("common", "cancel")}</Button>
           <Button disabled={busy} onClick={restore}>{t("common", "confirm")}</Button>
@@ -192,6 +200,13 @@ function AppealCard({ appeal }: { appeal: Appeal }) {
   const [deciding, setDeciding] = useState<"approved" | "declined" | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const target = useTarget(appeal.target_type, appeal.target_id);
+  // Fallback restore only if auto-restore did not complete. Appeals only
+  // ever target stories/chapters/comments (AppealTarget excludes
+  // keepsakes), and those hide with status "hidden" — so the gate is
+  // just "still hidden". Without it, every approved card shows a Restore
+  // button that fails (the target is already public after auto-restore).
+  const restorable = target.data?.status === "hidden";
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["appeals"] });
@@ -250,6 +265,12 @@ function AppealCard({ appeal }: { appeal: Appeal }) {
         <div className="mt-4 flex flex-wrap gap-2 border-t border-ink/10 pt-4">
           <Button size="sm" onClick={() => setDeciding("approved")}>{t("appeals", "approve")}</Button>
           <Button size="sm" variant="danger" onClick={() => setDeciding("declined")}>{t("appeals", "decline")}</Button>
+        </div>
+      )}
+
+      {appeal.status === "approved" && restorable && (
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-ink/10 pt-4">
+          <RestoreButton targetType={appeal.target_type} targetId={appeal.target_id} onDone={refresh} />
         </div>
       )}
 
@@ -410,7 +431,8 @@ export function AdminPage() {
   const appealsQuery = useQuery({
     queryKey: ["appeals"],
     queryFn: () => dp.listAppeals(),
-    enabled: tab === "appeals",
+    // No tab gate: the Appeals tab badge shows pendingAppeals.length,
+    // and a tab-gated query reads 0 until the tab is first clicked.
   });
   const auditQuery = useQuery({
     queryKey: ["audit"],

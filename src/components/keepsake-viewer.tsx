@@ -56,15 +56,18 @@ export function KeepsakeViewer({
 
   useEffect(() => {
     if (canvasRef.current) {
+      // Mirror the download render: the preview must show the echo when
+      // "Include echo on the card" is checked, or preview/export disagree.
       renderKeepsakeCard(canvasRef.current, {
         excerpt: keepsake.excerpt,
         title: attr.title,
         author: attr.author,
         template: keepsake.template,
+        echo: includeEcho ? keepsake.echo : undefined,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keepsake]);
+  }, [keepsake, includeEcho, locale]);
 
   return (
     <Modal open onClose={onClose} title={t("keepsakes", "title")}>

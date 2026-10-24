@@ -468,8 +468,8 @@ const dict = {
     },
     decidedNote: { bn: "মডারেটরের নোট", en: "Moderator's note" },
     approveNote: {
-      bn: "আপিল গৃহীত হলেও কনটেন্ট স্বয়ংক্রিয়ভাবে ফিরবে না — মডারেটরকে আলাদাভাবে ফিরিয়ে আনতে হবে।",
-      en: "Approving an appeal does not restore content automatically — a moderator must restore it separately.",
+      bn: "আপিল গৃহীত হলে কনটেন্ট স্বয়ংক্রিয়ভাবে ফিরে আসবে।",
+      en: "Approving an appeal restores the content automatically.",
     },
     empty: { bn: "কোনো আপিল নেই।", en: "No appeals." },
     alreadyPending: {
@@ -504,6 +504,10 @@ const dict = {
     contentHiddenBody: {
       bn: "মডারেশনের কারণে «{targetLabel}» লুকানো হয়েছে।",
       en: "“{targetLabel}” was hidden by moderation.",
+    },
+    storyNowHidden: {
+      bn: "গল্পটিও এখন লুকানো হয়েছে।",
+      en: "The story is now hidden as well.",
     },
     contentRestoredTitle: { bn: "কনটেন্ট ফিরিয়ে আনা হয়েছে", en: "Content restored" },
     contentRestoredBody: {

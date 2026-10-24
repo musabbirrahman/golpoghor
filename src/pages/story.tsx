@@ -307,7 +307,10 @@ export function AuthorPage() {
       following: await dp.isFollowing(profile!.id),
       count: await dp.getFollowerCount(profile!.id),
     }),
-    enabled: !!profile && !!session && session.user.id !== profile.id,
+    // Count must load for guests and for the author too: isFollowing is
+    // guest-safe (false with no session) and follows are public-read,
+    // so the old session-and-not-self gate only ever produced "0".
+    enabled: !!profile,
   });
 
   const followMutation = useMutation({

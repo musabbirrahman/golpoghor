@@ -341,7 +341,9 @@ export class SupabaseProvider implements DataProvider {
     if (f.genre) q = q.in("genre", genreAliases(normalizeGenre(f.genre)));
     if (f.tag) q = q.contains("tags", [f.tag]);
     if (f.q) {
-      const term = f.q.trim().replace(/[%_]/g, "");
+      // Strip PostgREST .or() delimiters too: a comma, paren or quote in
+      // the term used to break the .or() syntax (PGRST100) and fail search.
+      const term = f.q.trim().replace(/[%_,()."]/g, "");
       if (term) {
         // author username match expands the search
         const { data: authors } = await this.sb
@@ -384,7 +386,7 @@ export class SupabaseProvider implements DataProvider {
     const { data, error, count } = await q;
     if (error) throw toAppError(error);
     const stories = (data ?? []).map(mapStory);
-    await this.attachCounts(stories);
+    await this.attachCounts(stories, { publishedOnly: !f.includeDrafts });
     return { stories, total: count ?? stories.length };
   }
 
@@ -435,25 +437,30 @@ export class SupabaseProvider implements DataProvider {
     if (error) throw toAppError(error);
   }
 
-  private async attachCounts(stories: Story[]): Promise<void> {
+  private async attachCounts(stories: Story[], opts?: { publishedOnly?: boolean }): Promise<void> {
     if (!stories.length) return;
     const ids = stories.map((s) => s.id);
-    const [{ data: ch }, { data: likes }] = await Promise.all([
-      this.sb.from("chapters").select("story_id, word_count").in("story_id", ids).eq("status", "published"),
-      this.sb.from("likes").select("story_id").in("story_id", ids),
-    ]);
-    const chCount = new Map<string, number>();
-    const wordCount = new Map<string, number>();
-    for (const c of ch ?? []) {
-      chCount.set(c.story_id, (chCount.get(c.story_id) ?? 0) + 1);
-      wordCount.set(c.story_id, (wordCount.get(c.story_id) ?? 0) + (c.word_count ?? 0));
+    // Server-side aggregation (story_counts): no row shipping, no
+    // PostgREST 1,000-row cap. publishedOnly=false is for the owner's
+    // own lists (drafts count); public lists always pass true.
+    const { data, error } = await this.sb.rpc("story_counts", {
+      p_story_ids: ids,
+      p_published_only: opts?.publishedOnly !== false,
+    });
+    if (error) throw toAppError(error);
+    const byId = new Map<string, { chapter_count: number; word_count: number; like_count: number }>();
+    for (const r of (data ?? []) as any[]) {
+      byId.set(r.story_id, {
+        chapter_count: Number(r.chapter_count ?? 0),
+        word_count: Number(r.word_count ?? 0),
+        like_count: Number(r.like_count ?? 0),
+      });
     }
-    const likeCount = new Map<string, number>();
-    for (const l of likes ?? []) likeCount.set(l.story_id, (likeCount.get(l.story_id) ?? 0) + 1);
     for (const s of stories) {
-      s.chapter_count = chCount.get(s.id) ?? 0;
-      s.word_count = wordCount.get(s.id) ?? 0;
-      s.like_count = likeCount.get(s.id) ?? 0;
+      const c = byId.get(s.id);
+      s.chapter_count = c?.chapter_count ?? 0;
+      s.word_count = c?.word_count ?? 0;
+      s.like_count = c?.like_count ?? 0;
     }
   }
 
@@ -480,8 +487,20 @@ export class SupabaseProvider implements DataProvider {
     const story = mapStory(data);
     const session = await this.getSession();
     const isOwner = session?.user.id === story.author_id;
+    // Moderators/admins may open hidden content from queue links (the
+    // reader gates chapters separately); everyone else gets Not found.
+    let isMod = false;
+    if (!isOwner && session) {
+      const { data: prof } = await this.sb.from("profiles").select("role").eq("id", session.user.id).maybeSingle();
+      const role = (prof as { role?: string } | null)?.role;
+      isMod = role === "moderator" || role === "admin";
+    }
     // RLS already hides drafts from non-owners; double-guard here too.
-    if (!isOwner && (story.status === "draft" || story.status === "hidden")) return null;
+    if (!isOwner && !isMod && (story.status === "draft" || story.status === "hidden")) return null;
+    // Counts stay published-only here: StoryPage lists published chapters
+    // but reads its read-time from story.word_count, so counting drafts
+    // for the owner would show a published count beside a draft-inflated
+    // read time. (The dashboard's draft counts come from listStories.)
     await this.attachCounts([story]);
     return story;
   }
@@ -621,15 +640,27 @@ export class SupabaseProvider implements DataProvider {
   async createChapter(storyId: string, input: ChapterInput): Promise<Chapter> {
     const existing = await this.listChapters(storyId, { publishedOnly: false });
     const text = docToText(input.body);
+    const title = input.title.trim();
+    // Untitled chapters get a UNIQUE placeholder slug: slugify("Untitled
+    // chapter") is the same "untitled-chapter" every time, so a second
+    // untitled draft used to collide on chapters_story_slug_unique.
+    // The placeholder is replaced with the title slug once, at publish.
+    const slug = input.slug
+      ? slugify(input.slug)
+      : title === "Untitled chapter" || title === "শিরোনামহীন অধ্যায়" || !title
+        ? `untitled-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+        : slugify(title);
     const { data, error } = await this.sb
       .from("chapters")
       .insert({
         story_id: storyId,
-        title: input.title.trim(),
-        slug: slugify(input.slug || input.title),
+        title,
+        slug,
         body_json: input.body,
         body_text: text,
-        position: existing.length,
+        // max+1, not count: deleting a non-final chapter used to leave a
+        // gap, and the next create collided on chapters_story_position_unique.
+        position: existing.reduce((max, c) => Math.max(max, c.position), -1) + 1,
         word_count: countWords(text),
         status: "draft",
       })
@@ -1087,10 +1118,11 @@ export class SupabaseProvider implements DataProvider {
   }
 
   async getPublicKeepsake(slug: string): Promise<PublicKeepsake | null> {
-    const { data, error } = await this.sb.rpc("keepsakes_public");
+    // Filter server-side: the old code downloaded the whole projection
+    // and found the slug in JS, on every /k/ page visit.
+    const { data, error } = await this.sb.rpc("keepsakes_public").eq("slug", slug).maybeSingle();
     if (error) throw toAppError(error);
-    const r = (data ?? []).find((x: any) => x.slug === slug);
-    return r ? mapPublicKeepsake(r) : null;
+    return data ? mapPublicKeepsake(data) : null;
   }
 
   async getKeepsakeLicence(storyId: string): Promise<KeepsakeLicence> {
@@ -1153,8 +1185,12 @@ export class SupabaseProvider implements DataProvider {
     return mapKeepsake(data);
   }
 
-  async listPublicKeepsakes(): Promise<PublicKeepsake[]> {
-    const { data, error } = await this.sb.rpc("keepsakes_public");
+  async listPublicKeepsakes(limit?: number): Promise<PublicKeepsake[]> {
+    // Newest first, so a limit means "latest N" (the homepage strip) —
+    // not an arbitrary slice of an unordered whole-table download.
+    let q = this.sb.rpc("keepsakes_public").order("published_at", { ascending: false });
+    if (limit !== undefined) q = q.limit(limit);
+    const { data, error } = await q;
     if (error) throw toAppError(error);
     return (data ?? []).map((r: any) => mapPublicKeepsake(r));
   }
@@ -1222,19 +1258,28 @@ export class SupabaseProvider implements DataProvider {
     const st = story as any;
     const { data: follows } = await this.sb.from("follows").select("follower_id").eq("author_id", st.author_id);
     const link = `/stories/${st.author?.username}/${st.slug}/${chapter.slug}`;
-    for (const f of (follows ?? []) as { follower_id: string }[]) {
-      if (f.follower_id === st.author_id) continue;
-      if (!(await this.prefsOf(f.follower_id)).new_chapter) continue;
-      await this.pushNotification(f.follower_id, "new_chapter", {
-        authorName: st.author?.display_name ?? "",
-        authorUsername: st.author?.username ?? "",
-        storyId: st.id ?? "",
-        storyTitle: st.title ?? "",
-        storySlug: st.slug ?? "",
-        chapterTitle: chapter.title,
-        chapterSlug: chapter.slug,
-      }, link);
-    }
+    // No per-follower prefsOf here: notification_prefs is owner-only RLS,
+    // so the author's session sees no rows and the check always passed.
+    // notify_user() (SECURITY DEFINER) enforces each recipient's prefs
+    // server-side. Notifications go out in parallel (allSettled) so one
+    // slow/failed push never stalls publishing or drops the rest; the
+    // caller still awaits, so closing the tab mid-publish can't lose them.
+    const targets = ((follows ?? []) as { follower_id: string }[]).filter(
+      (f) => f.follower_id !== st.author_id
+    );
+    await Promise.allSettled(
+      targets.map((f) =>
+        this.pushNotification(f.follower_id, "new_chapter", {
+          authorName: st.author?.display_name ?? "",
+          authorUsername: st.author?.username ?? "",
+          storyId: st.id ?? "",
+          storyTitle: st.title ?? "",
+          storySlug: st.slug ?? "",
+          chapterTitle: chapter.title,
+          chapterSlug: chapter.slug,
+        }, link)
+      )
+    );
   }
 
   private async notifyContentAuthor(
@@ -1546,6 +1591,21 @@ export class SupabaseProvider implements DataProvider {
         note: appeal.decision_note,
       }, "/write");
     });
+    // Approving an appeal means the takedown was wrong: put the content
+    // back. Best-effort — if the target is already visible or restore
+    // fails (e.g. the story lost its published chapters), the decision
+    // still stands and a moderator can restore manually from the queue
+    // (or the appeal card's own Restore button).
+    if (decision === "approved") {
+      try {
+        if (appeal.target_type === "story") await this.restoreStory(appeal.target_id);
+        else if (appeal.target_type === "chapter") await this.restoreChapter(appeal.target_id);
+        else if (appeal.target_type === "comment") await this.restoreComment(appeal.target_id);
+        else if (appeal.target_type === "keepsake") await this.restoreKeepsake(appeal.target_id);
+      } catch {
+        /* best-effort; see above */
+      }
+    }
     return this.withAppealContext(appeal);
   }
 
@@ -1670,13 +1730,28 @@ export class SupabaseProvider implements DataProvider {
     return this.sb.storage.from("avatars").getPublicUrl(path).data.publicUrl;
   }
 
+  // Signed URLs are minted per call, so every <Cover> mount used to
+  // re-sign (N+1 storage calls) AND bust the browser image cache with a
+  // fresh token on each navigation. The URL lives a year, so one promise
+  // per path per session is safe; failures are not cached (retry next mount).
+  private coverUrlCache = new Map<string, Promise<string | null>>();
+
   async coverUrl(path: string | null): Promise<string | null> {
     if (!path) return null;
+    const cached = this.coverUrlCache.get(path);
+    if (cached) return cached;
     // Long-lived signed URL (1 year). RLS is checked at generation time:
     // only published stories' covers are signable by anonymous users.
-    const { data, error } = await this.sb.storage.from("covers").createSignedUrl(path, 31536000);
-    if (error) return null;
-    return data.signedUrl;
+    const p = (async () => {
+      const { data, error } = await this.sb.storage.from("covers").createSignedUrl(path, 31536000);
+      if (error || !data) {
+        this.coverUrlCache.delete(path);
+        return null;
+      }
+      return data.signedUrl;
+    })();
+    this.coverUrlCache.set(path, p);
+    return p;
   }
 
   async coverSignedUrl(path: string | null): Promise<string | null> {

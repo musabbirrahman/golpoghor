@@ -443,6 +443,10 @@ export class DemoProvider implements DataProvider {
     this.db.notifications = this.db.notifications.filter((n) => n.user_id !== uid);
     this.db.usernameRedirects = this.db.usernameRedirects.filter((r) => r.user_id !== uid);
     this.db.profiles = this.db.profiles.filter((p) => p.id !== uid);
+    // Mirror the Postgres cascades: the deleted user's keepsakes (own
+    // cards + cards from their stories) and licences go with the account.
+    this.db.keepsakes = this.db.keepsakes.filter((k) => k.owner_id !== uid && !myStoryIds.has(k.story_id));
+    this.db.licences = this.db.licences.filter((l) => l.author_id !== uid && !myStoryIds.has(l.story_id));
     this.db.users = this.db.users.filter((u) => u.id !== uid);
     this.db.sessionUserId = null;
     this.persist();
@@ -527,11 +531,14 @@ export class DemoProvider implements DataProvider {
       throw new AppError("noPublishedChapters", "Publish at least one chapter first");
   }
 
-  private attachCounts(stories: Story[]): void {
+  private attachCounts(stories: Story[], opts?: { publishedOnly?: boolean }): void {
+    const publishedOnly = opts?.publishedOnly !== false;
     for (const s of stories) {
-      const published = this.db.chapters.filter((c) => c.story_id === s.id && c.status === "published");
-      s.chapter_count = published.length;
-      s.word_count = published.reduce((a, c) => a + (c.word_count ?? 0), 0);
+      const chapters = this.db.chapters.filter(
+        (c) => c.story_id === s.id && (!publishedOnly || c.status === "published")
+      );
+      s.chapter_count = chapters.length;
+      s.word_count = chapters.reduce((a, c) => a + (c.word_count ?? 0), 0);
       s.like_count = this.db.likes.filter((l) => l.story_id === s.id).length;
     }
   }
@@ -586,7 +593,7 @@ export class DemoProvider implements DataProvider {
     const limit = f.limit ?? 24;
     const offset = f.offset ?? 0;
     const page = rows.slice(offset, offset + limit).map((s) => this.withAuthor(s));
-    this.attachCounts(page);
+    this.attachCounts(page, { publishedOnly: !f.includeDrafts });
     return { stories: page, total };
   }
 
@@ -653,7 +660,9 @@ export class DemoProvider implements DataProvider {
     if (!s) return null;
     const me = this.sessionSync()?.user.id ?? null;
     const isOwner = me === s.author_id;
-    if (!isOwner && !this.isPublicStory(s)) return null;
+    const actor = me ? this.db.profiles.find((p) => p.id === me) : undefined;
+    const isMod = actor?.role === "moderator" || actor?.role === "admin";
+    if (!isOwner && !isMod && !this.isPublicStory(s)) return null;
     const out = this.withAuthor(s);
     this.attachCounts([out]);
     return out;
@@ -723,7 +732,18 @@ export class DemoProvider implements DataProvider {
     if (patch.genre !== undefined) s.genre = patch.genre.trim().slice(0, 60) || "general";
     if (patch.tags !== undefined) s.tags = patch.tags.map((t) => t.trim()).filter(Boolean).slice(0, 10);
     if (patch.content_notice !== undefined) s.content_notice = patch.content_notice.trim().slice(0, 500);
-    if (patch.origin_type !== undefined) s.origin_type = patch.origin_type;
+    if (patch.origin_type !== undefined) {
+      // Mirror the SQL trigger: flipping away from 'original' withdraws
+      // active licences (flipping back does not silently reactivate).
+      const wasOrig = (s.origin_type ?? "original") === "original";
+      const nowOrig = patch.origin_type === "original";
+      s.origin_type = patch.origin_type;
+      if (wasOrig && !nowOrig) {
+        for (const l of this.db.licences.filter((x) => x.story_id === id && !x.withdrawn_at)) {
+          l.withdrawn_at = new Date().toISOString();
+        }
+      }
+    }
     if (patch.original_author !== undefined) s.original_author = patch.original_author?.trim() || null;
     if (patch.original_title !== undefined) s.original_title = patch.original_title?.trim() || null;
     if (patch.translator_name !== undefined) s.translator_name = patch.translator_name?.trim() || null;
@@ -784,7 +804,9 @@ export class DemoProvider implements DataProvider {
     const me = this.sessionSync()?.user.id ?? null;
     const story = this.db.stories.find((s) => s.id === storyId);
     if (!story) return [];
-    if (!publishedOnly && story.author_id !== me) throw new AppError("notAuthor", "Only the author can view drafts");
+    const actor = me ? this.db.profiles.find((p) => p.id === me) : undefined;
+    const isMod = actor?.role === "moderator" || actor?.role === "admin";
+    if (!publishedOnly && story.author_id !== me && !isMod) throw new AppError("notAuthor", "Only the author can view drafts");
     return this.db.chapters
       .filter((c) => c.story_id === storyId && (!publishedOnly || c.status === "published"))
       .sort((a, b) => a.position - b.position)
@@ -829,12 +851,21 @@ export class DemoProvider implements DataProvider {
     if (!story) throw new AppError("notFound", "Story not found");
     this.requireOwner(story, me);
     if (!input.title.trim()) throw new AppError("emptyTitle", "Chapter title required");
-    const slug = slugify(input.slug || input.title);
+    const title = input.title.trim();
+    // Same rules as the Supabase provider (parity): untitled chapters get
+    // a unique placeholder slug, and position is max+1, not count.
+    const slug = input.slug
+      ? slugify(input.slug)
+      : title === "Untitled chapter" || title === "শিরোনামহীন অধ্যায়" || !title
+        ? `untitled-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+        : slugify(title);
     if (this.db.chapters.some((c) => c.story_id === storyId && c.slug === slug))
       throw new AppError("conflict", "Chapter slug already used in this story");
     const text = docToText(input.body);
     const now = new Date().toISOString();
-    const position = this.db.chapters.filter((c) => c.story_id === storyId).length;
+    const position = this.db.chapters
+      .filter((c) => c.story_id === storyId)
+      .reduce((max, c) => Math.max(max, c.position), -1) + 1;
     const ch: Chapter = {
       id: uuid(),
       story_id: storyId,
@@ -1271,7 +1302,7 @@ export class DemoProvider implements DataProvider {
     if (!story || !this.isPublicStory(story))
       throw new AppError("invalidInput", "The source story is not public");
     // Full K2 matrix (mirrors publish_keepsake()).
-    if (k.owner_id === story.author_id) k.eligibility_basis = "own-story";
+    if (k.owner_id === story.author_id && (story.origin_type ?? "original") === "original") k.eligibility_basis = "own-story";
     else if (story.pd_verified) k.eligibility_basis = "public-domain";
     else if (story.origin_type === "original" && this.storyCovered(story.id)) k.eligibility_basis = "licence";
     else if (story.origin_type === "original")
@@ -1339,6 +1370,7 @@ export class DemoProvider implements DataProvider {
     if (!k) throw new AppError("notFound", "Keepsake not found");
     k.status = "restricted";
     k.updated_at = new Date().toISOString();
+    await this.logModerationEvent("restrict_keepsake", "keepsake", id, {});
     this.persist();
     return { ...k };
   }
@@ -1350,6 +1382,7 @@ export class DemoProvider implements DataProvider {
     if (!k) throw new AppError("notFound", "Keepsake not found");
     k.status = "active";
     k.updated_at = new Date().toISOString();
+    await this.logModerationEvent("restore_keepsake", "keepsake", id, {});
     this.persist();
     return { ...k };
   }
@@ -1357,12 +1390,14 @@ export class DemoProvider implements DataProvider {
   private toPublicKeepsake(k: Keepsake): PublicKeepsake | null {
     const story = this.db.stories.find((s) => s.id === k.story_id);
     if (!story || !this.isPublicStory(story)) return null;
-    // Read-time re-check with the withdrawal default: licence-basis rows
-    // are grandfathered; own-story and public-domain rows re-check live.
+    // Mirror keepsakes_public() (N1): owner and licence branches require
+    // an original; the pd_verified branch is unchanged. Licence-basis
+    // rows are grandfathered only while the story stays an original.
+    const isOrig = (story.origin_type ?? "original") === "original";
     const ok =
-      k.owner_id === story.author_id ||
+      (k.owner_id === story.author_id && isOrig) ||
       !!story.pd_verified ||
-      k.eligibility_basis === "licence";
+      (isOrig && k.eligibility_basis === "licence");
     if (!ok) return null;
     const author = this.db.profiles.find((p) => p.id === story.author_id);
     const keeper = this.db.profiles.find((p) => p.id === k.owner_id);
@@ -1394,12 +1429,13 @@ export class DemoProvider implements DataProvider {
     return k ? this.toPublicKeepsake(k) : null;
   }
 
-  async listPublicKeepsakes(): Promise<PublicKeepsake[]> {
-    return this.db.keepsakes
+  async listPublicKeepsakes(limit?: number): Promise<PublicKeepsake[]> {
+    const rows = this.db.keepsakes
       .filter((k) => k.visibility === "public" && k.status === "active")
       .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""))
       .map((k) => this.toPublicKeepsake(k))
       .filter((k): k is PublicKeepsake => k !== null);
+    return limit !== undefined ? rows.slice(0, limit) : rows;
   }
 
   // ----------------------------------------------------------- reports
@@ -1811,6 +1847,19 @@ export class DemoProvider implements DataProvider {
         decision,
         note: a.decision_note,
       }, "/write");
+    }
+    // Approving an appeal means the takedown was wrong: put the content
+    // back (best-effort, as in the Supabase provider — the decision
+    // stands even if restore fails, and the queue/appeal buttons retry).
+    if (decision === "approved") {
+      try {
+        if (a.target_type === "story") await this.restoreStory(a.target_id);
+        else if (a.target_type === "chapter") await this.restoreChapter(a.target_id);
+        else if (a.target_type === "comment") await this.restoreComment(a.target_id);
+        else if (a.target_type === "keepsake") await this.restoreKeepsake(a.target_id);
+      } catch {
+        /* best-effort; see above */
+      }
     }
     this.persist();
     return this.withAppealContext(a);

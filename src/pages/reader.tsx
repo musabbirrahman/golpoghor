@@ -305,7 +305,7 @@ export function ReaderPage() {
   const { username = "", slug = "", chapterSlug = "" } = useParams();
   const [searchParams] = useSearchParams();
   const restart = searchParams.get("restart") === "1";
-  const { t, dp, session } = useApp();
+  const { t, dp, session, isModerator } = useApp();
   const queryClient = useQueryClient();
   const [prefs, setPrefsState] = useState(loadPrefs);
   const [reportOpen, setReportOpen] = useState(false);
@@ -328,6 +328,10 @@ export function ReaderPage() {
    *  hide handlers persist THIS value — by cleanup time the refs/DOM are
    *  already gone, so measuring then would save garbage. */
   const lastPositionRef = useRef<ReadingPosition | null>(null);
+  /** True once the user has actually scrolled in this chapter. Guards the
+   *  unmount/hide save: on a ?restart=1 visit the restore effect plants
+   *  a 0 position, and saving it unseen would overwrite real progress. */
+  const scrolledRef = useRef(false);
 
   const setPrefs = (p: typeof prefs) => {
     setPrefsState(p);
@@ -342,12 +346,25 @@ export function ReaderPage() {
   });
   const story = storyQuery.data;
 
+  // Owners and moderators may open hidden chapters (queue links,
+  // previews); ordinary readers still see published chapters only.
+  // The flag is part of the key so a moderator never reads a reader's
+  // published-only cache entry (or vice versa).
+  const canViewHidden = isModerator || session?.user.id === story?.author_id;
   const chaptersQuery = useQuery({
-    queryKey: ["chapters", story?.id, "published"],
-    queryFn: () => dp.listChapters(story!.id, { publishedOnly: true }),
+    queryKey: ["chapters", story?.id, canViewHidden ? "all" : "published"],
+    queryFn: () => dp.listChapters(story!.id, { publishedOnly: !canViewHidden }),
     enabled: !!story,
   });
-  const chapters = useMemo(() => chaptersQuery.data ?? [], [chaptersQuery.data]);
+  // Prev/Next stay on published chapters: for authors/moderators the
+  // query returns all statuses, and an unfiltered list would offer a
+  // "Next" step into an unpublished draft. The current chapter is kept
+  // so direct links to hidden chapters still load (and still resolve
+  // chapterMeta, which gates the chapter query).
+  const chapters = useMemo(
+    () => (chaptersQuery.data ?? []).filter((c) => c.status === "published" || c.slug === chapterSlug),
+    [chaptersQuery.data, chapterSlug]
+  );
   const index = chapters.findIndex((c) => c.slug === chapterSlug);
   const chapterMeta = index >= 0 ? chapters[index] : undefined;
   const prev = index > 0 ? chapters[index - 1] : undefined;
@@ -356,8 +373,8 @@ export function ReaderPage() {
   // The chapter list is light (V4-04) — the open chapter's full body loads
   // on its own, one chapter at a time.
   const chapterQuery = useQuery({
-    queryKey: ["chapter", story?.id, chapterSlug],
-    queryFn: () => dp.getChapterBySlug(story!.id, chapterSlug, { publishedOnly: true }),
+    queryKey: ["chapter", story?.id, chapterSlug, canViewHidden ? "all" : "published"],
+    queryFn: () => dp.getChapterBySlug(story!.id, chapterSlug, { publishedOnly: !canViewHidden }),
     enabled: !!story && !!chapterMeta,
   });
   const chapter: Chapter | undefined = chapterQuery.data ?? undefined;
@@ -490,6 +507,7 @@ export function ReaderPage() {
   // last measured position, never a fresh measurement at teardown time.
   useEffect(() => {
     if (!story || !chapter || !session) return;
+    scrolledRef.current = false;
     const scheduleSave = () => {
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
       saveTimer.current = window.setTimeout(() => saveNow(0.99), 800);
@@ -499,10 +517,11 @@ export function ReaderPage() {
       const pos = capturePosition();
       if (!pos) return; // transition/teardown measurement — ignore
       lastPositionRef.current = pos;
+      scrolledRef.current = true;
       scheduleSave();
     };
     const onHidden = () => {
-      if (document.visibilityState === "hidden") saveNow(1);
+      if (document.visibilityState === "hidden" && (!restart || scrolledRef.current)) saveNow(1);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     document.addEventListener("visibilitychange", onHidden);
@@ -510,9 +529,9 @@ export function ReaderPage() {
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", onHidden);
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
-      saveNow(1);
+      if (!restart || scrolledRef.current) saveNow(1);
     };
-  }, [story, chapter, session, dp]);
+  }, [story, chapter, session, dp, restart]);
 
   // Count the story view once per reader per day (dedup + exclusions in provider).
   useEffect(() => {
@@ -644,7 +663,7 @@ export function ReaderPage() {
             </p>
             <h1 className="mt-2 font-serif text-3xl font-bold sm:text-4xl">{chapter.title}</h1>
             <p className="mt-2 text-sm opacity-60">
-              {t("story", "by")} {story.author?.display_name}
+              {t("story", "by")} {story.original_author ?? story.author?.display_name}
               {readingMinutes(chapter.word_count, story.language) > 0
                 ? ` · ${readingMinutes(chapter.word_count, story.language)} ${t("story", "minRead")}`
                 : ""}

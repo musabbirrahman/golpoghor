@@ -100,7 +100,7 @@ export function QuoteStudio({
     return () => {
       cancelled = true;
     };
-  }, [open, excerpt, template, story]);
+  }, [open, excerpt, template, story, locale]);
 
   const filename = `golponeer-keepsake-${slugify(filenameBase).slice(0, 40) || "story"}.png`;
 
@@ -122,7 +122,25 @@ export function QuoteStudio({
   };
 
   const save = async (): Promise<string> => {
-    if (savedId) return savedId;
+    // Edits after "Save privately" used to be silently dropped (the
+    // short-circuit returned the old id without writing anything).
+    if (savedId) {
+      const echoValue = echo.trim() ? echo.trim() : null;
+      await dp.updateKeepsake(savedId, {
+        excerpt,
+        template,
+        echo: echoValue,
+        // Clearing the echo also clears its public flag (same rule as
+        // the viewer's echo editor), so a later echo can't go public
+        // on its own.
+        ...(echoValue ? {} : { echo_public: false }),
+      });
+      setNotice(t("keepsakes", "saved"));
+      queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsake"] });
+      return savedId;
+    }
     const k = await dp.createKeepsake({
       storyId: story.id,
       chapterId,
@@ -164,6 +182,8 @@ export function QuoteStudio({
       await dp.publishKeepsake(id);
       setPublished(true);
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsake"] });
     } catch (e) {
       // Private save stands even when publishing is refused (K2).
       setError(e instanceof AppError ? t("errors", e.code) : t("errors", "generic"));

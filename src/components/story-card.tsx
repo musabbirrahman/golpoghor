@@ -97,7 +97,7 @@ export function StoryRow({ story }: { story: Story }) {
           {story.title}
         </h3>
         <p className="text-sm text-ink-faint">
-          {t("story", "by")} {story.author?.display_name} · {genreLabel(story.genre, locale)}
+          {t("story", "by")} {story.original_author ?? story.author?.display_name} · {genreLabel(story.genre, locale)}
         </p>
         <p className="text-sm text-ink-soft clamp-2">{story.summary}</p>
         <p className="mt-auto text-xs text-ink-faint">

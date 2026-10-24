@@ -151,6 +151,23 @@ function layout(
   return { fontSize, lines, heights, fits: totalH <= textAreaH };
 }
 
+/** Truncate a single footer line with an ellipsis so it fits maxW.
+ *  (Canvas fillText has a maxWidth param, but it SQUASHES the text to
+ *  fit — truncation keeps the type readable.) */
+function fitLine(ctx: CanvasRenderingContext2D, text: string, maxW: number): string {
+  if (maxW <= 0) return "…";
+  if (ctx.measureText(text).width <= maxW) return text;
+  const ell = " …";
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (ctx.measureText(text.slice(0, mid) + ell).width <= maxW) lo = mid;
+    else hi = mid - 1;
+  }
+  return text.slice(0, lo) + ell;
+}
+
 /** Draw one card at export resolution. Returns layout info + trim flag. */
 export async function renderKeepsakeCard(
   canvas: HTMLCanvasElement,
@@ -266,17 +283,22 @@ export async function renderKeepsakeCard(
   ctx.stroke();
   ctx.fillStyle = tpl.ink;
   ctx.font = `600 30px ${SERIF}`;
-  ctx.fillText(input.title, padX, base);
+  ctx.fillText(fitLine(ctx, input.title, CARD_W - padX * 2), padX, base);
   ctx.fillStyle = tpl.faint;
+  // Author (left) and brand (right) share the base+42 baseline: cap the
+  // author so a long name can never run into the brand mark.
+  const brand = "GolpoNeer · গল্পনীড়";
+  ctx.font = `500 22px ${SANS}`;
+  const brandW = ctx.measureText(brand).width;
   ctx.font = `400 26px ${SERIF}`;
-  ctx.fillText(input.author, padX, base + 42);
+  ctx.fillText(fitLine(ctx, input.author, CARD_W - padX * 2 - brandW - 24), padX, base + 42);
   if (input.keeper) {
     ctx.font = `400 24px ${SERIF}`;
-    ctx.fillText(`${input.keeperLabel ?? "Kept by"} ${input.keeper}`, padX, base + 84);
+    ctx.fillText(fitLine(ctx, `${input.keeperLabel ?? "Kept by"} ${input.keeper}`, CARD_W - padX * 2), padX, base + 84);
   }
   ctx.font = `500 22px ${SANS}`;
   ctx.textAlign = "right";
-  ctx.fillText("GolpoNeer · গল্পনীড়", CARD_W - padX, base + 42);
+  ctx.fillText(brand, CARD_W - padX, base + 42);
   ctx.textAlign = "left";
 
   return { fontSize: lay.fontSize, lineCount: lay.lines.length, trimmed, excerpt, echoTrimmed };

@@ -57,7 +57,7 @@ export function LibraryPage() {
               {progressQuery.data.map(({ story, progress }) => (
                 <Link key={story.id} to={storyPath(story)} className="block h-full rounded-xl bg-white p-4 shadow-card hover:shadow-lift">
                   <p className="truncate font-serif text-lg font-semibold">{story.title}</p>
-                  <p className="text-sm text-ink-faint">{story.author?.display_name}</p>
+                  <p className="text-sm text-ink-faint">{story.original_author ?? story.author?.display_name}</p>
                   <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-sage" role="progressbar"
                     aria-valuenow={Math.round(progress.scroll_ratio * 100)} aria-valuemin={0} aria-valuemax={100}>
                     <div className="h-full rounded-full bg-river" style={{ width: `${Math.round(progress.scroll_ratio * 100)}%` }} />

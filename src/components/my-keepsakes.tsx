@@ -76,6 +76,8 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
     try {
       await dp.publishKeepsake(k.id);
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsake"] });
     } catch (e) {
       setKeepsakeError({ id: k.id, message: e instanceof AppError ? t("errors", e.code) : t("errors", "generic") });
     } finally {
@@ -89,6 +91,8 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
     try {
       await dp.unpublishKeepsake(k.id);
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsake"] });
     } catch (e) {
       setKeepsakeError({ id: k.id, message: e instanceof AppError ? t("errors", e.code) : t("errors", "generic") });
     } finally {
@@ -102,6 +106,8 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
     try {
       await dp.deleteKeepsake(k.id);
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsake"] });
     } catch (e) {
       setKeepsakeError({ id: k.id, message: e instanceof AppError ? t("errors", e.code) : t("errors", "generic") });
     } finally {
@@ -119,6 +125,8 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
       const echo = draft.trim() ? draft.trim() : null;
       await dp.updateKeepsake(k.id, echo ? { echo } : { echo: null, echo_public: false });
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsake"] });
     } catch (e) {
       setKeepsakeError({ id: k.id, message: e instanceof AppError ? t("errors", e.code) : t("errors", "generic") });
       throw e;
@@ -135,6 +143,8 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
     try {
       await dp.updateKeepsake(k.id, { echo_public: value });
       queryClient.invalidateQueries({ queryKey: ["keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsakes"] });
+      queryClient.invalidateQueries({ queryKey: ["public-keepsake"] });
     } catch (e) {
       setKeepsakeError({ id: k.id, message: e instanceof AppError ? t("errors", e.code) : t("errors", "generic") });
     } finally {
