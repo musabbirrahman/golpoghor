@@ -1323,6 +1323,17 @@ export class SupabaseProvider implements DataProvider {
     await this.pushNotification(authorId, kind, { targetType, targetLabel: t?.label ?? targetType, ...extra }, t?.url ?? null);
   }
 
+  async sendAdminMessage(username: string, title: string, body: string, link?: string | null): Promise<void> {
+    const profile = await this.getProfileByUsername(username.trim().toLowerCase());
+    if (!profile) throw new AppError("notFound", "User not found");
+    await this.pushNotification(
+      profile.id,
+      "admin_message",
+      { title: title.trim(), body: body.trim() },
+      link?.trim() ? link.trim() : null
+    );
+  }
+
   // ----------------------------------------------------------- reports
   async createReport(targetType: ReportTarget, targetId: string, reason: string, details: string): Promise<Report> {
     const me = await this.uid();

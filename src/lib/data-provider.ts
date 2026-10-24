@@ -259,6 +259,8 @@ export interface DataProvider {
   getUnreadNotificationCount(): Promise<number>;
   markNotificationRead(id: string, read?: boolean): Promise<void>;
   markAllNotificationsRead(): Promise<void>;
+  /** Moderator/admin only: send a free-text in-app message to one user by username. */
+  sendAdminMessage(username: string, title: string, body: string, link?: string | null): Promise<void>;
 
   // ----------------------------------------------------------- storage
   uploadCover(file: File): Promise<string>;

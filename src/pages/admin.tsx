@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
-import { Badge, Button, ButtonLink, Card, EmptyState, Modal, Spinner, Textarea } from "../components/ui";
+import { Badge, Button, ButtonLink, Card, EmptyState, Input, Label, Modal, Spinner, Textarea } from "../components/ui";
 import { AppError, formatDate, timeAgo } from "../lib/utils";
 import type { Appeal, Report, ReportTarget, Story } from "../lib/types";
 import { storyPath } from "../components/story-card";
@@ -418,9 +418,69 @@ function FeaturedTab() {
   );
 }
 
+function MessageTab() {
+  const { t, dp } = useApp();
+  const [username, setUsername] = useState("");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [link, setLink] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+
+  async function send() {
+    setBusy(true);
+    setError(null);
+    setSent(false);
+    try {
+      await dp.sendAdminMessage(username, title, body, link || null);
+      setSent(true);
+      setUsername("");
+      setTitle("");
+      setBody("");
+      setLink("");
+    } catch (e: any) {
+      setError(e?.code ?? "generic");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const valid = username.trim() !== "" && title.trim() !== "" && body.trim() !== "";
+
+  return (
+    <Card className="max-w-xl p-5">
+      <div className="flex flex-col gap-4">
+        <div>
+          <Label htmlFor="msg-username">{t("moderation", "messageUsername")}</Label>
+          <Input id="msg-username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t("moderation", "messageUsernamePlaceholder")} />
+        </div>
+        <div>
+          <Label htmlFor="msg-title">{t("moderation", "messageTitle")}</Label>
+          <Input id="msg-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder={t("moderation", "messageTitlePlaceholder")} />
+        </div>
+        <div>
+          <Label htmlFor="msg-body">{t("moderation", "messageBody")}</Label>
+          <Textarea id="msg-body" value={body} onChange={(e) => setBody(e.target.value)} maxLength={2000} rows={5} placeholder={t("moderation", "messageBodyPlaceholder")} />
+        </div>
+        <div>
+          <Label htmlFor="msg-link">{t("moderation", "messageLink")}</Label>
+          <Input id="msg-link" value={link} onChange={(e) => setLink(e.target.value)} placeholder={t("moderation", "messageLinkPlaceholder")} />
+          <p className="mt-1 text-xs text-ink-faint">{t("moderation", "messageLinkHint")}</p>
+        </div>
+        {error ? <p className="text-sm text-clay">{t("errors", error)}</p> : null}
+        {sent ? <p className="text-sm text-river-dark">{t("moderation", "messageSent")}</p> : null}
+        <div>
+          <Button onClick={send} disabled={!valid || busy}>{t("moderation", "messageSend")}</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export function AdminPage() {
   const { t, locale, dp } = useApp();
-  const [tab, setTab] = useState<"queue" | "appeals" | "resolved" | "audit" | "metrics" | "featured">("queue");
+  const [tab, setTab] = useState<"queue" | "appeals" | "resolved" | "audit" | "metrics" | "featured" | "message">("queue");
 
   const reportsQuery = useQuery({ queryKey: ["reports"], queryFn: () => dp.listReports() });
   const metricsQuery = useQuery({
@@ -473,6 +533,9 @@ export function AdminPage() {
           <button role="tab" aria-selected={tab === "featured"} className={tabBtn(tab === "featured")} onClick={() => setTab("featured")}>
             {t("moderation", "featured")}
           </button>
+          <button role="tab" aria-selected={tab === "message"} className={tabBtn(tab === "message")} onClick={() => setTab("message")}>
+            {t("moderation", "message")}
+          </button>
         </div>
 
         <div className="mt-6">
@@ -507,6 +570,8 @@ export function AdminPage() {
             )
           ) : tab === "featured" ? (
             <FeaturedTab />
+          ) : tab === "message" ? (
+            <MessageTab />
           ) : tab !== "audit" ? (
             reportsQuery.isLoading ? <Spinner /> : (tab === "queue" ? queue : resolved).length ? (
               <div className="flex flex-col gap-4">

@@ -31,6 +31,7 @@ const TYPE_TONE: Record<AppNotification["type"], "gold" | "clay" | "sage" | "riv
   content_restored: "sage",
   appeal_submitted: "gold",
   appeal_decision: "river",
+  admin_message: "gold",
 };
 
 function NotificationRow({ n }: { n: AppNotification }) {

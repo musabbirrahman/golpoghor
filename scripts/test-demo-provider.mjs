@@ -407,6 +407,21 @@ let appealId;
   let fail = false;
   try { await dp.markNotificationRead("00000000-0000-0000-0000-000000000000", true); } catch { fail = true; }
   check("cannot mark missing notification", fail);
+
+  // admin message: moderator sends free text to one user; recipient sees it
+  await dp.signOut();
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  await dp.sendAdminMessage("test_author", "Hello from the founder", "Welcome to GolpoNeer.", null);
+  await dp.signOut();
+  await dp.signIn("test@example.com", "secret12");
+  const adminMsg = (await dp.listNotifications()).find((n) => n.type === "admin_message");
+  check("admin message delivered", !!adminMsg && adminMsg.data.title === "Hello from the founder" && adminMsg.data.body === "Welcome to GolpoNeer.");
+  // unknown username refused
+  await dp.signOut();
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  let msgFail = false;
+  try { await dp.sendAdminMessage("no_such_user", "Hi", "Hello"); } catch { msgFail = true; }
+  check("admin message to unknown user refused", msgFail);
 }
 
 

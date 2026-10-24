@@ -59,6 +59,9 @@ export function notificationText(
         body: fill(tr("notifications", "appealDecisionBody"), { ...d, decision: decided }),
       };
     }
+    case "admin_message":
+      // Free text written by a moderator/admin; rendered as-is (no template).
+      return { title: d.title ?? "", body: d.body ?? "" };
   }
 }
 

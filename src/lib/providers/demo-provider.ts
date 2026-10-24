@@ -1895,6 +1895,19 @@ export class DemoProvider implements DataProvider {
     this.persist();
   }
 
+  async sendAdminMessage(username: string, title: string, body: string, link?: string | null): Promise<void> {
+    const me = await this.requireUid();
+    const actor = this.db.profiles.find((p) => p.id === me);
+    if (actor?.role !== "moderator" && actor?.role !== "admin") throw new AppError("notModerator", "Moderator only");
+    const target = this.db.profiles.find((p) => p.username === username.trim().toLowerCase());
+    if (!target) throw new AppError("notFound", "User not found");
+    const t = title.trim();
+    const b = body.trim();
+    if (!t || t.length > 200 || !b || b.length > 2000) throw new AppError("generic", "Invalid message");
+    this.pushNotification(target.id, "admin_message", { title: t, body: b }, link?.trim() ? link.trim() : null);
+    this.persist();
+  }
+
   /** The status content had before it was hidden (from the audit trail). */
   private preHideStatus(hideAction: string, targetId: string, fallback: Story["status"]): Story["status"] {
     const ev = this.db.events

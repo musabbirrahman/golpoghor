@@ -17,7 +17,8 @@ export type NotificationType =
   | "content_hidden"
   | "content_restored"
   | "appeal_submitted"
-  | "appeal_decision";
+  | "appeal_decision"
+  | "admin_message";
 
 /** Per-user notification toggles. Absent keys mean "enabled". */
 export interface NotificationPrefs {
