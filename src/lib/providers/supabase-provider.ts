@@ -42,6 +42,12 @@ import {
 } from "../data-provider";
 import { genreAliases, normalizeGenre, sortGenres } from "../genres";
 import { AppError, countWords, docToText, slugify, thumbPath } from "../utils";
+import {
+  clearCachedUrls,
+  dropCachedUrl,
+  readCachedUrl,
+  writeCachedUrl,
+} from "../signed-url-cache";
 
 function mapAppeal(row: any): Appeal {
   const { author, ...rest } = row ?? {};
@@ -211,10 +217,17 @@ export class SupabaseProvider implements DataProvider {
         /* non-fatal */
       }
     }
+    // Phase 1B: a fresh sign-in drops the previous session's
+    // in-memory URL promises (persisted entries stay namespaced by
+    // authorization context, so they remain safe to reuse).
+    this.clearCoverUrlMemory();
   }
 
   async signOut(): Promise<void> {
     const { error } = await this.sb.auth.signOut();
+    // Phase 1B: a switched account must never reuse another
+    // account's cached URLs, so signing out clears both layers.
+    this.clearCoverUrlCaches();
     if (error) throw toAppError(error);
   }
 
@@ -287,6 +300,8 @@ export class SupabaseProvider implements DataProvider {
     if (error) throw toAppError(error);
     // The auth user is gone; clear the now-dead local session.
     await this.sb.auth.signOut().catch(() => {});
+    // Phase 1B: drop this account's cached URLs with it.
+    this.clearCoverUrlCaches();
   }
 
   async resolveUsername(username: string): Promise<string | null> {
@@ -1789,7 +1804,47 @@ export class SupabaseProvider implements DataProvider {
   // re-sign (N+1 storage calls) AND bust the browser image cache with a
   // fresh token on each navigation. The URL lives a year, so one promise
   // per path per session is safe; failures are not cached (retry next mount).
+  //
+  // Phase 1B: the per-session promise cache is backed by a persisted
+  // cache (localStorage, keyed by bucket + authorization context +
+  // path), so return visits reuse the same URL until it nears expiry
+  // and the browser can revalidate instead of re-downloading.
+  // Authorization is resolved FRESH from the live session on every
+  // use (never memoized): a memoized context goes stale when the
+  // session changes in another tab or mid-request, which previously
+  // let a private draft URL be persisted under "anon" or another
+  // user's namespace (Argon checkup finding 1). "anon" covers
+  // signed-out viewers; anonymous signing only ever succeeds for
+  // public stories, so anon entries cannot expose private objects.
   private coverUrlCache = new Map<string, Promise<string | null>>();
+
+  // Monotonic guard against in-flight signs across auth changes: an
+  // entry is persisted only if the epoch is unchanged AND the live
+  // session still resolves to the same authorization context after
+  // the sign completes. Bumped by clearCoverUrlMemory().
+  private authEpoch = 0;
+
+  private async resolveAuthContext(): Promise<string> {
+    try {
+      const s = await this.getSession();
+      return s?.user.id ?? "anon";
+    } catch {
+      // Per-call fallback only — a failed read is never cached, so a
+      // transient failure cannot permanently memoize "anon".
+      return "anon";
+    }
+  }
+
+  private clearCoverUrlMemory(): void {
+    this.coverUrlCache.clear();
+    this.coverThumbUrlCache.clear();
+    this.authEpoch++;
+  }
+
+  private clearCoverUrlCaches(): void {
+    this.clearCoverUrlMemory();
+    clearCachedUrls();
+  }
 
   async coverUrl(path: string | null): Promise<string | null> {
     if (!path) return null;
@@ -1798,10 +1853,29 @@ export class SupabaseProvider implements DataProvider {
     // Long-lived signed URL (1 year). RLS is checked at generation time:
     // only published stories' covers are signable by anonymous users.
     const p = (async () => {
+      // Capture the authorization context AND the epoch before
+      // signing: if either disagrees after the sign (logout, switch,
+      // or a session change in another tab mid-request), the fresh URL
+      // is still returned for this render but never persisted.
+      const epoch = this.authEpoch;
+      const auth = await this.resolveAuthContext();
+      try {
+        const persisted = readCachedUrl("covers", auth, path);
+        if (persisted) return persisted;
+      } catch {
+        /* storage unavailable: fall through to signing */
+      }
       const { data, error } = await this.sb.storage.from("covers").createSignedUrl(path, 31536000);
       if (error || !data) {
         this.coverUrlCache.delete(path);
         return null;
+      }
+      try {
+        if (this.authEpoch === epoch && (await this.resolveAuthContext()) === auth) {
+          writeCachedUrl("covers", auth, path, data.signedUrl);
+        }
+      } catch {
+        /* persistence is best-effort */
       }
       return data.signedUrl;
     })();
@@ -1821,15 +1895,50 @@ export class SupabaseProvider implements DataProvider {
     const cached = this.coverThumbUrlCache.get(tp);
     if (cached) return cached;
     const p = (async () => {
+      const epoch = this.authEpoch;
+      const auth = await this.resolveAuthContext();
+      try {
+        const persisted = readCachedUrl("covers", auth, tp);
+        if (persisted) return persisted;
+      } catch {
+        /* storage unavailable: fall through to signing */
+      }
       const { data, error } = await this.sb.storage.from("covers").createSignedUrl(tp, 31536000);
       if (error || !data) {
         this.coverThumbUrlCache.delete(tp);
         return null;
       }
+      try {
+        if (this.authEpoch === epoch && (await this.resolveAuthContext()) === auth) {
+          writeCachedUrl("covers", auth, tp, data.signedUrl);
+        }
+      } catch {
+        /* persistence is best-effort */
+      }
       return data.signedUrl;
     })();
     this.coverThumbUrlCache.set(tp, p);
     return p;
+  }
+
+  /**
+   * Phase 1B: drop cached (memory + persisted) cover URLs for a path
+   * and its thumbnail, forcing a fresh sign on next use. Used by
+   * <Cover> when a persisted URL fails to load (expired or invalid
+   * signature); the retry is bounded by the caller to one per kind.
+   */
+  async invalidateCoverUrl(path: string | null): Promise<void> {
+    if (!path) return;
+    const tp = thumbPath(path);
+    this.coverUrlCache.delete(path);
+    if (tp) this.coverThumbUrlCache.delete(tp);
+    try {
+      const auth = await this.resolveAuthContext();
+      dropCachedUrl("covers", auth, path);
+      if (tp) dropCachedUrl("covers", auth, tp);
+    } catch {
+      /* memory entries already cleared; a persisted entry re-signs on expiry */
+    }
   }
 
   /**

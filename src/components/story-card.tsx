@@ -15,9 +15,13 @@ export function Cover({ story, className = "", thumb = false }: { story: Story; 
   const [url, setUrl] = useState<string | null>(null);
   const [showingOriginal, setShowingOriginal] = useState(false);
   const backfillFired = useRef(false);
+  const retriedThumb = useRef(false);
+  const retriedOriginal = useRef(false);
   useEffect(() => {
     let cancelled = false;
     backfillFired.current = false;
+    retriedThumb.current = false;
+    retriedOriginal.current = false;
     setShowingOriginal(false);
     if (!story.cover_path) {
       setUrl(null);
@@ -31,6 +35,11 @@ export function Cover({ story, className = "", thumb = false }: { story: Story; 
       const usedThumb = !!u;
       if (!u) u = await dp.coverUrl(story.cover_path).catch(() => null);
       if (cancelled) return;
+      // Phase 1B fix (Argon finding 2): when the thumbnail was missing
+      // at mount, the rendered URL is the original — record that, so
+      // a later load error retries the original instead of being
+      // misidentified as a thumbnail failure.
+      setShowingOriginal(thumb && !usedThumb && !!u);
       setUrl(u);
       // Best-effort backfill, fire-and-forget: the provider refuses
       // non-owners and signed-out viewers before any network use, and
@@ -57,18 +66,46 @@ export function Cover({ story, className = "", thumb = false }: { story: Story; 
       loading="lazy"
       className={`object-cover ${className}`}
       onError={async () => {
-        // A signed thumbnail URL can exist while its object does not
-        // (or fail to load for any other reason); a failed thumbnail
-        // image falls back to the original exactly once — never a loop.
-        if (thumb && !showingOriginal) {
+        // Phase 1B: a persisted signed URL can expire or lose its
+        // object. Each kind retries at most once (evict + fresh sign)
+        // before the existing fallback/placeholder — never a loop.
+        const isThumb = thumb && !showingOriginal;
+        if (isThumb && !retriedThumb.current) {
+          retriedThumb.current = true;
+          await dp.invalidateCoverUrl(story.cover_path).catch(() => {});
+          const fresh = await dp.coverThumbUrl(story.cover_path).catch(() => null);
+          if (fresh) {
+            setUrl(fresh);
+            return;
+          }
+          // Fresh thumbnail also missing: fall through to the original.
+        }
+        if (isThumb) {
+          // A signed thumbnail URL can exist while its object does not
+          // (or fail to load for any other reason); a failed thumbnail
+          // image falls back to the original exactly once — never a loop.
+          // (Argon finding 2: setUrl(null) when orig is null, so a
+          // failed fallback renders the placeholder, not a broken img.)
           setShowingOriginal(true);
           const orig = await dp.coverUrl(story.cover_path).catch(() => null);
-          if (orig) setUrl(orig);
+          setUrl(orig);
           if (!backfillFired.current) {
             backfillFired.current = true;
             dp.ensureCoverThumbnail(story).catch(() => {});
           }
+          return;
         }
+        // Original failed.
+        if (!retriedOriginal.current) {
+          retriedOriginal.current = true;
+          await dp.invalidateCoverUrl(story.cover_path).catch(() => {});
+          const fresh = await dp.coverUrl(story.cover_path).catch(() => null);
+          if (fresh) {
+            setUrl(fresh);
+            return;
+          }
+        }
+        setUrl(null);
       }}
     />
   );

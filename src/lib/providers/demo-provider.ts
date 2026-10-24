@@ -2040,6 +2040,11 @@ export class DemoProvider implements DataProvider {
     return this.thumbStore.get(path) ?? null;
   }
 
+  async invalidateCoverUrl(_path: string | null): Promise<void> {
+    // Phase 1B (demo parity): demo URLs are never signed and never
+    // expire, so there is nothing to evict.
+  }
+
   async ensureCoverThumbnail(story: {
     id: string;
     author_id: string;

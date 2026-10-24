@@ -17,10 +17,11 @@ globalThis.localStorage = {
 };
 globalThis.window = globalThis;
 
-const [{ DemoProvider }, utils, card] = await Promise.all([
+const [{ DemoProvider }, utils, card, cache] = await Promise.all([
   import("../src/lib/providers/demo-provider.ts"),
   import("../src/lib/utils.ts"),
   import("../src/lib/keepsake-card.ts"),
+  import("../src/lib/signed-url-cache.ts"),
 ]);
 const { paragraphsToDoc } = utils;
 
@@ -1112,6 +1113,59 @@ let appealId;
   check("thumb: real story backfill creates", (await dp.ensureCoverThumbnail(withCover)) === "created");
   await dp.deleteAccount();
   check("thumb: account deletion clears thumbnails", (await dp.coverThumbUrl(tiny2)) === null);
+}
+
+// Phase 1B: persisted signed-URL cache (pure helpers + demo parity)
+{
+  const { signedUrlCacheKey, isFresh, readCachedUrl, writeCachedUrl, dropCachedUrl, clearCachedUrls, countCachedUrls, SIGNED_URL_TTL_MS, SIGNED_URL_REFRESH_MARGIN_MS } = cache;
+  const now = Date.now();
+  check("urlcache: key distinguishes bucket",
+    signedUrlCacheKey("covers", "anon", "u/f") !== signedUrlCacheKey("avatars", "anon", "u/f"));
+  check("urlcache: key distinguishes auth context",
+    signedUrlCacheKey("covers", "anon", "u/f") !== signedUrlCacheKey("covers", "uid1", "u/f"));
+  check("urlcache: key distinguishes thumb from original",
+    signedUrlCacheKey("covers", "anon", "u/f") !== signedUrlCacheKey("covers", "anon", "u/thumb-f"));
+  check("urlcache: key carries version prefix",
+    signedUrlCacheKey("covers", "anon", "u/f").startsWith("gh:coverurl:v1:"));
+  check("urlcache: fresh at mint", isFresh(now, now) === true);
+  check("urlcache: fresh just inside margin",
+    isFresh(now - (SIGNED_URL_TTL_MS - SIGNED_URL_REFRESH_MARGIN_MS - 1000), now) === true);
+  check("urlcache: stale past margin",
+    isFresh(now - (SIGNED_URL_TTL_MS - SIGNED_URL_REFRESH_MARGIN_MS + 1000), now) === false);
+  check("urlcache: rejects garbage savedAt",
+    isFresh(NaN, now) === false && isFresh(0, now) === false && isFresh(-5, now) === false);
+  check("urlcache: future savedAt rejected (Argon finding 3)",
+    isFresh(now + 1000, now) === false);
+  clearCachedUrls();
+  writeCachedUrl("covers", "anon", "u1/cover.jpg", "https://example.com/signed?token=abc");
+  check("urlcache: write then read round-trips",
+    readCachedUrl("covers", "anon", "u1/cover.jpg") === "https://example.com/signed?token=abc");
+  check("urlcache: other auth cannot read it",
+    readCachedUrl("covers", "uid1", "u1/cover.jpg") === null);
+  dropCachedUrl("covers", "anon", "u1/cover.jpg");
+  check("urlcache: drop removes entry",
+    readCachedUrl("covers", "anon", "u1/cover.jpg") === null);
+  const staleKey = signedUrlCacheKey("covers", "anon", "u1/old.jpg");
+  globalThis.localStorage.setItem(staleKey, JSON.stringify({ u: "https://example.com/old", t: now - SIGNED_URL_TTL_MS }));
+  check("urlcache: stale entry reads null", readCachedUrl("covers", "anon", "u1/old.jpg") === null);
+  const badKey = signedUrlCacheKey("covers", "anon", "u1/bad.jpg");
+  globalThis.localStorage.setItem(badKey, "not-json");
+  check("urlcache: corrupt entry reads null", readCachedUrl("covers", "anon", "u1/bad.jpg") === null);
+  globalThis.localStorage.setItem(badKey, JSON.stringify({ u: "data:text/plain,hi", t: now }));
+  check("urlcache: non-http URL rejected", readCachedUrl("covers", "anon", "u1/bad.jpg") === null);
+  clearCachedUrls();
+  writeCachedUrl("captest", "anon", "c/1.jpg", "https://example.com/1", 3);
+  writeCachedUrl("captest", "anon", "c/2.jpg", "https://example.com/2", 3);
+  writeCachedUrl("captest", "anon", "c/3.jpg", "https://example.com/3", 3);
+  writeCachedUrl("captest", "anon", "c/4.jpg", "https://example.com/4", 3);
+  check("urlcache: cap enforced", countCachedUrls() === 3);
+  check("urlcache: cap evicts oldest, keeps newest",
+    readCachedUrl("captest", "anon", "c/1.jpg") === null &&
+    readCachedUrl("captest", "anon", "c/4.jpg") === "https://example.com/4");
+  check("urlcache: demo invalidate resolves",
+    (await dp.invalidateCoverUrl("u1/cover.jpg")) === undefined);
+  clearCachedUrls();
+  check("urlcache: clear empties cache", countCachedUrls() === 0);
 }
 
 console.log("");

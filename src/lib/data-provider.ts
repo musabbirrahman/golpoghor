@@ -275,6 +275,12 @@ export interface DataProvider {
   /** Card-size thumbnail URL for a cover path (`thumb-` derivation); null when no thumbnail exists. */
   coverThumbUrl(path: string | null): Promise<string | null>;
   /**
+   * Phase 1B: drop cached (memory + persisted) cover URLs for a path
+   * and its thumbnail, forcing a fresh sign on next use. Used when a
+   * persisted URL fails to load (expired or invalid signature).
+   */
+  invalidateCoverUrl(path: string | null): Promise<void>;
+  /**
    * Phase 1A backfill: create the story's thumbnail from its original
    * cover. Owner-session only; refuses anyone else before any network
    * use. "already" = done before, "failed" = failed (retryable after 7 days).
