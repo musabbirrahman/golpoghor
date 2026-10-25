@@ -47,7 +47,7 @@ export function WriteDashboard() {
           {storiesQuery.isLoading ? <Spinner /> : storiesQuery.data?.stories.length ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {storiesQuery.data.stories.map((s) => (
-                <Link key={s.id} to={`/write/stories/${s.id}`} className="block">
+                <Link key={s.id} to={`/write/stories/${s.id}`} className="block min-w-0">
                   <Card className="flex gap-4 p-4 transition-shadow hover:shadow-lift">
                     <Cover story={s} className="h-24 w-16 shrink-0 rounded-lg" thumb />
                     <div className="min-w-0">
