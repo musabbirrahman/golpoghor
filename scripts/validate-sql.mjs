@@ -137,6 +137,7 @@ const files = [
   "supabase/migrations/20261024161000_avatars_owner_read.sql",
   "supabase/migrations/20261024170000_notify_user_cooldown.sql",
   "supabase/migrations/20261024180000_admin_message.sql",
+  "supabase/migrations/20261025160000_story_slug_redirects.sql",
   "supabase/seed.sql",
 ];
 

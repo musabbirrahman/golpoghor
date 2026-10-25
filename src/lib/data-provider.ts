@@ -118,6 +118,13 @@ export interface DataProvider {
    * otherwise null.
    */
   resolveUsername(username: string): Promise<string | null>;
+  /**
+   * If the author previously had a story at `oldSlug`, return that story's
+   * current slug; otherwise null. Callers check the live story first and
+   * only consult redirects on a miss, so a re-used slug resolves to the
+   * live story, never to a stale redirect.
+   */
+  resolveStorySlug(authorId: string, oldSlug: string): Promise<string | null>;
 
   // ---------------------------------------------------------- profiles
   getProfile(id: string): Promise<Profile | null>;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useUsernameRedirect } from "../lib/use-username-redirect";
+import { useStorySlugRedirect } from "../lib/use-story-slug-redirect";
 import { genreLabel } from "../lib/genres";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
@@ -100,9 +101,15 @@ export function StoryPage() {
     !storyQuery.isLoading && !story,
     (next) => `/stories/${next}/${slug}`
   );
+  const slugRedirectPending = useStorySlugRedirect(
+    username,
+    slug,
+    !storyQuery.isLoading && !story && !storyRedirectPending,
+    (nextUser, nextSlug) => `/stories/${nextUser}/${nextSlug}`
+  );
   if (storyQuery.isLoading) return <Layout><Spinner /></Layout>;
   if (!story) {
-    if (storyRedirectPending) return <Layout><Spinner /></Layout>;
+    if (storyRedirectPending || slugRedirectPending) return <Layout><Spinner /></Layout>;
     return (
       <Layout>
         <EmptyState

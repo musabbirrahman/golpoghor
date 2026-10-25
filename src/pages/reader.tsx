@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useUsernameRedirect } from "../lib/use-username-redirect";
+import { useStorySlugRedirect } from "../lib/use-story-slug-redirect";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
@@ -645,9 +646,15 @@ export function ReaderPage() {
     !storyQuery.isLoading && !story,
     (next) => `/stories/${next}/${slug}/${chapterSlug}`
   );
+  const slugRedirectPending = useStorySlugRedirect(
+    username,
+    slug,
+    !storyQuery.isLoading && !story && !storyRedirectPending,
+    (nextUser, nextSlug) => `/stories/${nextUser}/${nextSlug}/${chapterSlug}${window.location.search}`
+  );
   if (storyQuery.isLoading || chaptersQuery.isLoading || chapterQuery.isLoading) return <Layout><Spinner /></Layout>;
   if (!story || !chapter) {
-    if (!story && storyRedirectPending) return <Layout><Spinner /></Layout>;
+    if (!story && (storyRedirectPending || slugRedirectPending)) return <Layout><Spinner /></Layout>;
     return (
       <Layout>
         <EmptyState title={t("errors", "notFound")} action={<ButtonLink to="/discover">{t("discover", "title")}</ButtonLink>} />

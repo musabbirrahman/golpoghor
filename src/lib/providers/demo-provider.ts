@@ -10,6 +10,7 @@
  */
 import type {
   UsernameRedirect,
+  StorySlugRedirect,
   AdminMetrics,
   Appeal,
   AppealStatus,
@@ -78,6 +79,7 @@ interface DemoDB {
   notifications: AppNotification[];
   storyViews: { story_id: string; viewer_id: string; viewed_on: string; created_at: string }[];
   usernameRedirects: UsernameRedirect[];
+  storySlugRedirects: StorySlugRedirect[];
   keepsakes: Keepsake[];
   /** Per-story Sharing Licence acceptances (27c): { story_id, author_id, licence_version, accepted_at, withdrawn_at }. */
   licences: { story_id: string; author_id: string; licence_version: string; accepted_at: string; withdrawn_at: string | null }[];
@@ -187,6 +189,7 @@ function seed(): DemoDB {
     notifications: [],
     storyViews: [],
     usernameRedirects: [],
+    storySlugRedirects: [],
     keepsakes: [],
     licences: [],
     sessionUserId: null,
@@ -231,6 +234,7 @@ export class DemoProvider implements DataProvider {
           db.notifications ??= [];
           db.storyViews ??= [];
           db.usernameRedirects ??= [];
+          db.storySlugRedirects ??= [];
           db.keepsakes ??= [];
           db.licences ??= [];
           for (const p of db.profiles) (p as any).notification_prefs ??= {};
@@ -448,6 +452,7 @@ export class DemoProvider implements DataProvider {
     this.db.appeals = this.db.appeals.filter((a) => a.author_id !== uid);
     this.db.notifications = this.db.notifications.filter((n) => n.user_id !== uid);
     this.db.usernameRedirects = this.db.usernameRedirects.filter((r) => r.user_id !== uid);
+    this.db.storySlugRedirects = this.db.storySlugRedirects.filter((r) => r.author_id !== uid);
     this.db.profiles = this.db.profiles.filter((p) => p.id !== uid);
     // Mirror the Postgres cascades: the deleted user's keepsakes (own
     // cards + cards from their stories) and licences go with the account.
@@ -477,6 +482,15 @@ export class DemoProvider implements DataProvider {
       current = r.new_username;
     }
     return current !== username.toLowerCase() ? current : null;
+  }
+
+  async resolveStorySlug(authorId: string, oldSlug: string): Promise<string | null> {
+    const r = this.db.storySlugRedirects.find(
+      (x) => x.author_id === authorId && x.old_slug === oldSlug
+    );
+    if (!r) return null;
+    const story = this.db.stories.find((s) => s.id === r.story_id);
+    return story?.slug ?? null;
   }
 
   // ---------------------------------------------------------- profiles
@@ -697,6 +711,11 @@ export class DemoProvider implements DataProvider {
     const slug = slugify(input.slug || input.title);
     if (this.db.stories.some((s) => s.author_id === me && s.slug === slug))
       throw new AppError("conflict", "You already have a story with this slug");
+    // Mirror the SQL trigger: claiming a slug clears its stale redirects,
+    // so a re-taken slug never misdirects after its previous owner is gone.
+    this.db.storySlugRedirects = this.db.storySlugRedirects.filter(
+      (r) => !(r.author_id === me && r.old_slug === slug)
+    );
     const now = new Date().toISOString();
     const story: Story = {
       id: uuid(),
@@ -739,7 +758,24 @@ export class DemoProvider implements DataProvider {
       if (!patch.title.trim()) throw new AppError("emptyTitle", "Title required");
       s.title = patch.title.trim().slice(0, 200);
     }
-    if (patch.slug !== undefined) s.slug = slugify(patch.slug || s.title);
+    if (patch.slug !== undefined) {
+      const nextSlug = slugify(patch.slug || s.title);
+      if (nextSlug !== s.slug) {
+        // Mirror the SQL trigger: claiming the new slug clears its stale
+        // redirects, then record the old slug, latest owner wins.
+        this.db.storySlugRedirects = this.db.storySlugRedirects.filter(
+          (r) =>
+            !(r.author_id === s.author_id && (r.old_slug === nextSlug || r.old_slug === s.slug))
+        );
+        this.db.storySlugRedirects.push({
+          author_id: s.author_id,
+          old_slug: s.slug,
+          story_id: s.id,
+          created_at: new Date().toISOString(),
+        });
+      }
+      s.slug = nextSlug;
+    }
     if (patch.summary !== undefined) s.summary = patch.summary.trim().slice(0, 2000);
     if (patch.language !== undefined) s.language = patch.language;
     if (patch.genre !== undefined) s.genre = patch.genre.trim().slice(0, 60) || "general";
@@ -789,6 +825,7 @@ export class DemoProvider implements DataProvider {
     this.requireOwner(this.db.stories[i], me);
     this.db.stories.splice(i, 1);
     this.db.chapters = this.db.chapters.filter((c) => c.story_id !== id);
+    this.db.storySlugRedirects = this.db.storySlugRedirects.filter((r) => r.story_id !== id);
     this.db.readingList = this.db.readingList.filter((r) => r.story_id !== id);
     this.db.likes = this.db.likes.filter((l) => l.story_id !== id);
     this.db.progress = this.db.progress.filter((p) => p.story_id !== id);

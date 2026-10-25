@@ -593,6 +593,43 @@ let appealId;
   check("delete: other users untouched", (await dp2.getProfileByUsername("other_handle"))?.username === "other_handle");
 }
 
+// Story slug redirects: a rename records the old slug, and old slugs
+// resolve to the current slug (mirroring the SQL trigger behaviour).
+{
+  await dp.signUp({ email: "slugger@example.com", password: "secret12", username: "slug_author", displayName: "Slugger" });
+  const story = await dp.createStory({ title: "Slug Test Story", summary: "x", language: "en", genre: "Mystery", tags: [] });
+  const authorId = (await dp.getSession()).user.id;
+  const oldSlug = story.slug;
+  check("slug redirect: no redirect before any rename", (await dp.resolveStorySlug(authorId, oldSlug)) === null);
+  await dp.updateStory(story.id, { slug: "renamed-slug" });
+  check("slug redirect: old slug resolves to the new slug", (await dp.resolveStorySlug(authorId, oldSlug)) === "renamed-slug");
+  check("slug redirect: live story found at the new slug", (await dp.getStoryBySlug("slug_author", "renamed-slug"))?.id === story.id);
+  check("slug redirect: old slug no longer resolves live", (await dp.getStoryBySlug("slug_author", oldSlug)) === null);
+  await dp.updateStory(story.id, { slug: "second-slug" });
+  check("slug redirect: first slug still resolves to the latest slug", (await dp.resolveStorySlug(authorId, oldSlug)) === "second-slug");
+  check("slug redirect: intermediate slug resolves to the latest slug", (await dp.resolveStorySlug(authorId, "renamed-slug")) === "second-slug");
+  check("slug redirect: unknown slug resolves to null", (await dp.resolveStorySlug(authorId, "never-existed")) === null);
+  await dp.deleteStory(story.id);
+  check("slug redirect: rows removed with the story", (await dp.resolveStorySlug(authorId, oldSlug)) === null);
+}
+
+// Slug re-take + rename-back (Argon Medium): claiming a slug clears its
+// stale redirects, so a deleted previous owner never misdirects.
+{
+  await dp.signUp({ email: "retaker@example.com", password: "secret12", username: "retake_author", displayName: "Retaker" });
+  const first = await dp.createStory({ title: "Monsoon", summary: "x", language: "en", genre: "Mystery", tags: [] });
+  const authorId = (await dp.getSession()).user.id;
+  await dp.updateStory(first.id, { slug: "monsoon-revised" });
+  check("slug retake: old slug recorded", (await dp.resolveStorySlug(authorId, "monsoon")) === "monsoon-revised");
+  const second = await dp.createStory({ title: "Monsoon", summary: "y", language: "en", genre: "Mystery", tags: [] });
+  await dp.deleteStory(second.id);
+  check("slug retake: deleted previous owner does not misdirect", (await dp.resolveStorySlug(authorId, "monsoon")) === null);
+  await dp.updateStory(first.id, { slug: "monsoon" });
+  check("slug rename-back: live story found at the reclaimed slug", (await dp.getStoryBySlug("retake_author", "monsoon"))?.id === first.id);
+  check("slug rename-back: no self-redirect residue", (await dp.resolveStorySlug(authorId, "monsoon")) === null);
+  check("slug rename-back: intermediate slug resolves to the live slug", (await dp.resolveStorySlug(authorId, "monsoon-revised")) === "monsoon");
+}
+
 // 20. write throttles (V4-17): rapid-fire comments/reports are refused
 // after the per-hour limit, per user, mirroring the Postgres triggers.
 {

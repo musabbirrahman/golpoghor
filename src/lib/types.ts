@@ -54,6 +54,19 @@ export interface UsernameRedirect {
   expires_at: string;
 }
 
+/**
+ * An old story slug that still resolves to its story after a rename.
+ * Permanent (no expiry): a story URL is a bookmark/share target. Slug
+ * reuse stays safe because pages check the live story first and only
+ * consult this table on a miss.
+ */
+export interface StorySlugRedirect {
+  author_id: string;
+  old_slug: string;
+  story_id: string;
+  created_at: string;
+}
+
 export type OriginType = "original" | "classic" | "translation" | "adaptation";
 
 export interface Story {

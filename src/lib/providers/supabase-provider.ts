@@ -323,6 +323,24 @@ export class SupabaseProvider implements DataProvider {
     return current !== username.toLowerCase() ? current : null;
   }
 
+  async resolveStorySlug(authorId: string, oldSlug: string): Promise<string | null> {
+    const { data, error } = await this.sb
+      .from("story_slug_redirects")
+      .select("story_id")
+      .eq("author_id", authorId)
+      .eq("old_slug", oldSlug)
+      .maybeSingle();
+    if (error) throw toAppError(error);
+    if (!data) return null;
+    const { data: story, error: storyError } = await this.sb
+      .from("stories")
+      .select("slug")
+      .eq("id", data.story_id as string)
+      .maybeSingle();
+    if (storyError) throw toAppError(storyError);
+    return (story?.slug as string) ?? null;
+  }
+
   // ---------------------------------------------------------- profiles
   async getProfile(id: string): Promise<Profile | null> {
     const { data, error } = await this.sb.from("profiles").select("*").eq("id", id).maybeSingle();
