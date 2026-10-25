@@ -36,6 +36,31 @@ function metaDescription(text: string | null | undefined): string {
   return (lastSpace > 100 ? cut.slice(0, lastSpace) : cut).trimEnd() + "…";
 }
 
+/**
+ * Per-page JSON-LD (SEO step 3: Book/author schema). Injects a single
+ * <script type="application/ld+json"> element owned by the page (marked
+ * data-page-jsonld) and removes it on unmount or when data becomes null.
+ * The shell's static Organization/WebSite script has no marker and is
+ * never touched. Callers pass a JSON.stringify'd string (or null); `<`
+ * is escaped to \u003c so a title can never break out of the script
+ * element, and the payload is set via textContent, never innerHTML.
+ */
+export function useJsonLd(json: string | null) {
+  useEffect(() => {
+    const prev = document.querySelector("script[data-page-jsonld]");
+    if (prev) prev.remove();
+    if (!json) return;
+    const el = document.createElement("script");
+    el.setAttribute("type", "application/ld+json");
+    el.setAttribute("data-page-jsonld", "");
+    el.textContent = json.replace(/</g, "\\u003c");
+    document.head.appendChild(el);
+    return () => {
+      el.remove();
+    };
+  }, [json]);
+}
+
 /** Percent-encode each path segment (Bangla slugs/usernames stay valid). */
 function encodePath(path: string): string {
   return path

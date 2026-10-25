@@ -10,7 +10,7 @@ import { Avatar, Badge, Button, ButtonLink, EmptyState, Spinner, StatusBadge, La
 import { Cover } from "../components/story-card";
 import { ReportDialog } from "../components/report-dialog";
 import { formatDate, readingMinutes, timeAgo } from "../lib/utils";
-import { usePageMeta, SHELL_TITLE } from "../lib/page-meta";
+import { usePageMeta, useJsonLd, SHELL_TITLE } from "../lib/page-meta";
 
 export function StoryPage() {
   const { username = "", slug = "" } = useParams();
@@ -35,6 +35,48 @@ export function StoryPage() {
     description: story?.summary,
     path: `/stories/${username}/${slug}`,
   });
+  // Book schema: for originals the author is the publishing account (the
+  // site byline); for classics/translations/adaptations the author is
+  // the original author, with translator when present, and GolpoNeer as
+  // publisher either way — matching the attribution shown on the page.
+  const isClassic =
+    !!story &&
+    (story.origin_type ?? "original") !== "original" &&
+    !!story.original_author;
+  useJsonLd(
+    story
+      ? JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Book",
+          name: story.title,
+          author: isClassic
+            ? { "@type": "Person", name: story.original_author }
+            : {
+                "@type": "Person",
+                name: storyAuthorName,
+                url: `https://golponeer.com/authors/${story.author?.username}`,
+              },
+          ...(story.translator_name
+            ? {
+                translator: {
+                  "@type": "Person",
+                  name: story.translator_name,
+                },
+              }
+            : {}),
+          inLanguage: story.language,
+          url: `https://golponeer.com/stories/${story.author?.username ?? username}/${story.slug}`,
+          description: story.summary || undefined,
+          genre: story.genre || undefined,
+          datePublished: story.published_at || undefined,
+          publisher: {
+            "@type": "Organization",
+            name: "GolpoNeer",
+            url: "https://golponeer.com/",
+          },
+        })
+      : null
+  );
 
   const chaptersQuery = useQuery({
     queryKey: ["chapters", story?.id, "published"],
@@ -320,6 +362,17 @@ export function AuthorPage() {
     description: profile?.bio,
     path: `/authors/${username}`,
   });
+  useJsonLd(
+    profile
+      ? JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Person",
+          name: profile.display_name,
+          url: `https://golponeer.com/authors/${profile.username}`,
+          description: profile.bio || undefined,
+        })
+      : null
+  );
 
   const storiesQuery = useQuery({
     queryKey: ["stories", { authorId: profile?.id }],
