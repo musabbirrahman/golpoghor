@@ -35,7 +35,15 @@
             "name": "GolpoNeer",
             "alternateName": "গল্পনীড়",
             "url": "https://golponeer.com/",
-            "inLanguage": ["bn", "en"]
+            "inLanguage": ["bn", "en"],
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://golponeer.com/search?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
           }
         ]
       }
