@@ -66,8 +66,7 @@ export function KeepsakesShelfPage() {
               className="min-w-0 rounded-xl p-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg sm:p-5"
               style={{ backgroundColor: tpl.bg, color: tpl.ink }}
             >
-              <p aria-hidden className="font-serif text-xl leading-none" style={{ color: tpl.accent }}>❦</p>
-              <Link to={`/k/${k.slug}`} className="mt-2 block">
+              <Link to={`/k/${k.slug}`} className="block">
                 <p className="whitespace-pre-line break-words font-serif text-base leading-relaxed sm:text-lg">“{excerpt}”</p>
               </Link>
               <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${tpl.rule}` }}>

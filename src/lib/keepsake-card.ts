@@ -240,12 +240,6 @@ export async function renderKeepsakeCard(
   ctx.fillStyle = tpl.bg;
   ctx.fillRect(0, 0, CARD_W, CARD_H);
 
-  // Ornament
-  ctx.fillStyle = tpl.accent;
-  ctx.font = `400 54px ${SERIF}`;
-  ctx.textAlign = "center";
-  ctx.fillText("❦", CARD_W / 2, topY - 28);
-
   // Passage + echo centred as one block when an echo is included;
   // without an echo the passage is centred exactly as before.
   const blockH = lay.heights.reduce((a, b) => a + b, 0);

@@ -63,7 +63,7 @@ export function HomePage() {
         <div className="pointer-events-none absolute inset-0 opacity-20" aria-hidden
           style={{ background: "radial-gradient(ellipse at 30% 20%, #C28A42 0%, transparent 55%), radial-gradient(ellipse at 75% 80%, #285C4B 0%, transparent 50%)" }} />
         <div className="relative">
-          <p className="mb-3 font-serif text-5xl text-gold" aria-hidden>❦</p>
+          <img src="/logo-mark.png" alt="" aria-hidden className="mx-auto mb-4 block h-16 w-auto" />
           <h1 className="mx-auto max-w-2xl font-serif text-4xl font-bold leading-tight sm:text-5xl">
             {t("home", "heroTitle")}
           </h1>
@@ -96,8 +96,7 @@ export function HomePage() {
               return (
                 <Link key={k.id} to={`/k/${k.slug}`} className="block w-64 shrink-0 sm:w-auto">
                   <div className="h-full min-w-0 rounded-xl p-4 shadow-card" style={{ backgroundColor: tpl.bg, color: tpl.ink }}>
-                    <p aria-hidden className="font-serif text-lg leading-none" style={{ color: tpl.accent }}>❦</p>
-                    <p className="mt-2 whitespace-pre-line break-words font-serif text-base leading-relaxed">“{excerpt}”</p>
+                    <p className="whitespace-pre-line break-words font-serif text-base leading-relaxed">“{excerpt}”</p>
                     <p className="mt-3 truncate text-xs" style={{ color: tpl.faint }}>
                       {t("keepsakes", "keptBy")} {k.keeper_name}
                     </p>

@@ -261,7 +261,6 @@ export function Footer() {
               <span className="font-serif text-xl font-bold tracking-tight">{t("brand", "brand")}</span>
             </p>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink-faint">{t("brand", "tagline")}</p>
-            <p className="mt-4 font-serif text-gold" aria-hidden>❦</p>
           </div>
 
           {col(t("footer", "explore"), [

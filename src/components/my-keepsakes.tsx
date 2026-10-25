@@ -191,10 +191,7 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
                       className="h-full min-w-0 rounded-xl p-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg"
                       style={{ backgroundColor: tpl.bg, color: tpl.ink }}
                     >
-                      <p aria-hidden className="font-serif text-lg leading-none" style={{ color: tpl.accent }}>
-                        ❦
-                      </p>
-                      <p className="mt-2 whitespace-pre-line break-words font-serif text-base leading-relaxed">
+                      <p className="whitespace-pre-line break-words font-serif text-base leading-relaxed">
                         “{excerpt}”
                       </p>
                       {k.echo && (
@@ -243,10 +240,7 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
                   className="min-w-0 cursor-pointer rounded-xl p-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg sm:p-5"
                   style={{ backgroundColor: tpl.bg, color: tpl.ink }}
                 >
-                  <p aria-hidden className="font-serif text-xl leading-none" style={{ color: tpl.accent }}>
-                    ❦
-                  </p>
-                  <p className="mt-2 whitespace-pre-line break-words font-serif text-base leading-relaxed sm:text-lg">
+                  <p className="whitespace-pre-line break-words font-serif text-base leading-relaxed sm:text-lg">
                     “{excerpt}”
                   </p>
                   <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${tpl.rule}` }}>
