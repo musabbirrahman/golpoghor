@@ -9,6 +9,7 @@ import { ReportDialog } from "../components/report-dialog";
 import { PENDING_KEEP_KEY, QuoteStudio, type PendingKeepsake } from "../components/quote-studio";
 import { normalizeExcerpt } from "../lib/keepsake-card";
 import { readingMinutes, timeAgo, AppError } from "../lib/utils";
+import { usePageMeta, SHELL_TITLE } from "../lib/page-meta";
 import type { Chapter, ReadingPosition, ReadingProgress, TiptapDoc, TiptapNode } from "../lib/types";
 
 /** Offset below the sticky header so a restored block isn't hidden behind it. */
@@ -381,6 +382,15 @@ export function ReaderPage() {
 
   const storyPath = `/stories/${username}/${slug}`;
   const chapterUrl = (c: { slug: string }) => `${storyPath}/${c.slug}`;
+
+  usePageMeta({
+    title:
+      story && chapter
+        ? `${chapter.title} — ${story.title} | GolpoNeer`
+        : SHELL_TITLE,
+    description: story?.summary,
+    path: story && chapter ? `${storyPath}/${chapter.slug}` : storyPath,
+  });
 
   // The reader's own progress for this story (shared cache with the story page).
   const progressQuery = useQuery({

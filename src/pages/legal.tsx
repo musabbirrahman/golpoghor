@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
+import { usePageMeta } from "../lib/page-meta";
 
 /**
  * V4-06 legal & trust pages. The texts are drafted from how the platform
@@ -384,6 +385,10 @@ const DOCS: Record<string, LegalDoc> = {
 export function LegalPage({ slug }: { slug: keyof typeof DOCS }) {
   const { t, locale } = useApp();
   const doc = DOCS[slug];
+  usePageMeta({
+    title: `${doc.title[locale]} | GolpoNeer`,
+    path: slug === "keepsakes" ? "/keepsakes-policy" : `/${slug}`,
+  });
   const others = Object.keys(DOCS).filter((k) => k !== slug) as (keyof typeof DOCS)[];
   return (
     <Layout>

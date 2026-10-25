@@ -9,6 +9,7 @@ import { Avatar, Badge, Button, ButtonLink, EmptyState, Spinner, StatusBadge, La
 import { Cover } from "../components/story-card";
 import { ReportDialog } from "../components/report-dialog";
 import { formatDate, readingMinutes, timeAgo } from "../lib/utils";
+import { usePageMeta, SHELL_TITLE } from "../lib/page-meta";
 
 export function StoryPage() {
   const { username = "", slug = "" } = useParams();
@@ -21,6 +22,18 @@ export function StoryPage() {
     queryFn: () => dp.getStoryBySlug(username, slug),
   });
   const story = storyQuery.data;
+
+  const storyAuthorName =
+    story?.author?.display_name ?? story?.author?.username;
+  usePageMeta({
+    title: story
+      ? storyAuthorName
+        ? `${story.title} — ${storyAuthorName} | GolpoNeer`
+        : `${story.title} | GolpoNeer`
+      : SHELL_TITLE,
+    description: story?.summary,
+    path: `/stories/${username}/${slug}`,
+  });
 
   const chaptersQuery = useQuery({
     queryKey: ["chapters", story?.id, "published"],
@@ -294,6 +307,12 @@ export function AuthorPage() {
     queryFn: () => dp.getProfileByUsername(username),
   });
   const profile = profileQuery.data;
+
+  usePageMeta({
+    title: profile ? `${profile.display_name} | GolpoNeer` : SHELL_TITLE,
+    description: profile?.bio,
+    path: `/authors/${username}`,
+  });
 
   const storiesQuery = useQuery({
     queryKey: ["stories", { authorId: profile?.id }],

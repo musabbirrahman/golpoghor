@@ -6,6 +6,7 @@ import { renderKeepsakeCard, keepsakeAttribution, downloadKeepsakePNG } from "..
 import { Card, Button } from "../components/ui";
 import { ReportDialog } from "../components/report-dialog";
 import { Layout } from "../components/layout";
+import { usePageMeta, SHELL_TITLE } from "../lib/page-meta";
 
 /**
  * Public Keepsake page (V4-27c). Reads ONLY the restricted projection:
@@ -24,6 +25,14 @@ export function PublicKeepsakePage() {
     queryKey: ["public-keepsake", slug],
     queryFn: () => dp.getPublicKeepsake(slug ?? ""),
     enabled: !!slug,
+  });
+
+  usePageMeta({
+    title: k
+      ? `${k.excerpt.length > 60 ? k.excerpt.slice(0, 60).trimEnd() + "…" : k.excerpt} | GolpoNeer`
+      : SHELL_TITLE,
+    description: k?.excerpt,
+    path: `/k/${slug ?? ""}`,
   });
 
   useEffect(() => {
