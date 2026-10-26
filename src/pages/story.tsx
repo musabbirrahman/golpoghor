@@ -203,13 +203,28 @@ export function StoryPage() {
       ? Math.round(progress.scroll_ratio * 100)
       : null;
 
-  // Look Inside: plain text of the first paragraph of chapter 1 only.
+  // Look Inside: plain text of the first PROSE paragraph of chapter 1.
   // Chapter list items carry no bodies (V4-04), so this comes from the
   // separate first-chapter fetch above; anything else hides the section.
+  // Imported classic chapters often open with a header block (Story: /
+  // Original author: / Source: / Archived: / a rule of = signs) before
+  // the prose starts — quoting that block looked like a label, not an
+  // opening line (Speckled Band, 2026-10-26), so header-like leading
+  // paragraphs are skipped until the first real paragraph.
   const plainText = (node: TiptapNode): string =>
     node.text ?? (node.content ?? []).map(plainText).join("");
+  const isHeaderLine = (text: string): boolean => {
+    const t = text.trim();
+    if (!t) return true;
+    if (/^(story|original author|author|translator|adapted by|source|edition|archived|published|copyright)\s*:/i.test(t)) return true;
+    if (/^[=\-_]{3,}$/.test(t)) return true;
+    if (/^(chapter|part|section)\s+[\w\d]+$/i.test(t)) return true;
+    return false;
+  };
   const firstDoc = firstChapterQuery.data?.body_json;
-  const firstParaNode = firstDoc?.content?.find((n) => n.type === "paragraph");
+  const firstParaNode = firstDoc?.content?.find(
+    (n) => n.type === "paragraph" && !isHeaderLine(plainText(n))
+  );
   const firstParaRaw = firstParaNode ? plainText(firstParaNode).trim() : "";
   const firstPara = firstParaRaw.length > 300 ? `${firstParaRaw.slice(0, 300)}…` : firstParaRaw;
 
@@ -240,18 +255,7 @@ export function StoryPage() {
           <Cover story={story} className="mx-auto aspect-[3/4] w-48 rounded-xl shadow-lift sm:w-56 md:mx-0 md:w-full" />
 
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <LanguageBadge language={story.language} />
-            <StatusBadge status={story.status} />
-            <Badge>{genreLabel(story.genre, locale)}</Badge>
-            {story.tags.map((tag) => (
-              <Link key={tag} to={`/discover?tag=${encodeURIComponent(tag)}`}>
-                <Badge tone="gold">#{tag}</Badge>
-              </Link>
-            ))}
-          </div>
-
-          <h1 className="mt-3 font-serif text-4xl font-bold leading-tight sm:text-5xl">{story.title}</h1>
+          <h1 className="text-balance font-serif text-[28px] font-bold leading-tight sm:text-5xl">{story.title}</h1>
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <Link
@@ -273,6 +277,17 @@ export function StoryPage() {
                 {followQuery.data?.following ? t("story", "following") : `+ ${t("story", "follow")}`}
               </Button>
             )}
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <LanguageBadge language={story.language} />
+            <StatusBadge status={story.status} />
+            <Badge>{genreLabel(story.genre, locale)}</Badge>
+            {story.tags.map((tag) => (
+              <Link key={tag} to={`/discover?tag=${encodeURIComponent(tag)}`}>
+                <Badge tone="gold">#{tag}</Badge>
+              </Link>
+            ))}
           </div>
 
           {story.summary && (
