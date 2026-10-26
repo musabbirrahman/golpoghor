@@ -288,7 +288,7 @@ export function StoryPage() {
               </Link>
             ))}
           </div>
-          <h1 className="text-pretty font-serif text-[28px] font-bold leading-tight sm:text-5xl md:text-balance md:text-[40px] lg:mt-3 lg:text-pretty lg:text-[56px]">{story.title}</h1>
+          <h1 className="text-pretty font-serif text-[28px] font-bold leading-tight sm:text-5xl md:text-[52px] lg:mt-3 lg:text-pretty lg:text-[56px]">{story.title}</h1>
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <Link
@@ -376,12 +376,17 @@ export function StoryPage() {
 
           <div className="mt-6 flex flex-wrap gap-2">
             {chapters.length > 0 && (
-              <ButtonLink to={chapterUrl(resumeChapter)} size="lg">
-                {progress && resumePct != null
-                  ? `${t("story", "continueReading")} (${t("story", "chapter")} ${resumeIndex + 1} · ${resumePct}%)`
-                  : progress
-                    ? t("story", "continueReading")
-                    : t("story", "startReading")}
+              <ButtonLink to={chapterUrl(resumeChapter)} size="lg" className="flex-wrap">
+                {progress && resumePct != null ? (
+                  <span className="text-[13px] sm:text-sm md:text-base">
+                    {t("story", "continueReading")}{" "}
+                    <span className="whitespace-nowrap">
+                      ({t("story", "chapter")} {resumeIndex + 1} · {resumePct}%)
+                    </span>
+                  </span>
+                ) : progress
+                  ? t("story", "continueReading")
+                  : t("story", "startReading")}
               </ButtonLink>
             )}
             {session ? (
