@@ -40,9 +40,12 @@ function LoadMore({ hasNextPage, isFetching, onClick, label }: { hasNextPage?: b
 function Shelf({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="mt-10">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-serif text-2xl font-bold">{title}</h2>
-        {action}
+      <div className="mb-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-serif text-2xl font-bold">{title}</h2>
+          {action}
+        </div>
+        <div className="mt-2 h-0.5 w-10 bg-gold" aria-hidden />
       </div>
       {children}
     </section>
@@ -59,18 +62,18 @@ export function HomePage() {
   return (
     <Layout>
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-2xl bg-ink px-6 py-14 text-center text-paper sm:px-12 sm:py-20">
+      <section className="relative overflow-hidden rounded-2xl bg-ink px-6 py-10 text-center text-paper sm:px-12 sm:py-12">
         <div className="pointer-events-none absolute inset-0 opacity-20" aria-hidden
           style={{ background: "radial-gradient(ellipse at 30% 20%, #C28A42 0%, transparent 55%), radial-gradient(ellipse at 75% 80%, #285C4B 0%, transparent 50%)" }} />
         <div className="relative">
-          <img src="/logo-mark.png" alt="" aria-hidden className="mx-auto mb-4 block h-16 w-auto" />
-          <h1 className="mx-auto max-w-2xl font-serif text-4xl font-bold leading-tight sm:text-5xl">
+          <img src="/logo-mark.png" alt="" aria-hidden className="mx-auto mb-3 block h-12 w-auto" />
+          <h1 className="mx-auto max-w-2xl font-serif text-3xl font-bold leading-tight sm:text-4xl">
             {t("home", "heroTitle")}
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-paper/80">{t("home", "heroSub")}</p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <ButtonLink to="/discover" size="lg" variant="gold">{t("home", "startReading")}</ButtonLink>
-            <ButtonLink to="/write" size="lg" variant="secondary" className="!bg-paper/10 !text-paper hover:!bg-paper/20">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <ButtonLink to="/discover" size="lg" variant="gold" className="w-full sm:w-auto">{t("home", "startReading")}</ButtonLink>
+            <ButtonLink to="/write" size="lg" variant="secondary" className="w-full sm:w-auto !bg-paper/10 !text-paper hover:!bg-paper/20">
               {t("home", "startWriting")}
             </ButtonLink>
           </div>
@@ -79,8 +82,8 @@ export function HomePage() {
 
       <Shelf title={t("home", "featured")} action={<Link to="/discover?sort=featured" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
         {featured.isLoading ? <Spinner /> : (
-          <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
-            {(featured.data ?? []).map((s) => <StoryCard key={s.id} story={s} />)}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-6">
+            {(featured.data ?? []).map((s) => <StoryCard key={s.id} story={s} compact />)}
           </div>
         )}
       </Shelf>
@@ -94,7 +97,7 @@ export function HomePage() {
               const tpl = CARD_TEMPLATES[k.template];
               const excerpt = k.excerpt.length > 120 ? k.excerpt.slice(0, 120).trimEnd() + "…" : k.excerpt;
               return (
-                <Link key={k.id} to={`/k/${k.slug}`} className="block w-64 shrink-0 sm:w-auto">
+                <Link key={k.id} to={`/k/${k.slug}`} className="block w-56 shrink-0 sm:w-auto">
                   <div className="h-full min-w-0 rounded-xl p-4 shadow-card" style={{ backgroundColor: tpl.bg, color: tpl.ink }}>
                     <p className="whitespace-pre-line break-words font-serif text-base leading-relaxed">“{excerpt}”</p>
                     <p className="mt-3 truncate text-xs" style={{ color: tpl.faint }}>
@@ -112,7 +115,7 @@ export function HomePage() {
         {bn.isLoading ? <Spinner /> : bn.data?.stories.length ? (
           <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
             {bn.data.stories.map((s) => (
-              <div key={s.id} className="flex w-40 shrink-0 sm:w-auto"><StoryCard story={s} /></div>
+              <div key={s.id} className="flex w-36 shrink-0 sm:w-auto"><StoryCard story={s} compact /></div>
             ))}
           </div>
         ) : <EmptyState title={t("discover", "noResults")} />}
@@ -122,7 +125,7 @@ export function HomePage() {
         {en.isLoading ? <Spinner /> : en.data?.stories.length ? (
           <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
             {en.data.stories.map((s) => (
-              <div key={s.id} className="flex w-40 shrink-0 sm:w-auto"><StoryCard story={s} /></div>
+              <div key={s.id} className="flex w-36 shrink-0 sm:w-auto"><StoryCard story={s} compact /></div>
             ))}
           </div>
         ) : <EmptyState title={t("discover", "noResults")} />}

@@ -111,7 +111,7 @@ export function Cover({ story, className = "", thumb = false }: { story: Story; 
   );
 }
 
-export function StoryCard({ story }: { story: Story }) {
+export function StoryCard({ story, compact = false }: { story: Story; compact?: boolean }) {
   const { t, locale } = useApp();
   // Shared estimate from the story's real published word count (see utils).
   const minutes = readingMinutes(story.word_count ?? 0, story.language);
@@ -127,13 +127,14 @@ export function StoryCard({ story }: { story: Story }) {
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-4">
-        <h3 className="font-serif text-lg font-semibold leading-snug clamp-2 group-hover:text-river-dark">
+        <h3 className={`font-serif font-semibold leading-snug clamp-2 group-hover:text-river-dark ${compact ? "text-base sm:text-lg" : "text-lg"}`}>
           {story.title}
         </h3>
-        <p className="text-sm text-ink-faint">
+        <p className={`text-sm ${compact ? "truncate text-ink-soft" : "text-ink-faint"}`}>
           {t("story", "by")} {story.original_author ?? story.author?.display_name}
         </p>
-        <p className="text-sm text-ink-soft clamp-3">{story.summary}</p>
+        {!compact && <p className="text-sm text-ink-soft clamp-3">{story.summary}</p>}
+        {!compact && (
         <div className="mt-auto flex flex-col gap-1 pt-2 text-xs text-ink-faint">
           <div className="flex flex-wrap items-center gap-2">
             <span className="whitespace-nowrap">
@@ -151,6 +152,7 @@ export function StoryCard({ story }: { story: Story }) {
             </span>
           </div>
         </div>
+        )}
       </div>
     </Link>
   );
