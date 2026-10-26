@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation, useNavigate, useNavigationType } from "react-router-dom";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { useApp } from "../lib/app-context";
 import { NotificationBell } from "./notifications";
 
@@ -28,7 +28,7 @@ function Brand() {
   return (
     <Link to="/" className="flex items-center gap-2" aria-label="GolpoNeer home">
       <img src="/logo.png" alt="" className="h-8 w-8 rounded-lg object-cover sm:h-9 sm:w-9" />
-      <span className="font-serif text-lg font-bold tracking-tight sm:text-xl">{t("brand", "brand")}</span>
+      <span className="hidden font-serif text-lg font-bold tracking-tight min-[400px]:inline sm:text-xl">{t("brand", "brand")}</span>
     </Link>
   );
 }
@@ -53,7 +53,7 @@ function LocaleToggle() {
   );
 }
 
-function SearchBox({ mobile = false, autoFocus = false, onSubmitDone }: { mobile?: boolean; autoFocus?: boolean; onSubmitDone?: () => void }) {
+function SearchBox({ mobile = false, inputRef, disabled, onSubmitDone }: { mobile?: boolean; inputRef?: Ref<HTMLInputElement>; disabled?: boolean; onSubmitDone?: () => void }) {
   const { t } = useApp();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
@@ -70,7 +70,8 @@ function SearchBox({ mobile = false, autoFocus = false, onSubmitDone }: { mobile
       <input
         type="search"
         value={q}
-        autoFocus={autoFocus}
+        ref={inputRef}
+        disabled={disabled}
         onChange={(e) => setQ(e.target.value)}
         placeholder={t("discover", "searchPlaceholder")}
         aria-label={t("nav", "search")}
@@ -160,9 +161,13 @@ export function Header() {
   // field expands below the header in the flow (never floating over
   // content) and closes on submit and on any route change.
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     setMobileSearchOpen(false);
   }, [pathname]);
+  useEffect(() => {
+    if (mobileSearchOpen) searchInputRef.current?.focus();
+  }, [mobileSearchOpen]);
   const linkCls = ({ isActive }: { isActive: boolean }) =>
     `rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
       isActive ? "bg-sage text-ink" : "text-ink-soft hover:bg-sage/60 hover:text-ink"
@@ -178,30 +183,42 @@ export function Header() {
           {session && <NavLink to="/library" className={linkCls}>{t("nav", "library")}</NavLink>}
           {session && <NavLink to="/write" className={linkCls}>{t("nav", "write")}</NavLink>}
         </nav>
+        {!isReader && (
+          <button
+            type="button"
+            onClick={() => setMobileSearchOpen((v) => !v)}
+            aria-expanded={mobileSearchOpen}
+            aria-label={t("nav", "search")}
+            className={`flex h-9 min-w-0 flex-1 items-center gap-1.5 rounded-full border px-3 text-sm lg:hidden ${
+              mobileSearchOpen ? "border-river bg-sage text-ink" : "border-ink/15 bg-white text-ink-faint hover:text-ink"
+            }`}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden className="shrink-0">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.5" y2="16.5" />
+            </svg>
+            <span className="truncate">{t("nav", "search")}</span>
+          </button>
+        )}
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
           {!isReader && <SearchBox />}
-          {!isReader && (
-            <button
-              type="button"
-              onClick={() => setMobileSearchOpen((v) => !v)}
-              aria-expanded={mobileSearchOpen}
-              aria-label={t("nav", "search")}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-sage/60 hover:text-ink lg:hidden"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-                <circle cx="11" cy="11" r="7" />
-                <line x1="21" y1="21" x2="16.5" y2="16.5" />
-              </svg>
-            </button>
-          )}
           <LocaleToggle />
           <NotificationBell />
           <AccountMenu />
         </div>
       </div>
-      {!isReader && mobileSearchOpen && (
-        <div className="border-t border-ink/10 px-3 py-2 sm:px-4 lg:hidden">
-          <SearchBox mobile autoFocus onSubmitDone={() => setMobileSearchOpen(false)} />
+      {!isReader && (
+        <div
+          aria-hidden={!mobileSearchOpen}
+          className={`grid transition-all duration-300 ease-out lg:hidden ${
+            mobileSearchOpen ? "grid-rows-[1fr] border-t border-ink/10 opacity-100" : "grid-rows-[0fr] opacity-0"
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div className="px-3 py-2 sm:px-4">
+              <SearchBox mobile inputRef={searchInputRef} disabled={!mobileSearchOpen} onSubmitDone={() => setMobileSearchOpen(false)} />
+            </div>
+          </div>
         </div>
       )}
     </header>
