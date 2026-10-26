@@ -117,6 +117,12 @@ body {
   overflow: hidden;
 }
 
+/* Mobile header search: the in-header bar pops wider from the right. */
+@keyframes header-search-pop {
+  from { transform: scaleX(0.85); opacity: 0.5; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+
 /* Brand text selection instead of the browser's default blue. */
 ::selection {
   background: #e0b45c;

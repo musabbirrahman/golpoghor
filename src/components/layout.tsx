@@ -53,14 +53,14 @@ function LocaleToggle() {
   );
 }
 
-function SearchBox({ mobile = false, inputRef, disabled, onSubmitDone }: { mobile?: boolean; inputRef?: Ref<HTMLInputElement>; disabled?: boolean; onSubmitDone?: () => void }) {
+function SearchBox({ mobile = false, inputRef, onClose, onSubmitDone }: { mobile?: boolean; inputRef?: Ref<HTMLInputElement>; onClose?: () => void; onSubmitDone?: () => void }) {
   const { t } = useApp();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   return (
     <form
       role="search"
-      className={mobile ? "w-full" : "hidden w-64 lg:block lg:w-80"}
+      className={mobile ? "min-w-0 flex-1" : "hidden w-64 lg:block lg:w-80"}
       onSubmit={(e) => {
         e.preventDefault();
         navigate(q.trim() ? `/search?q=${encodeURIComponent(q.trim())}` : "/discover");
@@ -71,11 +71,13 @@ function SearchBox({ mobile = false, inputRef, disabled, onSubmitDone }: { mobil
         type="search"
         value={q}
         ref={inputRef}
-        disabled={disabled}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") onClose?.();
+        }}
         onChange={(e) => setQ(e.target.value)}
         placeholder={t("discover", "searchPlaceholder")}
         aria-label={t("nav", "search")}
-        className="w-full rounded-full border border-ink/15 bg-white px-4 py-2 text-sm placeholder:text-ink-faint focus:border-river focus:outline-none focus:ring-1 focus:ring-river"
+        className={`w-full border border-ink/15 bg-white px-4 py-2 text-sm placeholder:text-ink-faint focus:border-river focus:outline-none focus:ring-1 focus:ring-river ${mobile ? "rounded-xl focus-visible:rounded-xl" : "rounded-full"}`}
       />
     </form>
   );
@@ -157,16 +159,36 @@ export function Header() {
   // The chapter-reading page is immersive: hide the search box there
   // (story page and everywhere else keep it). Header chrome stays.
   const isReader = /^\/stories\/[^/]+\/[^/]+\/[^/]+$/.test(pathname);
-  // Mobile search lives behind an icon button in the header row; the
-  // field expands below the header in the flow (never floating over
-  // content) and closes on submit and on any route change.
+  // Mobile search lives in the header row itself: a wide pill that, when
+  // tapped, becomes the input and pops wider to the full row (logo, nav
+  // and controls fade/collapse away on phones only), then closes back to
+  // the pill on submit, Escape, the close button, or any route change.
+  // No second row below the header. Desktop search is untouched.
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const searchAreaRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     setMobileSearchOpen(false);
   }, [pathname]);
   useEffect(() => {
     if (mobileSearchOpen) searchInputRef.current?.focus();
+  }, [mobileSearchOpen]);
+  // Tapping anywhere outside the expanded search cancels it (the old
+  // below-header row stayed open forever on an outside tap — that bug
+  // is what this closes).
+  useEffect(() => {
+    if (!mobileSearchOpen) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (searchAreaRef.current && !searchAreaRef.current.contains(e.target as Node)) {
+        setMobileSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+    };
   }, [mobileSearchOpen]);
   const linkCls = ({ isActive }: { isActive: boolean }) =>
     `rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -175,8 +197,10 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-ink/10 bg-paper/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-3 sm:gap-3 sm:px-4">
-        <Brand />
-        <nav className="ml-2 hidden items-center gap-1 md:flex" aria-label="Primary">
+        <div className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-out ${mobileSearchOpen ? "max-lg:max-w-0 max-lg:opacity-0" : "max-lg:max-w-[200px] max-lg:opacity-100"}`}>
+          <Brand />
+        </div>
+        <nav className={`ml-2 hidden items-center gap-1 overflow-hidden whitespace-nowrap transition-all duration-300 ease-out md:flex ${mobileSearchOpen ? "max-lg:max-w-0 max-lg:opacity-0" : "max-lg:max-w-[600px] max-lg:opacity-100"}`} aria-label="Primary">
           <NavLink to="/" className={linkCls} end>{t("nav", "home")}</NavLink>
           <NavLink to="/discover" className={linkCls}>{t("nav", "discover")}</NavLink>
           <NavLink to="/keepsakes" className={linkCls}>{t("nav", "keepsakes")}</NavLink>
@@ -184,43 +208,48 @@ export function Header() {
           {session && <NavLink to="/write" className={linkCls}>{t("nav", "write")}</NavLink>}
         </nav>
         {!isReader && (
-          <button
-            type="button"
-            onClick={() => setMobileSearchOpen((v) => !v)}
-            aria-expanded={mobileSearchOpen}
-            aria-label={t("nav", "search")}
-            className={`flex h-9 min-w-0 flex-1 items-center gap-1.5 rounded-full border px-3 text-sm lg:hidden ${
-              mobileSearchOpen ? "border-river bg-sage text-ink" : "border-ink/15 bg-white text-ink-faint hover:text-ink"
-            }`}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden className="shrink-0">
-              <circle cx="11" cy="11" r="7" />
-              <line x1="21" y1="21" x2="16.5" y2="16.5" />
-            </svg>
-            <span className="truncate">{t("nav", "search")}</span>
-          </button>
+          <div ref={searchAreaRef} className={`flex min-w-0 flex-1 items-center gap-2 lg:hidden ${mobileSearchOpen ? "max-lg:absolute max-lg:inset-x-3 max-lg:top-3.5 max-lg:z-10" : ""}`}>
+            {mobileSearchOpen ? (
+              <>
+                <div className="min-w-0 flex-1 origin-right animate-[header-search-pop_0.3s_ease-out]">
+                  <SearchBox mobile inputRef={searchInputRef} onClose={() => setMobileSearchOpen(false)} onSubmitDone={() => setMobileSearchOpen(false)} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileSearchOpen(false)}
+                  aria-label={t("common", "close")}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-soft hover:bg-sage/60 hover:text-ink"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                  </svg>
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setMobileSearchOpen(true)}
+                aria-expanded={false}
+                aria-label={t("nav", "search")}
+                className="flex h-9 min-w-0 flex-1 items-center gap-1.5 rounded-full border border-ink/15 bg-white px-3 text-sm text-ink-faint hover:text-ink"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden className="shrink-0">
+                  <circle cx="11" cy="11" r="7" />
+                  <line x1="21" y1="21" x2="16.5" y2="16.5" />
+                </svg>
+                <span className="truncate">{t("nav", "search")}</span>
+              </button>
+            )}
+          </div>
         )}
-        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        <div className={`ml-auto flex items-center gap-2 transition-opacity duration-300 ease-out sm:gap-3 ${mobileSearchOpen ? "max-lg:pointer-events-none max-lg:opacity-0" : "max-lg:opacity-100"}`}>
           {!isReader && <SearchBox />}
           <LocaleToggle />
           <NotificationBell />
           <AccountMenu />
         </div>
       </div>
-      {!isReader && (
-        <div
-          aria-hidden={!mobileSearchOpen}
-          className={`grid transition-all duration-300 ease-out lg:hidden ${
-            mobileSearchOpen ? "grid-rows-[1fr] border-t border-ink/10 opacity-100" : "grid-rows-[0fr] opacity-0"
-          }`}
-        >
-          <div className="overflow-hidden">
-            <div className="px-3 py-2 sm:px-4">
-              <SearchBox mobile inputRef={searchInputRef} disabled={!mobileSearchOpen} onSubmitDone={() => setMobileSearchOpen(false)} />
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 }
