@@ -203,29 +203,49 @@ export function StoryPage() {
       ? Math.round(progress.scroll_ratio * 100)
       : null;
 
-  // Look Inside: plain text of the first PROSE paragraph of chapter 1.
+  // Look Inside: plain text of the OPENING of chapter 1.
   // Chapter list items carry no bodies (V4-04), so this comes from the
   // separate first-chapter fetch above; anything else hides the section.
   // Imported classic chapters often open with a header block (Story: /
   // Original author: / Source: / Archived: / a rule of = signs) before
   // the prose starts — quoting that block looked like a label, not an
   // opening line (Speckled Band, 2026-10-26), so header-like leading
-  // paragraphs are skipped until the first real paragraph.
+  // paragraphs are skipped until the first real paragraph. A chapter
+  // that opens with its own title as a centered line (প্রভালয়, whose
+  // first line repeats the chapter title) is skipped the same way.
+  // The excerpt then runs up to 300 chars, joining short lines (verse)
+  // so a poem shows its opening lines, not a single short line; a long
+  // prose paragraph still fills the excerpt on its own, as before.
   const plainText = (node: TiptapNode): string =>
     node.text ?? (node.content ?? []).map(plainText).join("");
+  const chapterTitle = firstChapterQuery.data?.title?.trim() ?? "";
   const isHeaderLine = (text: string): boolean => {
     const t = text.trim();
     if (!t) return true;
+    if (chapterTitle && t.toLowerCase() === chapterTitle.toLowerCase()) return true;
+    if (t.toLowerCase() === story.title.trim().toLowerCase()) return true;
     if (/^(story|original author|author|translator|adapted by|source|edition|archived|published|copyright)\s*:/i.test(t)) return true;
     if (/^[=\-_]{3,}$/.test(t)) return true;
     if (/^(chapter|part|section)\s+[\w\d]+$/i.test(t)) return true;
     return false;
   };
   const firstDoc = firstChapterQuery.data?.body_json;
-  const firstParaNode = firstDoc?.content?.find(
-    (n) => n.type === "paragraph" && !isHeaderLine(plainText(n))
-  );
-  const firstParaRaw = firstParaNode ? plainText(firstParaNode).trim() : "";
+  const excerptParas: string[] = [];
+  let excerptStarted = false;
+  for (const n of firstDoc?.content ?? []) {
+    if (n.type !== "paragraph") {
+      if (excerptStarted) break;
+      continue;
+    }
+    const t = plainText(n).trim();
+    if (!excerptStarted) {
+      if (isHeaderLine(t)) continue;
+      excerptStarted = true;
+    }
+    excerptParas.push(t);
+    if (excerptParas.join(" ").length >= 300) break;
+  }
+  const firstParaRaw = excerptParas.join(" ").replace(/\s+/g, " ").trim();
   const firstPara = firstParaRaw.length > 300 ? `${firstParaRaw.slice(0, 300)}…` : firstParaRaw;
 
   const hasProvenance = !!(
@@ -255,7 +275,7 @@ export function StoryPage() {
           <Cover story={story} className="mx-auto aspect-[3/4] w-48 rounded-xl shadow-lift sm:w-56 md:mx-0 md:w-full" />
 
         <div className="min-w-0">
-          <h1 className="text-balance font-serif text-[28px] font-bold leading-tight sm:text-5xl">{story.title}</h1>
+          <h1 className="text-pretty font-serif text-[28px] font-bold leading-tight sm:text-5xl md:text-balance lg:text-pretty lg:text-6xl">{story.title}</h1>
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <Link
