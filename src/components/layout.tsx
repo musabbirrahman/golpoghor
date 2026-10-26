@@ -27,8 +27,8 @@ function Brand() {
   const { t } = useApp();
   return (
     <Link to="/" className="flex items-center gap-2" aria-label="GolpoNeer home">
-      <img src="/logo.png" alt="" className="h-9 w-9 rounded-lg object-cover" />
-      <span className="font-serif text-xl font-bold tracking-tight">{t("brand", "brand")}</span>
+      <img src="/logo.png" alt="" className="h-8 w-8 rounded-lg object-cover sm:h-9 sm:w-9" />
+      <span className="font-serif text-lg font-bold tracking-tight sm:text-xl">{t("brand", "brand")}</span>
     </Link>
   );
 }
@@ -42,7 +42,7 @@ function LocaleToggle() {
           key={l}
           onClick={() => setLocale(l)}
           aria-pressed={locale === l}
-          className={`px-2.5 py-1.5 font-medium transition-colors ${
+          className={`px-2 py-1.5 font-medium transition-colors sm:px-2.5 ${
             locale === l ? "bg-river text-white" : "bg-white text-ink-soft hover:bg-sage"
           }`}
         >
@@ -53,7 +53,7 @@ function LocaleToggle() {
   );
 }
 
-function SearchBox({ mobile = false }: { mobile?: boolean }) {
+function SearchBox({ mobile = false, autoFocus = false, onSubmitDone }: { mobile?: boolean; autoFocus?: boolean; onSubmitDone?: () => void }) {
   const { t } = useApp();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
@@ -64,11 +64,13 @@ function SearchBox({ mobile = false }: { mobile?: boolean }) {
       onSubmit={(e) => {
         e.preventDefault();
         navigate(q.trim() ? `/search?q=${encodeURIComponent(q.trim())}` : "/discover");
+        onSubmitDone?.();
       }}
     >
       <input
         type="search"
         value={q}
+        autoFocus={autoFocus}
         onChange={(e) => setQ(e.target.value)}
         placeholder={t("discover", "searchPlaceholder")}
         aria-label={t("nav", "search")}
@@ -87,7 +89,7 @@ function AccountMenu() {
     return (
       <Link
         to="/login"
-        className="rounded-lg bg-river px-4 py-2 text-sm font-medium text-white hover:bg-river-dark"
+        className="rounded-lg bg-river px-3 py-2 text-sm font-medium text-white hover:bg-river-dark sm:px-4"
       >
         {t("nav", "signIn")}
       </Link>
@@ -154,13 +156,20 @@ export function Header() {
   // The chapter-reading page is immersive: hide the search box there
   // (story page and everywhere else keep it). Header chrome stays.
   const isReader = /^\/stories\/[^/]+\/[^/]+\/[^/]+$/.test(pathname);
+  // Mobile search lives behind an icon button in the header row; the
+  // field expands below the header in the flow (never floating over
+  // content) and closes on submit and on any route change.
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  useEffect(() => {
+    setMobileSearchOpen(false);
+  }, [pathname]);
   const linkCls = ({ isActive }: { isActive: boolean }) =>
     `rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
       isActive ? "bg-sage text-ink" : "text-ink-soft hover:bg-sage/60 hover:text-ink"
     }`;
   return (
     <header className="sticky top-0 z-40 border-b border-ink/10 bg-paper/95 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-3 sm:gap-3 sm:px-4">
         <Brand />
         <nav className="ml-2 hidden items-center gap-1 md:flex" aria-label="Primary">
           <NavLink to="/" className={linkCls} end>{t("nav", "home")}</NavLink>
@@ -171,14 +180,28 @@ export function Header() {
         </nav>
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
           {!isReader && <SearchBox />}
+          {!isReader && (
+            <button
+              type="button"
+              onClick={() => setMobileSearchOpen((v) => !v)}
+              aria-expanded={mobileSearchOpen}
+              aria-label={t("nav", "search")}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-sage/60 hover:text-ink lg:hidden"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.5" y2="16.5" />
+              </svg>
+            </button>
+          )}
           <LocaleToggle />
           <NotificationBell />
           <AccountMenu />
         </div>
       </div>
-      {!isReader && (
-        <div className="border-t border-ink/10 px-4 py-2 lg:hidden">
-          <SearchBox mobile />
+      {!isReader && mobileSearchOpen && (
+        <div className="border-t border-ink/10 px-3 py-2 sm:px-4 lg:hidden">
+          <SearchBox mobile autoFocus onSubmitDone={() => setMobileSearchOpen(false)} />
         </div>
       )}
     </header>
