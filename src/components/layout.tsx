@@ -77,7 +77,7 @@ function SearchBox({ mobile = false, inputRef, onClose, onSubmitDone }: { mobile
         onChange={(e) => setQ(e.target.value)}
         placeholder={t("discover", "searchPlaceholder")}
         aria-label={t("nav", "search")}
-        className={`w-full border border-ink/15 bg-white px-4 py-2 text-sm placeholder:text-ink-faint focus:border-river focus:outline-none focus:ring-1 focus:ring-river ${mobile ? "rounded-xl focus-visible:rounded-xl" : "rounded-full"}`}
+        className={`w-full border border-ink/15 bg-white px-4 py-2 text-sm placeholder:text-ink-faint focus:border-river focus:outline-none focus:ring-1 focus:ring-river ${mobile ? "rounded-xl focus-visible:rounded-xl" : "rounded-full focus-visible:rounded-full"}`}
       />
     </form>
   );
