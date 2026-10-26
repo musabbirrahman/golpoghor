@@ -167,6 +167,10 @@ export function Header() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const searchAreaRef = useRef<HTMLDivElement | null>(null);
+  // How far Chrome's own bar is currently overlapping the top of the page
+  // (0 when it isn't). Only read while the mobile search is open, so the
+  // normal header never moves.
+  const [chromeBarOffset, setChromeBarOffset] = useState(0);
   // Closing the search must also drop focus: on a real phone keyboard the
   // keyboard otherwise lingers after the input is gone, and opening the
   // search must never scroll the page — the input lives in the sticky
@@ -181,6 +185,28 @@ export function Header() {
   }, [pathname]);
   useEffect(() => {
     if (mobileSearchOpen) searchInputRef.current?.focus({ preventScroll: true });
+  }, [mobileSearchOpen]);
+  // While the mobile search is open, track Chrome's bar: on Android
+  // Chrome it can slide back over the top of the page (for example on a
+  // small upward scroll), covering the site's input. visualViewport's
+  // offsetTop is exactly that overlap, so the header slides down by the
+  // same amount only in that moment; when the bar hides, the offset
+  // returns to 0 and the header is back where it always was.
+  useEffect(() => {
+    if (!mobileSearchOpen) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const next = Math.round(vv.offsetTop || 0);
+      setChromeBarOffset((prev) => (prev === next ? prev : next));
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
   }, [mobileSearchOpen]);
   // Tapping anywhere outside the expanded search cancels it (the old
   // below-header row stayed open forever on an outside tap — that bug
@@ -204,7 +230,7 @@ export function Header() {
       isActive ? "bg-sage text-ink" : "text-ink-soft hover:bg-sage/60 hover:text-ink"
     }`;
   return (
-    <header className="sticky top-0 z-40 border-b border-ink/10 bg-paper/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-ink/10 bg-paper/95 backdrop-blur" style={mobileSearchOpen && chromeBarOffset > 0 ? { top: chromeBarOffset } : undefined}>
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-3 sm:gap-3 sm:px-4">
         <div className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-out ${mobileSearchOpen ? "max-lg:max-w-0 max-lg:opacity-0" : "max-lg:max-w-[200px] max-lg:opacity-100"}`}>
           <Brand />
