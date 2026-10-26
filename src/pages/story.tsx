@@ -288,7 +288,7 @@ export function StoryPage() {
               </Link>
             ))}
           </div>
-          <h1 className="text-pretty font-serif text-[28px] font-bold leading-tight sm:text-5xl md:mt-3 md:text-balance lg:text-pretty lg:text-[56px]">{story.title}</h1>
+          <h1 className="text-pretty font-serif text-[28px] font-bold leading-tight sm:text-5xl md:mt-3 md:text-balance md:text-[40px] lg:text-pretty lg:text-[56px]">{story.title}</h1>
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <Link
