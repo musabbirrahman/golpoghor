@@ -11,6 +11,7 @@ import { Cover } from "../components/story-card";
 import { ReportDialog } from "../components/report-dialog";
 import { formatDate, readingMinutes, timeAgo } from "../lib/utils";
 import { usePageMeta, useJsonLd, SHELL_TITLE } from "../lib/page-meta";
+import type { TiptapNode } from "../lib/types";
 
 export function StoryPage() {
   const { username = "", slug = "" } = useParams();
@@ -81,6 +82,21 @@ export function StoryPage() {
   const chaptersQuery = useQuery({
     queryKey: ["chapters", story?.id, "published"],
     queryFn: () => dp.listChapters(story!.id, { publishedOnly: true }),
+    enabled: !!story,
+  });
+
+  const firstChapterQuery = useQuery({
+    queryKey: ["chapter", story?.id, "first"],
+    queryFn: () => dp.getChapterBySlug(story!.id, chaptersQuery.data![0].slug, { publishedOnly: true }),
+    enabled: !!story && (chaptersQuery.data?.length ?? 0) > 0,
+  });
+
+  const moreByAuthorQuery = useQuery({
+    queryKey: ["stories", { authorId: story?.author_id }, "more"],
+    queryFn: async () => {
+      const res = await dp.listStories({ authorId: story!.author_id, limit: 4 });
+      return res.stories.filter((s) => s.id !== story!.id).slice(0, 3);
+    },
     enabled: !!story,
   });
 
@@ -177,10 +193,51 @@ export function StoryPage() {
    *  only Continue Reading resumes the saved position. */
   const chapterStartUrl = (c: { slug: string }) => `${chapterUrl(c)}?restart=1`;
 
+  // Resume position for the Continue button and the chapter row: the
+  // progress record stores only the current chapter + its scroll ratio.
+  const resumeIndex = progress?.chapter_id
+    ? chapters.findIndex((c) => c.id === progress.chapter_id)
+    : -1;
+  const resumePct =
+    progress && resumeIndex >= 0 && progress.scroll_ratio > 0
+      ? Math.round(progress.scroll_ratio * 100)
+      : null;
+
+  // Look Inside: plain text of the first paragraph of chapter 1 only.
+  // Chapter list items carry no bodies (V4-04), so this comes from the
+  // separate first-chapter fetch above; anything else hides the section.
+  const plainText = (node: TiptapNode): string =>
+    node.text ?? (node.content ?? []).map(plainText).join("");
+  const firstDoc = firstChapterQuery.data?.body_json;
+  const firstParaNode = firstDoc?.content?.find((n) => n.type === "paragraph");
+  const firstParaRaw = firstParaNode ? plainText(firstParaNode).trim() : "";
+  const firstPara = firstParaRaw.length > 300 ? `${firstParaRaw.slice(0, 300)}…` : firstParaRaw;
+
+  const hasProvenance = !!(
+    story.original_author ||
+    story.original_title ||
+    story.translator_name ||
+    story.adapter_name ||
+    story.edition_source ||
+    story.publication_details
+  );
+  const moreByAuthor = moreByAuthorQuery.data ?? [];
+
   return (
     <Layout>
-      <div className="mt-6 grid gap-8 md:grid-cols-[220px_1fr]">
-        <Cover story={story} className="aspect-[3/4] w-full rounded-xl shadow-lift" />
+      <nav aria-label="Breadcrumb" className="mt-6 flex items-center gap-1.5 text-sm text-ink-faint">
+        <Link to="/" className="hover:text-river hover:underline">{t("nav", "home")}</Link>
+        <span aria-hidden>/</span>
+        <Link to={`/discover?genre=${encodeURIComponent(story.genre)}`} className="hover:text-river hover:underline">
+          {genreLabel(story.genre, locale)}
+        </Link>
+        <span aria-hidden>/</span>
+        <span className="min-w-0 truncate font-medium text-ink">{story.title}</span>
+      </nav>
+
+      <section className="mt-4 rounded-2xl bg-white p-5 shadow-card sm:p-8">
+        <div className="grid gap-8 md:grid-cols-[220px_1fr]">
+          <Cover story={story} className="mx-auto aspect-[3/4] w-48 rounded-xl shadow-lift sm:w-56 md:mx-0 md:w-full" />
 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -194,59 +251,89 @@ export function StoryPage() {
             ))}
           </div>
 
-          <h1 className="mt-3 font-serif text-4xl font-bold leading-tight">{story.title}</h1>
+          <h1 className="mt-3 font-serif text-4xl font-bold leading-tight sm:text-5xl">{story.title}</h1>
 
-          <Link
-            to={`/authors/${story.author?.username}`}
-            className="mt-2 inline-flex items-center gap-2 text-ink-soft hover:text-river-dark"
-          >
-            <Avatar name={story.author?.display_name ?? "?"} size="sm" src={dp.avatarUrl(story.author?.avatar_path ?? null)} />
-            <span className="font-medium">{story.author?.display_name}</span>
-            <span className="text-sm text-ink-faint">@{story.author?.username}</span>
-          </Link>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <Link
+              to={`/authors/${story.author?.username}`}
+              className="inline-flex items-center gap-2 text-ink-soft hover:text-river-dark"
+            >
+              <Avatar name={story.author?.display_name ?? "?"} size="sm" src={dp.avatarUrl(story.author?.avatar_path ?? null)} />
+              <span className="font-semibold">{story.author?.display_name}</span>
+              <span className="text-sm text-ink-faint">@{story.author?.username}</span>
+            </Link>
+            {session && !isOwner && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => followMutation.mutate()}
+                disabled={followMutation.isPending}
+                aria-pressed={!!followQuery.data?.following}
+              >
+                {followQuery.data?.following ? t("story", "following") : `+ ${t("story", "follow")}`}
+              </Button>
+            )}
+          </div>
 
-          <p className="mt-4 max-w-2xl whitespace-pre-line text-ink-soft">{story.summary}</p>
+          {story.summary && (
+            <p className="mt-4 whitespace-pre-line leading-relaxed text-ink-soft">{story.summary}</p>
+          )}
 
-          {/* V4-28 attribution: only credits that exist are shown. */}
-          {(story.original_author || story.original_title || story.translator_name || story.adapter_name || story.edition_source || story.publication_details) && (
-            <dl className="mt-4 max-w-2xl space-y-1 text-sm text-ink-soft">
-              {story.original_author && (
-                <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "originalAuthor")}:</dt><dd>{story.original_author}</dd></div>
-              )}
-              {story.original_title && story.original_title !== story.title && (
-                <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "originalTitle")}:</dt><dd>{story.original_title}</dd></div>
-              )}
-              {story.translator_name && (
-                <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "translatedBy")}:</dt><dd>{story.translator_name}</dd></div>
-              )}
-              {story.adapter_name && (
-                <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "adaptedBy")}:</dt><dd>{story.adapter_name}</dd></div>
-              )}
-              {story.edition_source && (
-                <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "editionSource")}:</dt><dd>{story.edition_source}</dd></div>
-              )}
-              {story.publication_details && (
-                <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "publicationDetails")}:</dt><dd>{story.publication_details}</dd></div>
-              )}
-            </dl>
+          {/* V4-28 attribution as Edition & Provenance boxes: only credits
+              that exist are shown; the whole section hides for stories
+              with no attribution data. */}
+          {hasProvenance && (
+            <div className="mt-6">
+              <p className="text-sm font-semibold text-ink">{t("story", "editionProvenance")}</p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                {(story.original_author || story.original_title || story.translator_name || story.adapter_name || story.edition_source) && (
+                  <dl className="space-y-1 rounded-xl bg-paper px-4 py-3 text-sm text-ink-soft">
+                    {story.original_author && (
+                      <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "originalAuthor")}:</dt><dd>{story.original_author}</dd></div>
+                    )}
+                    {story.original_title && story.original_title !== story.title && (
+                      <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "originalTitle")}:</dt><dd>{story.original_title}</dd></div>
+                    )}
+                    {story.translator_name && (
+                      <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "translatedBy")}:</dt><dd>{story.translator_name}</dd></div>
+                    )}
+                    {story.adapter_name && (
+                      <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "adaptedBy")}:</dt><dd>{story.adapter_name}</dd></div>
+                    )}
+                    {story.edition_source && (
+                      <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "editionSource")}:</dt><dd>{story.edition_source}</dd></div>
+                    )}
+                  </dl>
+                )}
+                {story.publication_details && (
+                  <dl className="space-y-1 rounded-xl bg-paper px-4 py-3 text-sm text-ink-soft">
+                    <div className="flex gap-2"><dt className="shrink-0 text-ink-faint">{t("story", "publicationDetails")}:</dt><dd>{story.publication_details}</dd></div>
+                  </dl>
+                )}
+              </div>
+            </div>
           )}
 
           {story.content_notice && (
-            <p className="mt-3 max-w-2xl rounded-lg bg-clay-soft px-3 py-2 text-sm text-clay-dark">
+            <p className="mt-3 rounded-lg bg-clay-soft px-3 py-2 text-sm text-clay-dark">
               <strong>{t("story", "contentNotice")}:</strong> {story.content_notice}
             </p>
           )}
 
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-faint">
-            <span>{chapters.length} {chapters.length === 1 ? t("story", "chapterSingular") : t("story", "chapters")}</span>
-            {totalMinutes > 0 && <span>~{totalMinutes} {t("story", "minRead")}</span>}
-            {story.published_at && <span>{t("story", "publishedOn")} {formatDate(story.published_at, locale)}</span>}
+          <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-faint">
+            <span className="whitespace-nowrap">{chapters.length} {chapters.length === 1 ? t("story", "chapterSingular") : t("story", "chapters")}</span>
+            {totalMinutes > 0 && <span className="whitespace-nowrap">~{totalMinutes} {t("story", "minRead")}</span>}
+            {story.published_at && <span className="whitespace-nowrap">{t("story", "publishedOn")} {formatDate(story.published_at, locale)}</span>}
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
             {chapters.length > 0 && (
               <ButtonLink to={chapterUrl(resumeChapter)} size="lg">
-                {progress ? t("story", "continueReading") : t("story", "startReading")}
+                {progress && resumePct != null
+                  ? `${t("story", "continueReading")} (${t("story", "chapter")} ${resumeIndex + 1} · ${resumePct}%)`
+                  : progress
+                    ? t("story", "continueReading")
+                    : t("story", "startReading")}
               </ButtonLink>
             )}
             {session ? (
@@ -269,17 +356,6 @@ export function StoryPage() {
                 >
                   {likeQuery.data?.liked ? t("story", "liked") : `♥ ${t("story", "like")}`}
                 </Button>
-                {!isOwner && (
-                  <Button
-                    variant="ghost"
-                    size="lg"
-                    onClick={() => followMutation.mutate()}
-                    disabled={followMutation.isPending}
-                  >
-                    {followQuery.data?.following ? t("story", "following") : t("story", "follow")}
-                    {followQuery.data ? ` (${followQuery.data.count})` : ""}
-                  </Button>
-                )}
               </>
             ) : (
               <ButtonLink to={`/login?next=${encodeURIComponent(window.location.pathname)}`} variant="secondary" size="lg">
@@ -302,37 +378,86 @@ export function StoryPage() {
             </button>
           )}
         </div>
-      </div>
+        </div>
+      </section>
 
-      <section className="mt-10 max-w-3xl">
-        <h2 className="mb-4 font-serif text-2xl font-bold">
-          {t("write", "chapters")} ({chapters.length})
-        </h2>
-        {chaptersQuery.isLoading ? <Spinner /> : chapters.length ? (
-          <ol className="divide-y divide-ink/10 rounded-xl bg-white shadow-card">
-            {chapters.map((c, i) => (
-              <li key={c.id}>
-                <Link to={chapterStartUrl(c)} className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-sage/40">
-                  <span className="w-8 shrink-0 text-center font-serif text-lg text-ink-faint">{i + 1}</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{c.title}</span>
-                    <span className="text-xs text-ink-faint">
-                      {c.published_at ? timeAgo(c.published_at, locale) : ""}
-                      {readingMinutes(c.word_count, story.language) > 0 ? ` · ${readingMinutes(c.word_count, story.language)} ${t("story", "minRead")}` : ""}
+      <div className="mt-10 grid items-start gap-10 lg:grid-cols-[1fr_300px]">
+        <div className="min-w-0 space-y-10">
+          {firstPara && chapters.length > 0 && (
+            <section>
+              <h2 className="font-serif text-2xl font-semibold">{t("story", "lookInside")}</h2>
+              <div className="mt-2 h-0.5 w-10 bg-gold" aria-hidden />
+              <blockquote className="mt-4 rounded-xl bg-white p-5 shadow-card">
+                <p className="font-serif text-lg leading-relaxed text-ink">“{firstPara}”</p>
+                <footer className="mt-3 text-sm text-ink-faint">
+                  {t("story", "chapter")} 1 · {chapters[0].title}
+                </footer>
+              </blockquote>
+            </section>
+          )}
+
+          <section>
+            <h2 className="font-serif text-2xl font-semibold">
+              {t("story", "tableOfContents")} ({chapters.length})
+            </h2>
+            <div className="mt-2 h-0.5 w-10 bg-gold" aria-hidden />
+            {chaptersQuery.isLoading ? <Spinner /> : chapters.length ? (
+              <ol className="mt-4 divide-y divide-ink/10 rounded-xl bg-white shadow-card">
+                {chapters.map((c, i) => (
+                  <li key={c.id}>
+                    <Link to={chapterStartUrl(c)} className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-sage/40">
+                      <span className="w-8 shrink-0 text-center font-serif text-lg text-ink-faint">{i + 1}</span>
+                      <div className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold">{c.title}</span>
+                        <span className="text-xs text-ink-faint">
+                          {c.published_at ? timeAgo(c.published_at, locale) : ""}
+                          {readingMinutes(c.word_count, story.language) > 0 ? ` · ${readingMinutes(c.word_count, story.language)} ${t("story", "minRead")}` : ""}
+                          {progress?.chapter_id === c.id && resumePct != null ? ` · ${resumePct}%` : ""}
+                        </span>
+                        {progress?.chapter_id === c.id && resumePct != null && (
+                          <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-sage">
+                            <span className="block h-full rounded-full bg-river" style={{ width: `${resumePct}%` }} />
+                          </span>
+                        )}
+                      </div>
+                      {progress?.chapter_id === c.id && (
+                        <Badge tone="river">{t("library", "resume")}</Badge>
+                      )}
+                      <span aria-hidden className="text-ink-faint">→</span>
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <EmptyState title={t("story", "noChapters")} />
+            )}
+          </section>
+        </div>
+
+        {moreByAuthor.length > 0 && (
+          <aside>
+            <h2 className="font-serif text-2xl font-semibold">{t("story", "moreByAuthor")}</h2>
+            <div className="mt-2 h-0.5 w-10 bg-gold" aria-hidden />
+            <div className="mt-4 flex flex-col gap-3">
+              {moreByAuthor.map((s) => (
+                <Link
+                  key={s.id}
+                  to={`/stories/${s.author?.username ?? username}/${s.slug}`}
+                  className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-card transition-shadow hover:shadow-lift"
+                >
+                  <Cover story={s} thumb className="aspect-[3/4] w-14 shrink-0 rounded-lg" />
+                  <span className="min-w-0">
+                    <span className="block font-medium leading-snug clamp-2">{s.title}</span>
+                    <span className="mt-1 block text-xs text-ink-faint">
+                      <LanguageBadge language={s.language} />
                     </span>
                   </span>
-                  {progress?.chapter_id === c.id && (
-                    <Badge tone="river">{t("library", "resume")}</Badge>
-                  )}
-                  <span aria-hidden className="text-ink-faint">→</span>
                 </Link>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <EmptyState title={t("story", "noChapters")} />
+              ))}
+            </div>
+          </aside>
         )}
-      </section>
+      </div>
 
       <ReportDialog
         open={reportOpen}

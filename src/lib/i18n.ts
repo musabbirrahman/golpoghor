@@ -93,6 +93,10 @@ const dict = {
     },
     report: { bn: "রিপোর্ট করুন", en: "Report" },
     contentNotice: { bn: "বিষয়বস্তু সতর্কতা", en: "Content notice" },
+    lookInside: { bn: "ভেতরে এক ঝলক", en: "Look Inside" },
+    editionProvenance: { bn: "সংস্করণ ও উৎস", en: "Edition & Provenance" },
+    tableOfContents: { bn: "সূচিপত্র", en: "Contents" },
+    moreByAuthor: { bn: "এই লেখকের অন্য গল্প", en: "More by this author" },
   },
   reader: {
     previous: { bn: "আগের অধ্যায়", en: "Previous chapter" },
