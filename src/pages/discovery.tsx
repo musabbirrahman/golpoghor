@@ -57,6 +57,10 @@ export function HomePage() {
   const featured = useQuery({ queryKey: ["stories", { featured: true, limit: 4 }], queryFn: () => dp.listFeaturedStories(4) });
   const bn = useQuery({ queryKey: ["stories", { language: "bn", limit: 8 }], queryFn: () => dp.listStories({ language: "bn", limit: 8 }) });
   const en = useQuery({ queryKey: ["stories", { language: "en", limit: 8 }], queryFn: () => dp.listStories({ language: "en", limit: 8 }) });
+  // Mixed-language wall below the language-split shelves: newest first
+  // across both languages, capped so the homepage never grows forever.
+  // View all opens Discover with no filters, i.e. every story on the site.
+  const more = useQuery({ queryKey: ["stories", { limit: 12 }], queryFn: () => dp.listStories({ limit: 12 }) });
   const keepsakes = useQuery({ queryKey: ["public-keepsakes"], queryFn: () => dp.listPublicKeepsakes(8) });
 
   return (
@@ -125,6 +129,16 @@ export function HomePage() {
         {en.isLoading ? <Spinner /> : en.data?.stories.length ? (
           <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
             {en.data.stories.map((s) => (
+              <div key={s.id} className="flex w-36 shrink-0 sm:w-auto"><StoryCard story={s} compact /></div>
+            ))}
+          </div>
+        ) : <EmptyState title={t("discover", "noResults")} />}
+      </Shelf>
+
+      <Shelf title={t("home", "moreStories")} action={<Link to="/discover" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
+        {more.isLoading ? <Spinner /> : more.data?.stories.length ? (
+          <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
+            {more.data.stories.map((s) => (
               <div key={s.id} className="flex w-36 shrink-0 sm:w-auto"><StoryCard story={s} compact /></div>
             ))}
           </div>

@@ -54,6 +54,7 @@ const dict = {
     featured: { bn: "নির্বাচিত গল্প", en: "Featured stories" },
     recentBn: { bn: "সাম্প্রতিক বাংলা গল্প", en: "Recent in Bangla" },
     recentEn: { bn: "সাম্প্রতিক ইংরেজি গল্প", en: "Recent in English" },
+    moreStories: { bn: "আরও গল্প পড়ুন", en: "More stories to read" },
     viewAll: { bn: "সব দেখুন", en: "View all" },
   },
   story: {
