@@ -275,7 +275,20 @@ export function StoryPage() {
           <Cover story={story} className="mx-auto aspect-[3/4] w-48 rounded-xl shadow-lift sm:w-56 md:mx-0 md:w-full" />
 
         <div className="min-w-0">
-          <h1 className="text-pretty font-serif text-[28px] font-bold leading-tight sm:text-5xl md:text-balance lg:text-pretty lg:text-6xl">{story.title}</h1>
+          {/* Badges sit above the title on desktop (the mockup's order) but
+              below the author on phones, where the title must sit directly
+              under the cover — one block per layout, the other hidden. */}
+          <div className="hidden flex-wrap items-center gap-2 md:flex">
+            <LanguageBadge language={story.language} />
+            <StatusBadge status={story.status} />
+            <Badge>{genreLabel(story.genre, locale)}</Badge>
+            {story.tags.map((tag) => (
+              <Link key={tag} to={`/discover?tag=${encodeURIComponent(tag)}`}>
+                <Badge tone="gold">#{tag}</Badge>
+              </Link>
+            ))}
+          </div>
+          <h1 className="text-pretty font-serif text-[28px] font-bold leading-tight sm:text-5xl md:mt-3 md:text-balance lg:text-pretty lg:text-[56px]">{story.title}</h1>
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <Link
@@ -299,7 +312,7 @@ export function StoryPage() {
             )}
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2 md:hidden">
             <LanguageBadge language={story.language} />
             <StatusBadge status={story.status} />
             <Badge>{genreLabel(story.genre, locale)}</Badge>
