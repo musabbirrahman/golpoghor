@@ -98,9 +98,9 @@ export function HomePage() {
               const excerpt = k.excerpt.length > 120 ? k.excerpt.slice(0, 120).trimEnd() + "…" : k.excerpt;
               return (
                 <Link key={k.id} to={`/k/${k.slug}`} className="block w-56 shrink-0 sm:w-auto">
-                  <div className="h-full min-w-0 rounded-xl p-4 shadow-card" style={{ backgroundColor: tpl.bg, color: tpl.ink }}>
+                  <div className="h-full min-w-0 rounded-xl border p-4 shadow-card" style={{ backgroundColor: tpl.bg, color: tpl.ink, borderColor: tpl.rule }}>
                     <p className="whitespace-pre-line break-words font-serif text-base leading-relaxed">“{excerpt}”</p>
-                    <p className="mt-3 truncate text-xs" style={{ color: tpl.faint }}>
+                    <p className="mt-3 truncate text-xs" style={{ color: tpl.ink, opacity: 0.85 }}>
                       {t("keepsakes", "keptBy")} {k.keeper_name}
                     </p>
                   </div>
