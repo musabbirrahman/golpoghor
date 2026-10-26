@@ -167,11 +167,20 @@ export function Header() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const searchAreaRef = useRef<HTMLDivElement | null>(null);
+  // Closing the search must also drop focus: on a real phone keyboard the
+  // keyboard otherwise lingers after the input is gone, and opening the
+  // search must never scroll the page — the input lives in the sticky
+  // header, already at the top of the viewport, so a scroll jump only
+  // fights Chrome's own address bar (twin search bars, typing blind).
+  const closeMobileSearch = () => {
+    searchInputRef.current?.blur();
+    setMobileSearchOpen(false);
+  };
   useEffect(() => {
     setMobileSearchOpen(false);
   }, [pathname]);
   useEffect(() => {
-    if (mobileSearchOpen) searchInputRef.current?.focus();
+    if (mobileSearchOpen) searchInputRef.current?.focus({ preventScroll: true });
   }, [mobileSearchOpen]);
   // Tapping anywhere outside the expanded search cancels it (the old
   // below-header row stayed open forever on an outside tap — that bug
@@ -180,7 +189,7 @@ export function Header() {
     if (!mobileSearchOpen) return;
     const onDown = (e: MouseEvent | TouchEvent) => {
       if (searchAreaRef.current && !searchAreaRef.current.contains(e.target as Node)) {
-        setMobileSearchOpen(false);
+        closeMobileSearch();
       }
     };
     document.addEventListener("mousedown", onDown);
@@ -212,11 +221,11 @@ export function Header() {
             {mobileSearchOpen ? (
               <>
                 <div className="min-w-0 flex-1 origin-right animate-[header-search-pop_0.3s_ease-out]">
-                  <SearchBox mobile inputRef={searchInputRef} onClose={() => setMobileSearchOpen(false)} onSubmitDone={() => setMobileSearchOpen(false)} />
+                  <SearchBox mobile inputRef={searchInputRef} onClose={closeMobileSearch} onSubmitDone={closeMobileSearch} />
                 </div>
                 <button
                   type="button"
-                  onClick={() => setMobileSearchOpen(false)}
+                  onClick={closeMobileSearch}
                   aria-label={t("common", "close")}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-soft hover:bg-sage/60 hover:text-ink"
                 >
