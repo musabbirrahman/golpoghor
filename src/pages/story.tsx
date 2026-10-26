@@ -13,6 +13,22 @@ import { formatDate, readingMinutes, timeAgo } from "../lib/utils";
 import { usePageMeta, useJsonLd, SHELL_TITLE } from "../lib/page-meta";
 import type { TiptapNode } from "../lib/types";
 
+function BookmarkIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function HeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  );
+}
+
 export function StoryPage() {
   const { username = "", slug = "" } = useParams();
   const { t, locale, dp, session } = useApp();
@@ -392,22 +408,24 @@ export function StoryPage() {
             {session ? (
               <>
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="lg"
                   onClick={() => listMutation.mutate()}
                   disabled={listMutation.isPending}
                   aria-pressed={!!listQuery.data}
                 >
-                  {listQuery.data ? `✓ ${t("story", "saved")}` : t("story", "saveToLibrary")}
+                  <BookmarkIcon filled={!!listQuery.data} />
+                  {listQuery.data ? t("story", "saved") : t("story", "saveToLibrary")}
                 </Button>
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="lg"
                   onClick={() => likeMutation.mutate()}
                   disabled={likeMutation.isPending}
                   aria-pressed={!!likeQuery.data?.liked}
                 >
-                  {likeQuery.data?.liked ? t("story", "liked") : `♥ ${t("story", "like")}`}
+                  <HeartIcon filled={!!likeQuery.data?.liked} />
+                  {likeQuery.data?.liked ? t("story", "liked") : t("story", "like")}
                 </Button>
               </>
             ) : (

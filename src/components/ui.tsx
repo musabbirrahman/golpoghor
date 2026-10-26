@@ -11,7 +11,7 @@ export function Button({
   className = "",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost" | "danger" | "gold";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "gold" | "outline";
   size?: "sm" | "md" | "lg";
 }) {
   const sizes = { sm: "px-3 py-1.5 text-sm", md: "px-4 py-2 text-sm", lg: "px-6 py-3 text-base" };
@@ -21,6 +21,7 @@ export function Button({
     ghost: "text-ink-soft hover:bg-sage hover:text-ink",
     danger: "bg-clay text-white hover:bg-clay-dark",
     gold: "bg-gold text-white hover:brightness-95",
+    outline: "bg-white text-ink border border-ink/15 hover:bg-sage",
   };
   return <button className={`${btnBase} ${sizes[size]} ${variants[variant]} ${className}`} {...props} />;
 }
@@ -33,7 +34,7 @@ export function ButtonLink({
   children,
 }: {
   to: string;
-  variant?: "primary" | "secondary" | "ghost" | "danger" | "gold";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "gold" | "outline";
   size?: "sm" | "md" | "lg";
   className?: string;
   children: ReactNode;
@@ -45,6 +46,7 @@ export function ButtonLink({
     ghost: "text-ink-soft hover:bg-sage hover:text-ink",
     danger: "bg-clay text-white hover:bg-clay-dark",
     gold: "bg-gold text-white hover:brightness-95",
+    outline: "bg-white text-ink border border-ink/15 hover:bg-sage",
   };
   return (
     <Link to={to} className={`${btnBase} ${sizes[size]} ${variants[variant]} ${className}`}>
