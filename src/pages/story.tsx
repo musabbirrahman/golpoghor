@@ -284,26 +284,60 @@ export function StoryPage() {
   // Slim floating status row (mobile/tablet only, above the Continue
   // bar): current chapter + gold progress bar + %, beside a separate
   // round jump icon. Both jump to the reader's chapter row inside
-  // Contents (NOT into the chapter — Continue does that). The row is
-  // transient by owner choice: it shows on arrival and hides the
-  // moment the reader taps anything (taps on the row itself jump
-  // first, then hide; the document listener ignores those so the
-  // click still lands). It resets per story. Guests see nothing —
-  // no progress to show. Colours deliberately avoid the Continue
-  // bar: ink pill + gold fill, not river, not sage.
+  // Contents (NOT into the chapter — Continue does that). Dismissal
+  // rule by owner choice: the first tap anywhere (or the jump
+  // itself) hides the row and records it in localStorage per
+  // reader + story, so RELOADING the story page never brings it
+  // back — but LEAVING the story inside the app forgets the
+  // dismissal, so coming back shows it again. Mechanism: this
+  // effect's cleanup removes the flag, and cleanup runs when the
+  // story changes or the page unmounts (in-app leave) but NOT on a
+  // full reload (the document is just destroyed, no cleanup runs).
+  // Other stories still show theirs until dismissed there too.
+  // Taps on the row itself jump first, then dismiss; the document
+  // listener ignores those so the click still lands. Guests see
+  // nothing — no progress to show. Colours deliberately avoid the
+  // Continue bar: ink pill + gold fill, not river, not sage.
   const [statusBarVisible, setStatusBarVisible] = useState(true);
+  const statusDismissKey = story?.id
+    ? `gh:status-dismissed:${session?.user?.id ?? "anon"}:${story.id}`
+    : null;
+  const dismissStatusBar = () => {
+    try {
+      if (statusDismissKey) localStorage.setItem(statusDismissKey, "1");
+    } catch {
+      // Private mode etc: dismissal just lasts for this visit.
+    }
+    setStatusBarVisible(false);
+  };
   useEffect(() => {
-    setStatusBarVisible(true);
-  }, [story?.id]);
+    if (!statusDismissKey) return;
+    try {
+      setStatusBarVisible(localStorage.getItem(statusDismissKey) !== "1");
+    } catch {
+      setStatusBarVisible(true);
+    }
+    // Leaving the story forgets the dismissal: cleanup runs on
+    // unmount (in-app leave) and before re-running on a story
+    // change, but never on a full reload — so a reload keeps the
+    // row hidden while a return visit shows it again.
+    return () => {
+      try {
+        localStorage.removeItem(statusDismissKey);
+      } catch {
+        // Ignore storage failures; the row just shows again.
+      }
+    };
+  }, [statusDismissKey]);
   useEffect(() => {
     if (!statusBarVisible) return;
     const hide = (e: PointerEvent) => {
       if ((e.target as HTMLElement).closest("[data-status-row]")) return;
-      setStatusBarVisible(false);
+      dismissStatusBar();
     };
     document.addEventListener("pointerdown", hide);
     return () => document.removeEventListener("pointerdown", hide);
-  }, [statusBarVisible]);
+  }, [statusBarVisible, statusDismissKey]);
   if (storyQuery.isLoading) return <Layout><Spinner /></Layout>;
   if (!story) {
     if (storyRedirectPending || slugRedirectPending) return <Layout><Spinner /></Layout>;
@@ -360,7 +394,7 @@ export function StoryPage() {
   const statusPct = resumePct ?? 0;
   const jumpToCurrentChapter = () => {
     document.getElementById(`contents-chapter-${statusIndex}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    setStatusBarVisible(false);
+    dismissStatusBar();
   };
 
   // Shared Start/Continue label, plain by owner choice (2026-10-27):
@@ -756,8 +790,9 @@ export function StoryPage() {
           gold progress bar + %, plus a SEPARATE round jump icon with
           a gap between them — not attached like the Continue bar's
           buttons. Both share the ink background and both jump to the
-          reader's chapter row in Contents. Transient: hides on any
-          tap (see the effects above). Guests see nothing. */}
+          reader's chapter row in Contents. Dismissal: reload keeps
+          it gone, leaving the story brings it back (see the effects
+          above). Guests see nothing. */}
       {session && chapters.length > 0 && statusBarVisible && (
         <div data-status-row className="fixed bottom-36 left-1/2 z-40 flex w-[calc(100%-4rem)] max-w-md -translate-x-1/2 items-center gap-2 md:bottom-24 lg:hidden">
           <button
