@@ -99,15 +99,48 @@ function loadPrefs(): ReaderPrefs {
   return fallback;
 }
 
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
 function ReaderSettings({
   prefs,
   setPrefs,
+  open,
+  onOpenChange,
 }: {
   prefs: ReaderPrefs;
   setPrefs: (p: ReaderPrefs) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useApp();
-  const [open, setOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement | null>(null);
+  // Tapping anywhere outside the button + panel closes it. (The old
+  // backdrop div could not do this: the bar's backdrop-blur made the
+  // bar a containing block, shrinking the "full-screen" backdrop to
+  // the bar itself — so taps on the article never reached it.)
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) onOpenChange(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onOpenChange(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, onOpenChange]);
   const row = "flex items-center justify-between gap-3 py-2";
   const segBtn = (active: boolean) =>
     `rounded-lg px-3 py-1.5 text-sm font-medium ${active ? "bg-river text-white" : "bg-sage text-ink hover:bg-sage-dark"}`;
@@ -117,18 +150,17 @@ function ReaderSettings({
     setPrefs(p);
   };
   return (
-    <div className="relative">
+    <div ref={settingsRef} className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => onOpenChange(!open)}
         aria-expanded={open}
         aria-label={t("reader", "theme")}
-        className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm font-medium hover:bg-sage"
+        className="rounded-lg border border-ink/15 bg-white px-3 py-1.5 text-sm font-medium hover:bg-sage"
       >
         Aa
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-4 shadow-lift">
             <div>
               <span className="text-sm font-medium">{t("reader", "theme")}</span>
@@ -246,7 +278,7 @@ function Comments({ chapterId, className }: { chapterId: string; className?: str
             : null;
 
   return (
-    <section className={`mx-auto mt-12 ${className ?? "max-w-reader"}`} aria-labelledby="comments-heading">
+    <section className={`mx-3 sm:mx-auto mt-12 ${className ?? "max-w-reader"}`} aria-labelledby="comments-heading">
       <h2 id="comments-heading" className="font-serif text-2xl font-bold">
         {t("comments", "title")} ({commentsQuery.data?.length ?? 0})
       </h2>
@@ -376,6 +408,45 @@ export function ReaderPage() {
   const { t, dp, session, isModerator } = useApp();
   const queryClient = useQueryClient();
   const [prefs, setPrefsState] = useState(loadPrefs);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // The bar is not permanent: it slides away while scrolling down
+  // (reading) and returns on any upward scroll, so it never traps
+  // the reader. While the settings panel is open it stays visible.
+  const lastScrollY = useRef(0);
+  const [barHidden, setBarHidden] = useState(false);
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y > lastScrollY.current && y > 120) setBarHidden(true);
+      else if (y < lastScrollY.current) setBarHidden(false);
+      lastScrollY.current = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  // Custom chapter menu (replacing the native select, which looked
+  // default and whose picker took over the phone screen): an anchored
+  // panel, trigger-width, capped height with a scroll for long
+  // stories. Like the settings panel, it forces the bar visible.
+  const [chapterMenuOpen, setChapterMenuOpen] = useState(false);
+  const chapterMenuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!chapterMenuOpen) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (chapterMenuRef.current && !chapterMenuRef.current.contains(e.target as Node)) setChapterMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setChapterMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [chapterMenuOpen]);
   const [reportOpen, setReportOpen] = useState(false);
   // Quote Studio (V4-27b): a passage selection inside the chapter body
   // surfaces a floating button; the modal overlays the reader, so opening
@@ -712,23 +783,17 @@ export function ReaderPage() {
     };
   }, [chapter?.id]);
 
-  // Each theme sets the page tint AND the card together, so the card
-  // never blends into its own background (the keepsake-shelf lesson).
-  const pageCls =
-    prefs.theme === "dark"
-      ? "bg-[#121816]"
-      : prefs.theme === "sepia"
-        ? "bg-paper-deep"
-        : prefs.theme === "warm"
-          ? "bg-paper-dark"
-          : "bg-paper";
+  // The theme changes ONLY the reading card — the page background
+  // stays the site's paper (v1 also tinted the page, which the owner
+  // rejected). Warm Paper's card matches the page, so it alone gets
+  // a faint border to keep its edge.
   const cardCls =
     prefs.theme === "dark"
       ? "bg-[#1c2422] text-[#e8e4d8]"
       : prefs.theme === "sepia"
         ? "bg-[#f4ecd8] text-[#43382e]"
         : prefs.theme === "warm"
-          ? "bg-paper text-ink"
+          ? "bg-paper text-ink border border-ink/10"
           : "bg-white text-ink";
   const widthCls =
     prefs.width === "narrow"
@@ -736,6 +801,15 @@ export function ReaderPage() {
       : prefs.width === "wide"
         ? "max-w-[52rem]"
         : "max-w-reader";
+  // On phones every column width is wider than the screen, so the
+  // width setting was a no-op there — and the card had TWO padding
+  // layers (page margins outside, card padding inside) eating the
+  // width. So on phones the card goes full-bleed with square corners
+  // and only ONE padding layer inside it, which the width setting
+  // controls (narrow = roomy margins, wide = nearly the full screen).
+  // Desktop keeps the max-width columns and the floating card.
+  const wrapPadCls = prefs.width === "narrow" ? "px-0 sm:px-5" : prefs.width === "wide" ? "px-0 sm:px-2" : "px-0 sm:px-4";
+  const artPadCls = prefs.width === "narrow" ? "px-8" : prefs.width === "wide" ? "px-2" : "px-5";
   // The floating keepsake button must stay visible on every reader
   // theme: it takes the theme's text colour as its background and the
   // theme's background as its text (dark page → light button, and
@@ -771,7 +845,7 @@ export function ReaderPage() {
 
   return (
     <Layout>
-      <div className={`-mx-4 min-h-screen px-4 pt-4 pb-8 ${pageCls}`}>
+      <div className={`-mx-4 min-h-screen ${wrapPadCls} pt-4 pb-8 bg-paper`}>
         {/* Gold progress bar pinned to the viewport top */}
         <div className="fixed inset-x-0 top-0 z-50 h-1 bg-ink/10" aria-hidden="true">
           <div ref={progressBarRef} className="h-full bg-gold" style={{ width: "0%" }} />
@@ -781,35 +855,58 @@ export function ReaderPage() {
             It replaces the site header on reading pages (Layout skips
             Header on chapter routes). On phones the title hides — the
             article eyebrow just below still names the story. */}
-        <div className="sticky top-3 z-40 mx-auto flex max-w-6xl items-center gap-2 rounded-2xl border border-ink/10 bg-sage/95 px-3 py-2 shadow-lift backdrop-blur">
+        <div className={`sticky top-3 z-40 mx-3 sm:mx-auto flex max-w-3xl items-center gap-2 rounded-2xl border border-ink/10 bg-sage px-2 py-1.5 shadow-lift transition-all duration-300 ${barHidden && !settingsOpen && !chapterMenuOpen ? "-translate-y-[130%] opacity-0 pointer-events-none" : ""}`}>
           <Link
             to={storyPath}
             aria-label={t("common", "back")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg hover:bg-ink/5"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg hover:bg-ink/5"
           >
             ←
           </Link>
           <span className="hidden min-w-0 flex-1 truncate font-medium sm:block">{story.title}</span>
-          <select
-            value={chapter.slug}
-            onChange={(e) => {
-              const target = chapters.find((c) => c.slug === e.target.value);
-              if (target) navigate(chapterUrl(target));
-            }}
-            aria-label={t("story", "chapter")}
-            className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm font-medium"
-          >
-            {chapters.map((c, i) => (
-              <option key={c.id} value={c.slug}>
-                {t("story", "chapter")} {i + 1}: {c.title}
-              </option>
-            ))}
-          </select>
-          <ReaderSettings prefs={prefs} setPrefs={setPrefs} />
+          <div ref={chapterMenuRef} className="relative min-w-0 flex-1">
+            <button
+              type="button"
+              onClick={() => setChapterMenuOpen((v) => !v)}
+              aria-haspopup="listbox"
+              aria-expanded={chapterMenuOpen}
+              className="flex w-full items-center gap-2 rounded-lg border border-ink/15 bg-white px-2.5 py-1.5 text-left text-sm font-medium"
+            >
+              <span className="min-w-0 flex-1 truncate">
+                {t("story", "chapter")} {index + 1}: {chapter.title}
+              </span>
+              <ChevronDownIcon className={`h-[18px] w-[18px] shrink-0 transition-transform ${chapterMenuOpen ? "rotate-180" : ""}`} />
+            </button>
+            {chapterMenuOpen && (
+              <div role="listbox" aria-label={t("story", "chapter")} className="absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-y-auto rounded-xl border border-ink/10 bg-white p-1 shadow-lift">
+                {chapters.map((c, i) => {
+                  const current = c.slug === chapter.slug;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      role="option"
+                      aria-selected={current}
+                      onClick={() => {
+                        setChapterMenuOpen(false);
+                        if (!current) navigate(chapterUrl(c));
+                      }}
+                      className={`flex w-full items-baseline gap-2 rounded-lg px-3 py-2 text-left text-sm ${current ? "bg-sage font-semibold text-river" : "hover:bg-sage"}`}
+                    >
+                      <span className="shrink-0 text-ink-faint">{i + 1}.</span>
+                      <span className="min-w-0 flex-1 truncate">{c.title}</span>
+                      {current && <span className="shrink-0">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <ReaderSettings prefs={prefs} setPrefs={setPrefs} open={settingsOpen} onOpenChange={setSettingsOpen} />
         </div>
 
         <div className={`mx-auto mt-6 ${widthCls}`}>
-        <article ref={articleRef} className={`rounded-2xl px-5 py-8 shadow-card sm:px-10 sm:py-12 ${cardCls}`}>
+        <article ref={articleRef} className={`rounded-none sm:rounded-2xl py-8 shadow-card sm:px-10 sm:py-12 ${artPadCls} ${cardCls}`}>
           <header className="mb-8 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-60">
               {t("story", "chapter")} {index + 1} · {story.title}
@@ -845,7 +942,7 @@ export function ReaderPage() {
         {/* Chapter navigation cards (the bar's back button + chapter
             dropdown already cover the return-to-story route, so the
             old centre Contents link goes away with the row). */}
-        <nav className="mt-6 grid gap-3 sm:grid-cols-2" aria-label={t("reader", "contents")}>
+        <nav className="mx-3 sm:mx-0 mt-6 grid gap-3 sm:grid-cols-2" aria-label={t("reader", "contents")}>
           {prev ? (
             <Link to={chapterUrl(prev)} className="rounded-xl bg-white p-4 shadow-card transition-shadow hover:shadow-lift">
               <span className="block text-xs font-medium text-ink-faint">{t("reader", "previous")}</span>
@@ -861,7 +958,7 @@ export function ReaderPage() {
         </nav>
 
         {!next && (
-          <p className="mt-6 rounded-xl bg-sage px-4 py-3 text-center text-sm text-ink-soft">
+          <p className="mx-3 sm:mx-0 mt-6 rounded-xl bg-sage px-4 py-3 text-center text-sm text-ink-soft">
             {t("reader", "storyEnd")}
           </p>
         )}
