@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useUsernameRedirect } from "../lib/use-username-redirect";
 import { useStorySlugRedirect } from "../lib/use-story-slug-redirect";
@@ -90,6 +90,8 @@ export function StoryPage() {
   const queryClient = useQueryClient();
   const [reportOpen, setReportOpen] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const summaryRef = useRef<HTMLParagraphElement | null>(null);
+  const [summaryHasOverflow, setSummaryHasOverflow] = useState(false);
 
   const storyQuery = useQuery({
     queryKey: ["story", username, slug],
@@ -237,6 +239,40 @@ export function StoryPage() {
     !storyQuery.isLoading && !story && !storyRedirectPending,
     (nextUser, nextSlug) => `/stories/${nextUser}/${nextSlug}`
   );
+  // The summary toggle resets when the story changes (client-side
+  // navigation reuses this component), and the chevron only appears
+  // when the text actually overflows the 3-line clamp — a short
+  // summary fits entirely, so its chevron must not appear at all
+  // (a dead chevron looks broken: Speckled Band's live summary is
+  // a single short sentence, about 2 lines on a phone).
+  // These effects MUST stay above the early returns below: hooks
+  // called after an early return run on some renders and not others,
+  // which crashes React (this exact mistake blanked the story page
+  // in the first v3 build). While loading, summaryRef is null and
+  // the measure effect returns safely.
+  useEffect(() => {
+    setSummaryExpanded(false);
+    setSummaryHasOverflow(false);
+  }, [story?.id]);
+  useEffect(() => {
+    if (summaryExpanded) return;
+    const el = summaryRef.current;
+    if (!el) return;
+    const measure = () => {
+      setSummaryHasOverflow((prev) => {
+        const next = el.scrollHeight > el.clientHeight + 1;
+        return prev === next ? prev : next;
+      });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    const fonts = document.fonts?.ready?.then(measure).catch(() => {});
+    return () => {
+      window.removeEventListener("resize", measure);
+      void fonts;
+    };
+  }, [story?.id, story?.summary, summaryExpanded, locale]);
+
   if (storyQuery.isLoading) return <Layout><Spinner /></Layout>;
   if (!story) {
     if (storyRedirectPending || slugRedirectPending) return <Layout><Spinner /></Layout>;
@@ -352,7 +388,7 @@ export function StoryPage() {
 
   return (
     <Layout>
-      <nav aria-label="Breadcrumb" className="mt-6 flex items-center gap-1.5 text-sm text-ink-faint">
+      <nav aria-label="Breadcrumb" className="mt-6 hidden items-center gap-1.5 text-sm text-ink-faint lg:flex">
         <Link to="/" className="hover:text-river hover:underline">{t("nav", "home")}</Link>
         <span aria-hidden>/</span>
         <Link to={`/discover?genre=${encodeURIComponent(story.genre)}`} className="hover:text-river hover:underline">
@@ -368,7 +404,7 @@ export function StoryPage() {
           covers, so the band is palette-only now — it looks the same
           good with every cover. The share button is placed but parked:
           sharing is a function, and function work waits. */}
-      <div className="relative -mx-4 overflow-hidden bg-gradient-to-b from-sage-dark via-sage to-paper lg:hidden">
+      <div className="relative -mx-4 overflow-hidden rounded-b-3xl bg-gradient-to-b from-sage-dark via-sage to-paper lg:hidden">
         <div className="relative flex items-center justify-between px-4 pt-4">
           <button
             type="button"
@@ -447,18 +483,20 @@ export function StoryPage() {
 
           {story.summary && (
             <div className="mt-4">
-              <button
-                type="button"
-                onClick={() => setSummaryExpanded((v) => !v)}
-                aria-expanded={summaryExpanded}
-                className="mb-2 flex w-full items-center justify-between lg:hidden"
-              >
-                <span className="text-sm font-bold text-ink">{t("story", "summaryHeading")}</span>
-                <span className={`transition-transform ${summaryExpanded ? "rotate-180" : ""}`}>
-                  <ChevronDownIcon />
-                </span>
-              </button>
-              <p className={`whitespace-pre-line leading-relaxed text-ink ${summaryExpanded ? "" : "max-lg:line-clamp-3"}`}>{story.summary}</p>
+              {summaryHasOverflow && (
+                <button
+                  type="button"
+                  onClick={() => setSummaryExpanded((v) => !v)}
+                  aria-expanded={summaryExpanded}
+                  className="mb-2 flex w-full items-center justify-between lg:hidden"
+                >
+                  <span className="text-sm font-bold text-ink">{t("story", "summaryHeading")}</span>
+                  <span className={`transition-transform ${summaryExpanded ? "rotate-180" : ""}`}>
+                    <ChevronDownIcon />
+                  </span>
+                </button>
+              )}
+              <p ref={summaryRef} className={`whitespace-pre-line leading-relaxed text-ink ${summaryExpanded ? "" : "max-lg:line-clamp-3"}`}>{story.summary}</p>
             </div>
           )}
 
@@ -659,7 +697,7 @@ export function StoryPage() {
           gating as the hero buttons — guests get Sign in instead of
           Save/Like — and the same label. The spacer below clears it
           so the last content never hides underneath. */}
-      <div className="fixed inset-x-0 bottom-14 z-40 flex items-center gap-2 border-t border-ink/10 bg-paper/95 px-4 py-3 backdrop-blur md:bottom-0 lg:hidden">
+      <div className="fixed inset-x-0 bottom-14 z-40 flex items-center gap-2 border-t border-ink/10 bg-white px-4 py-3 md:bottom-0 lg:hidden">
         {chapters.length > 0 && (
           <ButtonLink to={chapterUrl(resumeChapter)} variant="primary" size="lg" className="min-w-0 flex-1">
             {actionLabel}
