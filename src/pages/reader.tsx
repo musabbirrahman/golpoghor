@@ -240,7 +240,28 @@ function ReaderSettings({
   );
 }
 
-function Comments({ chapterId, className }: { chapterId: string; className?: string }) {
+// Theme colours shared by the article card and the comment cards, so
+// the comments follow the article instead of staying white boxes.
+// Every theme carries the same 1px border box (visible only on warm,
+// where paper-on-paper needs an edge) — without it, switching to warm
+// narrowed the text column by 2px and rewrapped every line below.
+function themeBgText(theme: ReaderTheme) {
+  return theme === "dark"
+    ? "bg-[#1c2422] text-[#e8e4d8]"
+    : theme === "sepia"
+      ? "bg-[#f4ecd8] text-[#43382e]"
+      : theme === "warm"
+        ? "bg-paper text-ink"
+        : "bg-white text-ink";
+}
+function themeCardCls(theme: ReaderTheme) {
+  return `${themeBgText(theme)} border ${theme === "warm" ? "border-ink/10" : "border-transparent"}`;
+}
+function themeFaintCls(theme: ReaderTheme) {
+  return theme === "dark" ? "text-[#e8e4d8]/70" : "text-ink-faint";
+}
+
+function Comments({ chapterId, className, theme }: { chapterId: string; className?: string; theme: ReaderTheme }) {
   const { t, locale, dp, session, profile } = useApp();
   const queryClient = useQueryClient();
   const [body, setBody] = useState("");
@@ -290,6 +311,7 @@ function Comments({ chapterId, className }: { chapterId: string; className?: str
       <h2 id="comments-heading" className="font-serif text-2xl font-bold">
         {t("comments", "title")} ({commentsQuery.data?.length ?? 0})
       </h2>
+      <div className="mt-2 h-0.5 w-10 bg-gold" aria-hidden />
 
       {session ? (
         <form
@@ -307,7 +329,7 @@ function Comments({ chapterId, className }: { chapterId: string; className?: str
             placeholder={t("comments", "placeholder")}
             rows={3}
             maxLength={2000}
-            className="w-full rounded-xl border border-ink/15 bg-white px-4 py-3 focus:border-river focus:outline-none focus:ring-1 focus:ring-river"
+            className={`w-full rounded-xl border border-ink/15 px-4 py-3 focus:border-river focus:outline-none focus:ring-1 focus:ring-river ${themeBgText(theme)}`}
           />
           {err && <p className="mt-1 text-sm text-clay" role="alert">{err}</p>}
           <div className="mt-2 flex justify-end">
@@ -329,24 +351,24 @@ function Comments({ chapterId, className }: { chapterId: string; className?: str
           <Spinner />
         ) : commentsQuery.data?.length ? (
           commentsQuery.data.map((c) => (
-            <article key={c.id} className="rounded-xl bg-white p-4 shadow-card">
+            <article key={c.id} className={`rounded-xl p-4 shadow-card ${themeCardCls(theme)}`}>
               <div className="flex items-center gap-2">
                 <Avatar name={c.author?.display_name ?? "?"} size="sm" src={dp.avatarUrl(c.author?.avatar_path ?? null)} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{c.author?.display_name}</p>
-                  <p className="text-xs text-ink-faint">{timeAgo(c.created_at, locale)}{c.edited_at ? ` · ${t("comments", "edited")}` : ""}</p>
+                  <p className={`text-xs ${themeFaintCls(theme)}`}>{timeAgo(c.created_at, locale)}{c.edited_at ? ` · ${t("comments", "edited")}` : ""}</p>
                 </div>
                 {(c.author_id === profile?.id) && (
                   <>
                     <button
                       onClick={() => { setEditId(c.id); setEditBody(c.body); }}
-                      className="text-xs text-ink-faint underline hover:text-clay"
+                      className={`text-xs underline hover:text-clay ${themeFaintCls(theme)}`}
                     >
                       {t("comments", "edit")}
                     </button>
                     <button
                       onClick={() => deleteMutation.mutate(c.id)}
-                      className="text-xs text-ink-faint underline hover:text-clay"
+                      className={`text-xs underline hover:text-clay ${themeFaintCls(theme)}`}
                     >
                       {t("comments", "delete")}
                     </button>
@@ -355,7 +377,7 @@ function Comments({ chapterId, className }: { chapterId: string; className?: str
                 {session && c.author_id !== profile?.id && (
                   <button
                     onClick={() => setReportId(c.id)}
-                    className="text-xs text-ink-faint underline hover:text-clay"
+                    className={`text-xs underline hover:text-clay ${themeFaintCls(theme)}`}
                   >
                     {t("story", "report")}
                   </button>
@@ -376,10 +398,10 @@ function Comments({ chapterId, className }: { chapterId: string; className?: str
                     onChange={(e) => setEditBody(e.target.value)}
                     rows={3}
                     maxLength={2000}
-                    className="w-full rounded-xl border border-ink/15 bg-white px-4 py-3 focus:border-river focus:outline-none focus:ring-1 focus:ring-river"
+                    className={`w-full rounded-xl border border-ink/15 px-4 py-3 focus:border-river focus:outline-none focus:ring-1 focus:ring-river ${themeBgText(theme)}`}
                   />
                   <div className="mt-2 flex justify-end gap-2">
-                    <Button variant="ghost" size="sm" type="button" onClick={() => setEditId(null)}>
+                    <Button variant="ghost" size="sm" type="button" onClick={() => setEditId(null)} className={theme === "dark" ? "!text-[#e8e4d8]/80 hover:!bg-white/10 hover:!text-white" : undefined}>
                       {t("common", "cancel")}
                     </Button>
                     <Button size="sm" type="submit" disabled={updateMutation.isPending || !editBody.trim()}>
@@ -800,15 +822,9 @@ export function ReaderPage() {
   // The theme changes ONLY the reading card — the page background
   // stays the site's paper (v1 also tinted the page, which the owner
   // rejected). Warm Paper's card matches the page, so it alone gets
-  // a faint border to keep its edge.
-  const cardCls =
-    prefs.theme === "dark"
-      ? "bg-[#1c2422] text-[#e8e4d8] border border-transparent"
-      : prefs.theme === "sepia"
-        ? "bg-[#f4ecd8] text-[#43382e] border border-transparent"
-        : prefs.theme === "warm"
-          ? "bg-paper text-ink border border-ink/10"
-          : "bg-white text-ink border border-transparent";
+  // a faint border to keep its edge. The comment cards share this
+  // helper, so they follow the article theme exactly.
+  const cardCls = themeCardCls(prefs.theme);
   // Every theme carries the same 1px border box (visible only on warm,
   // where paper-on-paper needs an edge). Without it, switching to warm
   // narrowed the text column by 2px and rewrapped every line below.
@@ -982,7 +998,7 @@ export function ReaderPage() {
         )}
         </div>
 
-        <Comments chapterId={chapter.id} className={widthCls} />
+        <Comments chapterId={chapter.id} className={widthCls} theme={prefs.theme} />
       </div>
 
       {studioBtn && !studio && (
