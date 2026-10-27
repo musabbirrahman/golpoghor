@@ -1118,7 +1118,7 @@ export function AuthorPage() {
         </p>
       </div>
 
-      <div className="mt-8 flex gap-6 overflow-x-auto border-b border-ink/10" role="tablist">
+      <div className="mt-8 flex gap-6 overflow-x-auto overflow-y-hidden" role="tablist">
         {([
           { key: "all" as const, label: t("story", "allStories") },
           { key: "ongoing" as const, label: t("story", "ongoing") },
@@ -1130,12 +1130,16 @@ export function AuthorPage() {
             role="tab"
             aria-selected={tab === tb.key}
             onClick={() => setTab(tb.key)}
-            className={`-mb-px shrink-0 border-b-2 pb-2 font-medium ${tab === tb.key ? "border-river text-river" : "border-transparent text-ink-soft"}`}
+            className={`shrink-0 border-b-2 pb-2 font-medium ${tab === tb.key ? "border-river text-river" : "border-transparent text-ink-soft"}`}
           >
             {tb.label}
           </button>
         ))}
       </div>
+      {/* Faint rule as its own line below the tabs: the old -mb-px
+          overlap made the tab row 1px taller than its box and drew a
+          miniature vertical scrollbar on desktop. */}
+      <div className="h-px bg-ink/10" aria-hidden />
       {storiesQuery.isLoading ? <Spinner /> : visibleStories.length ? (
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleStories.map((s) => {
@@ -1145,13 +1149,14 @@ export function AuthorPage() {
               <Link key={s.id} to={`/stories/${profile.username}/${s.slug}`} className="block h-full">
                 <div className="flex h-full gap-3 rounded-xl bg-white p-3 shadow-card hover:shadow-lift">
                   <Cover story={s} className="aspect-[3/4] w-24 shrink-0 rounded-lg sm:w-28" thumb />
-                  <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-1 flex-col">
                     <div className="flex flex-wrap gap-1.5">
                       <StatusBadge status={s.status} />
                       <Badge tone="sage">{genreLabel(s.genre, locale)}</Badge>
                     </div>
                     <h3 className="mt-2 font-serif font-semibold leading-snug clamp-2">{s.title}</h3>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
+                    {s.summary && <p className="mt-1 text-sm text-ink-soft clamp-2">{s.summary}</p>}
+                    <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
                       <Badge tone="sage">{count} {count === 1 ? t("story", "chapterSingular") : t("story", "chapters")}</Badge>
                       {minutes > 0 && <Badge tone="sage">~{minutes} {t("story", "minRead")}</Badge>}
                     </div>
