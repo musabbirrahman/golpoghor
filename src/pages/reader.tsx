@@ -99,6 +99,14 @@ function loadPrefs(): ReaderPrefs {
   return fallback;
 }
 
+function ChevronLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+
 function ChevronDownIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
@@ -789,12 +797,15 @@ export function ReaderPage() {
   // a faint border to keep its edge.
   const cardCls =
     prefs.theme === "dark"
-      ? "bg-[#1c2422] text-[#e8e4d8]"
+      ? "bg-[#1c2422] text-[#e8e4d8] border border-transparent"
       : prefs.theme === "sepia"
-        ? "bg-[#f4ecd8] text-[#43382e]"
+        ? "bg-[#f4ecd8] text-[#43382e] border border-transparent"
         : prefs.theme === "warm"
           ? "bg-paper text-ink border border-ink/10"
-          : "bg-white text-ink";
+          : "bg-white text-ink border border-transparent";
+  // Every theme carries the same 1px border box (visible only on warm,
+  // where paper-on-paper needs an edge). Without it, switching to warm
+  // narrowed the text column by 2px and rewrapped every line below.
   const widthCls =
     prefs.width === "narrow"
       ? "max-w-[36rem]"
@@ -858,10 +869,11 @@ export function ReaderPage() {
         <div className={`sticky top-3 z-40 mx-3 sm:mx-auto flex max-w-3xl items-center gap-2 rounded-2xl border border-ink/10 bg-sage px-2 py-1.5 shadow-lift transition-all duration-300 ${barHidden && !settingsOpen && !chapterMenuOpen ? "-translate-y-[130%] opacity-0 pointer-events-none" : ""}`}>
           <Link
             to={storyPath}
+            state={{ fromReader: true }}
             aria-label={t("common", "back")}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg hover:bg-ink/5"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-white text-ink shadow-sm"
           >
-            ←
+            <ChevronLeftIcon className="h-[18px] w-[18px]" />
           </Link>
           <span className="hidden min-w-0 flex-1 truncate font-medium sm:block">{story.title}</span>
           <div ref={chapterMenuRef} className="relative min-w-0 flex-1">

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useUsernameRedirect } from "../lib/use-username-redirect";
 import { useStorySlugRedirect } from "../lib/use-story-slug-redirect";
 import { genreLabel } from "../lib/genres";
@@ -99,6 +99,17 @@ function ShareIcon() {
 
 export function StoryPage() {
   const { username = "", slug = "" } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  // Back out of the story must never return to its own reader: the
+  // reader's bar back links here with state.fromReader, so a plain
+  // history.back() from there would ping-pong reader ↔ story forever.
+  // From the reader, back goes home; from anywhere else, normal
+  // browser back is preserved.
+  const goBack = () => {
+    if ((location.state as { fromReader?: boolean } | null)?.fromReader) navigate("/");
+    else window.history.back();
+  };
   const { t, locale, dp, session } = useApp();
   const queryClient = useQueryClient();
   const [reportOpen, setReportOpen] = useState(false);
@@ -537,7 +548,7 @@ export function StoryPage() {
             gets no extra dead button. */}
         <button
           type="button"
-          onClick={() => window.history.back()}
+          onClick={goBack}
           aria-label={t("common", "back")}
           className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-white/85 text-ink shadow-sm lg:flex xl:hidden"
         >
@@ -570,7 +581,7 @@ export function StoryPage() {
         <div className="relative flex items-center justify-between px-4 pt-4">
           <button
             type="button"
-            onClick={() => window.history.back()}
+            onClick={goBack}
             aria-label={t("common", "back")}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-ink/10 bg-white/85 text-ink shadow-sm"
           >

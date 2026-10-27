@@ -342,6 +342,12 @@ export function DemoBanner() {
 
 export function Footer() {
   const { t } = useApp();
+  const { pathname } = useLocation();
+  // The old 112px mobile bottom padding only existed to clear the
+  // fixed bottom nav. Reader routes hide the nav, so they get the
+  // desktop 40px; other pages keep 80px — still clears the 53px nav
+  // with room, without the dead space.
+  const isReader = /^\/stories\/[^/]+\/[^/]+\/[^/]+$/.test(pathname);
   const colTitle = "font-serif text-base font-bold text-ink";
   const linkCls =
     "rounded text-sm text-ink-soft underline-offset-4 hover:text-river-dark hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-river";
@@ -359,7 +365,7 @@ export function Footer() {
   );
   return (
     <footer className="mt-10 border-t border-ink/10 bg-paper-dark/40 md:mt-16">
-      <div className="mx-auto max-w-6xl px-4 pt-10 pb-28 md:py-10">
+      <div className={`mx-auto max-w-6xl px-4 pt-10 md:py-10 ${isReader ? "pb-10" : "pb-20"}`}>
         <div className="grid grid-cols-2 gap-8 lg:grid-cols-[1.5fr_1fr_1fr_1.3fr] lg:gap-10">
           <div className="col-span-2 lg:col-span-1">
             <p className="flex items-center gap-2">
