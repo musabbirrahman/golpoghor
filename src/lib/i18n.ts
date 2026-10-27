@@ -99,6 +99,9 @@ const dict = {
     moreByAuthor: { bn: "এই লেখকের অন্য গল্প", en: "More by this author" },
     summaryHeading: { bn: "গল্পের সংক্ষেপ", en: "Story summary" },
     readingProgress: { bn: "পড়ার অগ্রগতি", en: "Reading progress" },
+    showAllChapters: { bn: "সব অধ্যায় দেখুন", en: "Show all chapters" },
+    showFewerChapters: { bn: "কম অধ্যায় দেখুন", en: "Show fewer chapters" },
+    backToContents: { bn: "সূচিপত্রে ফিরুন", en: "Back to contents" },
   },
   reader: {
     previous: { bn: "আগের অধ্যায়", en: "Previous chapter" },

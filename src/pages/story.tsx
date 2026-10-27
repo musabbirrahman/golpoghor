@@ -13,6 +13,11 @@ import { formatDate, readingMinutes, timeAgo } from "../lib/utils";
 import { usePageMeta, useJsonLd, SHELL_TITLE } from "../lib/page-meta";
 import type { TiptapNode } from "../lib/types";
 
+// Long chapter lists collapse: only the first page shows until the
+// reader asks for all of them (keeps 30–46-chapter stories from
+// dominating the page; short stories are untouched).
+const CONTENTS_PAGE_SIZE = 10;
+
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -100,6 +105,8 @@ export function StoryPage() {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const summaryRef = useRef<HTMLParagraphElement | null>(null);
   const [summaryHasOverflow, setSummaryHasOverflow] = useState(false);
+  const [contentsExpanded, setContentsExpanded] = useState(false);
+  const [contentsJumpVisible, setContentsJumpVisible] = useState(false);
 
   const storyQuery = useQuery({
     queryKey: ["story", username, slug],
@@ -261,7 +268,32 @@ export function StoryPage() {
   useEffect(() => {
     setSummaryExpanded(false);
     setSummaryHasOverflow(false);
+    setContentsExpanded(false);
   }, [story?.id]);
+
+  // Floating back-to-contents jump: visible only while the chapter
+  // list is expanded AND the reader has scrolled a bit into it (the
+  // Contents heading 300px above the viewport top). Tapping it
+  // collapses the list and returns to the Contents top, which hides
+  // it again; expanding and scrolling down brings it back. Collapsed
+  // lists never show it — there is nothing long to escape from.
+  useEffect(() => {
+    const update = () => {
+      const section = document.getElementById("story-contents");
+      setContentsJumpVisible(
+        contentsExpanded &&
+        section != null &&
+        section.getBoundingClientRect().top < -300
+      );
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [contentsExpanded]);
   useEffect(() => {
     if (summaryExpanded) return;
     const el = summaryRef.current;
@@ -389,12 +421,20 @@ export function StoryPage() {
   // returns; the state/effects above must stay above them): the
   // reader's chapter (first chapter when nothing saved yet) and its
   // own scroll % (0 when nothing saved). The jump lands on that
-  // chapter's row inside Contents.
+  // chapter's row inside Contents, expanding the collapsed list
+  // first when the chapter is past the first page — the row only
+  // exists after that re-render, so the scroll waits two frames
+  // (same pattern as the reader's restore).
   const statusIndex = resumeIndex >= 0 ? resumeIndex : 0;
   const statusPct = resumePct ?? 0;
   const jumpToCurrentChapter = () => {
-    document.getElementById(`contents-chapter-${statusIndex}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (chapters.length > CONTENTS_PAGE_SIZE && !contentsExpanded) setContentsExpanded(true);
     dismissStatusBar();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(`contents-chapter-${statusIndex}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
   };
 
   // Shared Start/Continue label, plain by owner choice (2026-10-27):
@@ -705,7 +745,7 @@ export function StoryPage() {
             </section>
           )}
 
-          <section>
+          <section id="story-contents" className="scroll-mt-24">
             <h2 className="font-serif text-2xl font-bold">
               {t("story", "tableOfContents")} ({chapters.length})
             </h2>
@@ -718,8 +758,9 @@ export function StoryPage() {
               </div>
             )}
             {chaptersQuery.isLoading ? <Spinner /> : chapters.length ? (
+              <>
               <ol className="mt-4 divide-y divide-ink/10 rounded-xl bg-white shadow-card">
-                {chapters.map((c, i) => (
+                {(contentsExpanded ? chapters : chapters.slice(0, CONTENTS_PAGE_SIZE)).map((c, i) => (
                   <li key={c.id} id={`contents-chapter-${i}`} className="scroll-mt-24">
                     <Link to={chapterStartUrl(c)} className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-sage/40">
                       <span className="w-8 shrink-0 text-center font-serif text-lg text-ink-faint">{i + 1}</span>
@@ -744,6 +785,31 @@ export function StoryPage() {
                   </li>
                 ))}
               </ol>
+              {chapters.length > CONTENTS_PAGE_SIZE && (
+                <div className="mt-3 flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (contentsExpanded) {
+                        setContentsExpanded(false);
+                        // Collapse from the bottom of a long list:
+                        // take the reader back to the top of Contents
+                        // instead of leaving them to scroll all the way up.
+                        document.getElementById("story-contents")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      } else {
+                        setContentsExpanded(true);
+                      }
+                    }}
+                  >
+                    {contentsExpanded ? t("story", "showFewerChapters") : t("story", "showAllChapters")}
+                    <span className={`transition-transform ${contentsExpanded ? "rotate-180" : ""}`}>
+                      <ChevronDownIcon />
+                    </span>
+                  </Button>
+                </div>
+              )}
+              </>
             ) : (
               <EmptyState title={t("story", "noChapters")} />
             )}
@@ -815,6 +881,22 @@ export function StoryPage() {
             <ChevronDownIcon strokeWidth={3} />
           </button>
         </div>
+      )}
+      {contentsJumpVisible && !(session && statusBarVisible) && (
+        <button
+          type="button"
+          onClick={() => {
+            setContentsExpanded(false);
+            document.getElementById("story-contents")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+          aria-label={t("story", "backToContents")}
+          title={t("story", "backToContents")}
+          className="fixed bottom-52 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-ink/10 bg-white text-ink shadow-lift md:bottom-40 lg:bottom-6 lg:right-6"
+        >
+          <span className="rotate-180">
+            <ChevronDownIcon />
+          </span>
+        </button>
       )}
       <div className="fixed inset-x-4 bottom-16 z-40 flex items-center gap-2 rounded-2xl border border-ink/10 bg-sage px-3 py-2 shadow-lift md:bottom-4 lg:hidden">
         {chapters.length > 0 && (
