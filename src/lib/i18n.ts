@@ -60,6 +60,7 @@ const dict = {
   story: {
     by: { bn: "লেখক", en: "by" },
     stories: { bn: "গল্পসমূহ", en: "Stories" },
+    allStories: { bn: "সব গল্প", en: "All Stories" },
     chapters: { bn: "অধ্যায়", en: "chapters" },
     chapter: { bn: "অধ্যায়", en: "Chapter" },
     chapterSingular: { bn: "অধ্যায়", en: "chapter" },

@@ -172,8 +172,8 @@ export function Modal({
   );
 }
 
-export function Avatar({ name, size = "md", src }: { name: string; size?: "sm" | "md" | "lg"; src?: string | null }) {
-  const sizes = { sm: "h-8 w-8 text-xs", md: "h-10 w-10 text-sm", lg: "h-16 w-16 text-xl" };
+export function Avatar({ name, size = "md", src }: { name: string; size?: "sm" | "md" | "lg" | "xl"; src?: string | null }) {
+  const sizes = { sm: "h-8 w-8 text-xs", md: "h-10 w-10 text-sm", lg: "h-16 w-16 text-xl", xl: "h-28 w-28 text-3xl sm:h-36 sm:w-36 sm:text-4xl lg:h-44 lg:w-44 lg:text-5xl" };
   const initial = name.trim().charAt(0).toUpperCase() || "?";
   if (src) {
     return (

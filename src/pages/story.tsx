@@ -1006,9 +1006,14 @@ export function StoryPage() {
 
 export function AuthorPage() {
   const { username = "" } = useParams();
-  const { t, dp, session } = useApp();
+  const { t, dp, session, locale } = useApp();
   const queryClient = useQueryClient();
   const [reportOpen, setReportOpen] = useState(false);
+  // Status tabs filter only the stories already loaded for this page —
+  // no new query, no data change. The Keepsakes tab from the reference
+  // is not built: it needs the author's public keepsakes, which this
+  // page does not load.
+  const [tab, setTab] = useState<"all" | "ongoing" | "complete">("all");
 
   const profileQuery = useQuery({
     queryKey: ["profile", "byUsername", username],
@@ -1072,49 +1077,89 @@ export function AuthorPage() {
   }
 
   const isSelf = session?.user.id === profile.id;
+  const visibleStories = (storiesQuery.data?.stories ?? []).filter((s) => tab === "all" || s.status === tab);
 
   return (
     <Layout>
-      <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-        <Avatar name={profile.display_name} size="lg" src={dp.avatarUrl(profile.avatar_path)} />
-        <div className="min-w-0 flex-1">
-          <h1 className="font-serif text-3xl font-bold">{profile.display_name}</h1>
+      {/* Banner + overlapping avatar, the reference's structure in the
+          site's own palette (no illustration asset exists for the
+          reference's pen-and-leaf pattern). */}
+      <div className="-mx-4 bg-gradient-to-b from-sage-dark via-sage to-paper" aria-hidden>
+        <div className="h-32 sm:h-40 lg:h-52" />
+      </div>
+      <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-end sm:text-left">
+        <div className="-mt-14 shrink-0 rounded-full ring-4 ring-gold sm:-mt-[72px] lg:-mt-[88px]">
+          <Avatar name={profile.display_name} size="xl" src={dp.avatarUrl(profile.avatar_path)} />
+        </div>
+        <div className="min-w-0 flex-1 sm:pb-2">
+          <h1 className="font-serif text-3xl font-bold sm:text-4xl">{profile.display_name}</h1>
           <p className="text-ink-faint">@{profile.username}</p>
           {profile.bio && <p className="mt-2 max-w-2xl whitespace-pre-line text-ink-soft">{profile.bio}</p>}
         </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
         {session && !isSelf && (
-          <div className="flex gap-2">
+          <>
             <Button
               variant={followQuery.data?.following ? "secondary" : "primary"}
               onClick={() => followMutation.mutate()}
               disabled={followMutation.isPending}
             >
-              {followQuery.data?.following ? t("story", "following") : t("story", "follow")}
+              {followQuery.data?.following ? t("story", "following") : `+ ${t("story", "follow")}`}
             </Button>
             <Button variant="ghost" onClick={() => setReportOpen(true)}>{t("story", "report")}</Button>
-          </div>
+          </>
         )}
+        <p className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white px-4 py-2 text-sm">
+          <span><strong>{storiesQuery.data?.total ?? storiesQuery.data?.stories.length ?? 0}</strong> {t("story", "stories")}</span>
+          <span aria-hidden>·</span>
+          <span><strong>{followQuery.data?.count ?? 0}</strong> {t("story", "followers")}</span>
+        </p>
       </div>
 
-      <p className="mt-4 text-sm text-ink-faint">
-        {followQuery.data?.count ?? 0} {t("story", "followers")}
-      </p>
-
-      <h2 className="mb-4 mt-8 font-serif text-2xl font-bold">{t("story", "stories")}</h2>
-      {storiesQuery.isLoading ? <Spinner /> : storiesQuery.data?.stories.length ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {storiesQuery.data.stories.map((s) => (
-            <Link key={s.id} to={`/stories/${profile.username}/${s.slug}`} className="block h-full">
-              <div className="h-full rounded-xl bg-white p-4 shadow-card hover:shadow-lift">
-                <div className="flex items-center gap-2">
-                  <LanguageBadge language={s.language} />
-                  <StatusBadge status={s.status} />
+      <div className="mt-8 flex gap-6 overflow-x-auto border-b border-ink/10" role="tablist">
+        {([
+          { key: "all" as const, label: t("story", "allStories") },
+          { key: "ongoing" as const, label: t("story", "ongoing") },
+          { key: "complete" as const, label: t("story", "complete") },
+        ]).map((tb) => (
+          <button
+            key={tb.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === tb.key}
+            onClick={() => setTab(tb.key)}
+            className={`-mb-px shrink-0 border-b-2 pb-2 font-medium ${tab === tb.key ? "border-river text-river" : "border-transparent text-ink-soft"}`}
+          >
+            {tb.label}
+          </button>
+        ))}
+      </div>
+      {storiesQuery.isLoading ? <Spinner /> : visibleStories.length ? (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleStories.map((s) => {
+            const minutes = readingMinutes(s.word_count ?? 0, s.language);
+            const count = s.chapter_count ?? 0;
+            return (
+              <Link key={s.id} to={`/stories/${profile.username}/${s.slug}`} className="block h-full">
+                <div className="flex h-full gap-3 rounded-xl bg-white p-3 shadow-card hover:shadow-lift">
+                  <Cover story={s} className="aspect-[3/4] w-24 shrink-0 rounded-lg sm:w-28" thumb />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap gap-1.5">
+                      <StatusBadge status={s.status} />
+                      <Badge tone="sage">{genreLabel(s.genre, locale)}</Badge>
+                    </div>
+                    <h3 className="mt-2 font-serif font-semibold leading-snug clamp-2">{s.title}</h3>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <Badge tone="sage">{count} {count === 1 ? t("story", "chapterSingular") : t("story", "chapters")}</Badge>
+                      {minutes > 0 && <Badge tone="sage">~{minutes} {t("story", "minRead")}</Badge>}
+                    </div>
+                  </div>
                 </div>
-                <h3 className="mt-2 font-serif text-lg font-semibold">{s.title}</h3>
-                <p className="mt-1 text-sm text-ink-soft clamp-2">{s.summary}</p>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       ) : (
         <EmptyState title={t("discover", "noResults")} />
