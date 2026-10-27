@@ -58,11 +58,38 @@ function HeartIcon({ filled }: { filled: boolean }) {
   );
 }
 
+function ChevronLeftIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
+      <polyline points="16 6 12 2 8 6" />
+      <line x1="12" y1="2" x2="12" y2="15" />
+    </svg>
+  );
+}
+
 export function StoryPage() {
   const { username = "", slug = "" } = useParams();
   const { t, locale, dp, session } = useApp();
   const queryClient = useQueryClient();
   const [reportOpen, setReportOpen] = useState(false);
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
 
   const storyQuery = useQuery({
     queryKey: ["story", username, slug],
@@ -248,6 +275,26 @@ export function StoryPage() {
       ? Math.round(progress.scroll_ratio * 100)
       : null;
 
+  // Overall progress for the chapter-list bar (mobile): how far through
+  // the whole story the saved position is, from the same progress
+  // record — no new stored data. Guests and readers with no saved
+  // position get no bar.
+  const overallPct =
+    progress && resumeIndex >= 0 && chapters.length > 0
+      ? Math.round(((resumeIndex + (progress.scroll_ratio || 0)) / chapters.length) * 100)
+      : null;
+
+  // Shared Start/Continue label, plain by owner choice (2026-10-27):
+  // no chapter/% on the button — the progress lives on the chapter
+  // rows and the contents bar instead, so the button stays one line.
+  // The hero button (desktop) and the sticky bottom row (mobile) show
+  // the same text.
+  const actionLabel = (
+    <span className="text-[13px] sm:text-sm md:text-base">
+      {progress ? t("story", "continueReading") : t("story", "startReading")}
+    </span>
+  );
+
   // Look Inside: plain text of the OPENING of chapter 1.
   // Chapter list items carry no bodies (V4-04), so this comes from the
   // separate first-chapter fetch above; anything else hides the section.
@@ -315,9 +362,39 @@ export function StoryPage() {
         <span className="min-w-0 truncate font-semibold text-ink">{story.title}</span>
       </nav>
 
-      <section className="mt-4 rounded-2xl bg-white p-5 shadow-card sm:p-8">
+      {/* Mobile story-page band: full-bleed below lg, with back + share
+          over a soft site-palette gradient and the cover centered on
+          it. The blurred-photo backdrop went muddy with different
+          covers, so the band is palette-only now — it looks the same
+          good with every cover. The share button is placed but parked:
+          sharing is a function, and function work waits. */}
+      <div className="relative -mx-4 overflow-hidden bg-gradient-to-b from-sage-dark via-sage to-paper lg:hidden">
+        <div className="relative flex items-center justify-between px-4 pt-4">
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            aria-label={t("common", "back")}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-ink/10 bg-white/85 text-ink shadow-sm"
+          >
+            <ChevronLeftIcon />
+          </button>
+          <button
+            type="button"
+            aria-label={t("common", "share")}
+            title={t("common", "share")}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-ink/10 bg-white/85 text-ink shadow-sm"
+          >
+            <ShareIcon />
+          </button>
+        </div>
+        <div className="relative flex justify-center px-4 pb-6 pt-2">
+          <Cover story={story} className="aspect-[3/4] w-48 rounded-xl shadow-lift sm:w-56" />
+        </div>
+      </div>
+
+      <section className="mt-4 rounded-2xl bg-white p-5 shadow-card sm:p-8 max-lg:rounded-none max-lg:bg-transparent max-lg:p-0 max-lg:shadow-none">
         <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
-          <Cover story={story} className="mx-auto aspect-[3/4] w-48 rounded-xl shadow-lift sm:w-56 lg:mx-0 lg:w-full" />
+          <Cover story={story} className="mx-auto hidden aspect-[3/4] w-48 rounded-xl shadow-lift sm:w-56 lg:mx-0 lg:block lg:w-full" />
 
         <div className="min-w-0">
           {/* Badges sit above the title on desktop (the mockup's order) but
@@ -333,20 +410,20 @@ export function StoryPage() {
               </Link>
             ))}
           </div>
-          <h1 className="text-pretty font-serif text-[28px] font-bold leading-tight sm:text-5xl md:text-[52px] lg:mt-3 lg:text-pretty lg:text-[56px]">{story.title}</h1>
+          <h1 className="max-lg:text-center text-pretty font-serif text-[28px] font-bold leading-tight sm:text-5xl md:text-[52px] lg:mt-3 lg:text-pretty lg:text-[56px]">{story.title}</h1>
 
-          <div className="mt-2 flex flex-wrap items-center gap-3">
+          <div className="mt-2 flex flex-wrap items-center gap-3 max-lg:flex-nowrap max-lg:justify-center max-lg:gap-2">
             <Link
               to={`/authors/${story.author?.username}`}
-              className="inline-flex items-center gap-2 text-ink-soft hover:text-river-dark"
+              className="inline-flex items-center gap-2 text-ink-soft hover:text-river-dark max-lg:min-w-0 max-lg:rounded-full max-lg:border max-lg:border-ink/10 max-lg:bg-white max-lg:px-2.5 max-lg:py-1 max-lg:shadow-sm"
             >
               <Avatar name={story.author?.display_name ?? "?"} size="sm" src={dp.avatarUrl(story.author?.avatar_path ?? null)} />
-              <span className="font-bold text-ink">{story.author?.display_name}</span>
-              <span className="text-sm text-ink-faint">@{story.author?.username}</span>
+              <span className="shrink-0 font-bold text-ink max-lg:text-sm">{story.author?.display_name}</span>
+              <span className="text-sm text-ink-faint max-lg:min-w-0 max-lg:truncate max-lg:text-xs">@{story.author?.username}</span>
             </Link>
             {session && !isOwner && (
               <Button
-                variant="secondary"
+                variant="gold"
                 size="sm"
                 onClick={() => followMutation.mutate()}
                 disabled={followMutation.isPending}
@@ -357,7 +434,7 @@ export function StoryPage() {
             )}
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2 lg:hidden">
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2 lg:hidden">
             <LanguageBadge language={story.language} />
             <StatusBadge status={story.status} />
             <Badge>{genreLabel(story.genre, locale)}</Badge>
@@ -369,7 +446,20 @@ export function StoryPage() {
           </div>
 
           {story.summary && (
-            <p className="mt-4 whitespace-pre-line leading-relaxed text-ink">{story.summary}</p>
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setSummaryExpanded((v) => !v)}
+                aria-expanded={summaryExpanded}
+                className="mb-2 flex w-full items-center justify-between lg:hidden"
+              >
+                <span className="text-sm font-bold text-ink">{t("story", "summaryHeading")}</span>
+                <span className={`transition-transform ${summaryExpanded ? "rotate-180" : ""}`}>
+                  <ChevronDownIcon />
+                </span>
+              </button>
+              <p className={`whitespace-pre-line leading-relaxed text-ink ${summaryExpanded ? "" : "max-lg:line-clamp-3"}`}>{story.summary}</p>
+            </div>
           )}
 
           {/* V4-28 attribution as Edition & Provenance boxes: only credits
@@ -380,7 +470,7 @@ export function StoryPage() {
               <p className="text-sm font-bold text-ink">{t("story", "editionProvenance")}</p>
               <div className="mt-2 grid gap-3 sm:grid-cols-2">
                 {(story.original_author || story.original_title || story.translator_name || story.adapter_name || story.edition_source) && (
-                  <dl className="space-y-1 rounded-xl bg-paper px-4 py-3 text-sm text-ink">
+                  <dl className="space-y-1 rounded-xl bg-white px-4 py-3 text-sm text-ink shadow-sm lg:bg-paper lg:shadow-none">
                     {story.original_author && (
                       <div className="flex gap-2"><dt className="shrink-0 font-medium text-ink">{t("story", "originalAuthor")}:</dt><dd>{story.original_author}</dd></div>
                     )}
@@ -399,7 +489,7 @@ export function StoryPage() {
                   </dl>
                 )}
                 {story.publication_details && (
-                  <dl className="space-y-1 rounded-xl bg-paper px-4 py-3 text-sm text-ink">
+                  <dl className="space-y-1 rounded-xl bg-white px-4 py-3 text-sm text-ink shadow-sm lg:bg-paper lg:shadow-none">
                     <div className="flex gap-2"><dt className="shrink-0 font-medium text-ink">{t("story", "publicationDetails")}:</dt><dd>{story.publication_details}</dd></div>
                   </dl>
                 )}
@@ -413,25 +503,16 @@ export function StoryPage() {
             </p>
           )}
 
-          <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-faint">
+          <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-faint max-lg:justify-center">
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap"><BookIcon />{chapters.length} {chapters.length === 1 ? t("story", "chapterSingular") : t("story", "chapters")}</span>
             {totalMinutes > 0 && <span className="inline-flex items-center gap-1.5 whitespace-nowrap"><ClockIcon />~{totalMinutes} {t("story", "minRead")}</span>}
             {story.published_at && <span className="inline-flex items-center gap-1.5 whitespace-nowrap"><CalendarIcon />{t("story", "publishedOn")} {formatDate(story.published_at, locale)}</span>}
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-2">
+          <div className="mt-6 hidden flex-wrap gap-2 lg:flex">
             {chapters.length > 0 && (
               <ButtonLink to={chapterUrl(resumeChapter)} size="lg" className="flex-wrap">
-                {progress && resumePct != null ? (
-                  <span className="text-[13px] sm:text-sm md:text-base">
-                    {t("story", "continueReading")}{" "}
-                    <span className="whitespace-nowrap">
-                      ({t("story", "chapter")} {resumeIndex + 1} · {resumePct}%)
-                    </span>
-                  </span>
-                ) : progress
-                  ? t("story", "continueReading")
-                  : t("story", "startReading")}
+                {actionLabel}
               </ButtonLink>
             )}
             {session ? (
@@ -468,6 +549,13 @@ export function StoryPage() {
               </ButtonLink>
             )}
           </div>
+          {isOwner && (
+            <div className="mt-3 lg:hidden">
+              <ButtonLink to={`/write/stories/${story.id}`} variant="ghost" size="lg">
+                {t("common", "edit")}
+              </ButtonLink>
+            </div>
+          )}
 
           {!isOwner && session && (
             <button
@@ -501,6 +589,13 @@ export function StoryPage() {
               {t("story", "tableOfContents")} ({chapters.length})
             </h2>
             <div className="mt-2 h-0.5 w-10 bg-gold" aria-hidden />
+            {overallPct != null && (
+              <div className="mt-3 lg:hidden" role="progressbar" aria-valuenow={overallPct} aria-valuemin={0} aria-valuemax={100} aria-label={t("story", "readingProgress")}>
+                <div className="h-1.5 overflow-hidden rounded-full bg-ink/10">
+                  <div className="h-full rounded-full bg-gold" style={{ width: `${overallPct}%` }} />
+                </div>
+              </div>
+            )}
             {chaptersQuery.isLoading ? <Spinner /> : chapters.length ? (
               <ol className="mt-4 divide-y divide-ink/10 rounded-xl bg-white shadow-card">
                 {chapters.map((c, i) => (
@@ -558,6 +653,48 @@ export function StoryPage() {
           </aside>
         )}
       </div>
+
+      {/* Mobile sticky action row (the mockup's bottom row): gold
+          Start/Continue + Save + Like above the bottom nav. Same
+          gating as the hero buttons — guests get Sign in instead of
+          Save/Like — and the same label. The spacer below clears it
+          so the last content never hides underneath. */}
+      <div className="fixed inset-x-0 bottom-14 z-40 flex items-center gap-2 border-t border-ink/10 bg-paper/95 px-4 py-3 backdrop-blur md:bottom-0 lg:hidden">
+        {chapters.length > 0 && (
+          <ButtonLink to={chapterUrl(resumeChapter)} variant="primary" size="lg" className="min-w-0 flex-1">
+            {actionLabel}
+          </ButtonLink>
+        )}
+        {session ? (
+          <>
+            <button
+              type="button"
+              onClick={() => listMutation.mutate()}
+              disabled={listMutation.isPending}
+              aria-pressed={!!listQuery.data}
+              aria-label={listQuery.data ? t("story", "saved") : t("story", "saveToLibrary")}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-ink/15 bg-white text-ink"
+            >
+              <BookmarkIcon filled={!!listQuery.data} />
+            </button>
+            <button
+              type="button"
+              onClick={() => likeMutation.mutate()}
+              disabled={likeMutation.isPending}
+              aria-pressed={!!likeQuery.data?.liked}
+              aria-label={likeQuery.data?.liked ? t("story", "liked") : t("story", "like")}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-ink/15 bg-white text-ink"
+            >
+              <HeartIcon filled={!!likeQuery.data?.liked} />
+            </button>
+          </>
+        ) : (
+          <ButtonLink to={`/login?next=${encodeURIComponent(window.location.pathname)}`} variant="secondary" size="lg">
+            {t("nav", "signIn")}
+          </ButtonLink>
+        )}
+      </div>
+      <div className="h-24 lg:hidden" aria-hidden />
 
       <ReportDialog
         open={reportOpen}
