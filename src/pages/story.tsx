@@ -529,6 +529,20 @@ export function StoryPage() {
   return (
     <Layout>
       <nav aria-label="Breadcrumb" className="mt-6 hidden items-center gap-1.5 text-sm text-ink-faint lg:flex">
+        {/* Back + share pills ride the breadcrumb row at lg–xl only
+            (iPad Pro sizes: touch tablets get the phone affordances).
+            Below lg the band below carries them; at xl+ (desktop) the
+            breadcrumb alone is enough — browser back covers going
+            back, and the share button is still parked, so desktop
+            gets no extra dead button. */}
+        <button
+          type="button"
+          onClick={() => window.history.back()}
+          aria-label={t("common", "back")}
+          className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-white/85 text-ink shadow-sm lg:flex xl:hidden"
+        >
+          <ChevronLeftIcon />
+        </button>
         <Link to="/" className="hover:text-river hover:underline">{t("nav", "home")}</Link>
         <span aria-hidden>/</span>
         <Link to={`/discover?genre=${encodeURIComponent(story.genre)}`} className="hover:text-river hover:underline">
@@ -536,6 +550,14 @@ export function StoryPage() {
         </Link>
         <span aria-hidden>/</span>
         <span className="min-w-0 truncate font-semibold text-ink">{story.title}</span>
+        <button
+          type="button"
+          aria-label={t("common", "share")}
+          title={t("common", "share")}
+          className="ml-auto hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-white/85 text-ink shadow-sm lg:flex xl:hidden"
+        >
+          <ShareIcon />
+        </button>
       </nav>
 
       {/* Mobile story-page band: full-bleed below lg, with back + share
