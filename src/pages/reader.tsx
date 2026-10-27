@@ -422,11 +422,17 @@ export function ReaderPage() {
   // the reader. While the settings panel is open it stays visible.
   const lastScrollY = useRef(0);
   const [barHidden, setBarHidden] = useState(false);
+  // Back-to-top shares the bar's scroll logic exactly: it only
+  // appears on an upward scroll past 120px, and hides again on any
+  // downward scroll — same rule, same threshold as the bar.
+  const [showTop, setShowTop] = useState(false);
   useEffect(() => {
     const onScroll = () => {
       const y = window.scrollY;
       if (y > lastScrollY.current && y > 120) setBarHidden(true);
       else if (y < lastScrollY.current) setBarHidden(false);
+      if (y > lastScrollY.current || y <= 120) setShowTop(false);
+      else if (y < lastScrollY.current) setShowTop(true);
       lastScrollY.current = y;
     };
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -1019,6 +1025,18 @@ export function ReaderPage() {
         targetId={chapter.id}
         targetLabel={chapter.title}
       />
+
+      {showTop && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label={t("reader", "backToTop")}
+          title={t("reader", "backToTop")}
+          className="fixed bottom-4 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-ink/10 bg-white text-ink shadow-lift"
+        >
+          <ChevronDownIcon className="h-5 w-5 rotate-180" />
+        </button>
+      )}
     </Layout>
   );
 }

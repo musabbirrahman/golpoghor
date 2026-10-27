@@ -119,6 +119,7 @@ const dict = {
     widthMedium: { bn: "মাঝারি", en: "Medium" },
     widthWide: { bn: "চওড়া", en: "Wide" },
     endOfChapter: { bn: "অধ্যায় শেষ", en: "End of chapter" },
+    backToTop: { bn: "উপরে ফিরুন", en: "Back to top" },
     storyEnd: {
       bn: "গল্প এখানেই শেষ। মতামত জানাতে ভুলবেন না।",
       en: "This is the end of the story. Let the author know what you thought.",
