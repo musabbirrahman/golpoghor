@@ -107,6 +107,7 @@ export function StoryPage() {
   const [summaryHasOverflow, setSummaryHasOverflow] = useState(false);
   const [contentsExpanded, setContentsExpanded] = useState(false);
   const [contentsJumpVisible, setContentsJumpVisible] = useState(false);
+  const [nearPageBottom, setNearPageBottom] = useState(false);
 
   const storyQuery = useQuery({
     queryKey: ["story", username, slug],
@@ -270,6 +271,28 @@ export function StoryPage() {
     setSummaryHasOverflow(false);
     setContentsExpanded(false);
   }, [story?.id]);
+
+  // Near the bottom of the page the floating bars step aside so the
+  // footer is never covered by them: within 300px of the document
+  // end the Continue row, the jump button, and the status row all
+  // hide; scrolling back up brings them back. (Space above the
+  // footer cannot fix this — the footer always ends at the very
+  // bottom of the screen, so only hiding the bars clears it.)
+  useEffect(() => {
+    const update = () => {
+      const doc = document.documentElement;
+      setNearPageBottom(
+        doc.scrollHeight - (window.scrollY + window.innerHeight) < 300
+      );
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
 
   // Floating back-to-contents jump: visible only while the chapter
   // list is expanded AND the reader has scrolled a bit into it (the
@@ -859,7 +882,7 @@ export function StoryPage() {
           reader's chapter row in Contents. Dismissal: reload keeps
           it gone, leaving the story brings it back (see the effects
           above). Guests see nothing. */}
-      {session && chapters.length > 0 && statusBarVisible && (
+      {session && chapters.length > 0 && statusBarVisible && !nearPageBottom && (
         <div data-status-row className="fixed bottom-36 left-1/2 z-40 flex w-[calc(100%-4rem)] max-w-md -translate-x-1/2 items-center gap-2 md:bottom-24 lg:hidden">
           <button
             type="button"
@@ -882,7 +905,7 @@ export function StoryPage() {
           </button>
         </div>
       )}
-      {contentsJumpVisible && !(session && statusBarVisible) && (
+      {contentsJumpVisible && !(session && statusBarVisible) && !nearPageBottom && (
         <button
           type="button"
           onClick={() => {
@@ -898,6 +921,7 @@ export function StoryPage() {
           </span>
         </button>
       )}
+      {!nearPageBottom && (
       <div className="fixed inset-x-4 bottom-16 z-40 flex items-center gap-2 rounded-2xl border border-ink/10 bg-sage px-3 py-2 shadow-lift md:bottom-4 lg:hidden">
         {chapters.length > 0 && (
           <ButtonLink to={chapterUrl(resumeChapter)} variant="primary" size="lg" className="min-w-0 flex-1">
@@ -933,6 +957,7 @@ export function StoryPage() {
           </ButtonLink>
         )}
       </div>
+      )}
       <div className="h-24 lg:hidden" aria-hidden />
 
       <ReportDialog
