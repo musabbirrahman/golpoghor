@@ -74,9 +74,9 @@ function ChevronLeftIcon() {
   );
 }
 
-function ChevronDownIcon() {
+function ChevronDownIcon({ strokeWidth = 2 }: { strokeWidth?: number }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <polyline points="6 9 12 15 18 9" />
     </svg>
   );
@@ -281,6 +281,29 @@ export function StoryPage() {
     };
   }, [story?.id, story?.summary, summaryExpanded, locale]);
 
+  // Slim floating status row (mobile/tablet only, above the Continue
+  // bar): current chapter + gold progress bar + %, beside a separate
+  // round jump icon. Both jump to the reader's chapter row inside
+  // Contents (NOT into the chapter — Continue does that). The row is
+  // transient by owner choice: it shows on arrival and hides the
+  // moment the reader taps anything (taps on the row itself jump
+  // first, then hide; the document listener ignores those so the
+  // click still lands). It resets per story. Guests see nothing —
+  // no progress to show. Colours deliberately avoid the Continue
+  // bar: ink pill + gold fill, not river, not sage.
+  const [statusBarVisible, setStatusBarVisible] = useState(true);
+  useEffect(() => {
+    setStatusBarVisible(true);
+  }, [story?.id]);
+  useEffect(() => {
+    if (!statusBarVisible) return;
+    const hide = (e: PointerEvent) => {
+      if ((e.target as HTMLElement).closest("[data-status-row]")) return;
+      setStatusBarVisible(false);
+    };
+    document.addEventListener("pointerdown", hide);
+    return () => document.removeEventListener("pointerdown", hide);
+  }, [statusBarVisible]);
   if (storyQuery.isLoading) return <Layout><Spinner /></Layout>;
   if (!story) {
     if (storyRedirectPending || slugRedirectPending) return <Layout><Spinner /></Layout>;
@@ -327,6 +350,18 @@ export function StoryPage() {
     progress && resumeIndex >= 0 && chapters.length > 0
       ? Math.round(((resumeIndex + (progress.scroll_ratio || 0)) / chapters.length) * 100)
       : null;
+
+  // Status row values (plain consts, so they live here after the early
+  // returns; the state/effects above must stay above them): the
+  // reader's chapter (first chapter when nothing saved yet) and its
+  // own scroll % (0 when nothing saved). The jump lands on that
+  // chapter's row inside Contents.
+  const statusIndex = resumeIndex >= 0 ? resumeIndex : 0;
+  const statusPct = resumePct ?? 0;
+  const jumpToCurrentChapter = () => {
+    document.getElementById(`contents-chapter-${statusIndex}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setStatusBarVisible(false);
+  };
 
   // Shared Start/Continue label, plain by owner choice (2026-10-27):
   // no chapter/% on the button — the progress lives on the chapter
@@ -651,7 +686,7 @@ export function StoryPage() {
             {chaptersQuery.isLoading ? <Spinner /> : chapters.length ? (
               <ol className="mt-4 divide-y divide-ink/10 rounded-xl bg-white shadow-card">
                 {chapters.map((c, i) => (
-                  <li key={c.id}>
+                  <li key={c.id} id={`contents-chapter-${i}`} className="scroll-mt-24">
                     <Link to={chapterStartUrl(c)} className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-sage/40">
                       <span className="w-8 shrink-0 text-center font-serif text-lg text-ink-faint">{i + 1}</span>
                       <div className="min-w-0 flex-1">
@@ -716,6 +751,36 @@ export function StoryPage() {
           a soft shadow, in muted sage — a smooth premium tone, not
           a bright eye-catching slab. The buttons sit flat on it, so
           the bar carries the lift. */}
+      {/* Slim floating status row, above the Continue bar and narrower
+          than it (centred, capped width): ink pill with chapter +
+          gold progress bar + %, plus a SEPARATE round jump icon with
+          a gap between them — not attached like the Continue bar's
+          buttons. Both share the ink background and both jump to the
+          reader's chapter row in Contents. Transient: hides on any
+          tap (see the effects above). Guests see nothing. */}
+      {session && chapters.length > 0 && statusBarVisible && (
+        <div data-status-row className="fixed bottom-36 left-1/2 z-40 flex w-[calc(100%-4rem)] max-w-md -translate-x-1/2 items-center gap-2 md:bottom-24 lg:hidden">
+          <button
+            type="button"
+            onClick={jumpToCurrentChapter}
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-ink px-3.5 py-2.5 text-xs font-medium text-white shadow-lift"
+          >
+            <span className="shrink-0 whitespace-nowrap">{t("story", "chapter")} {statusIndex + 1}</span>
+            <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-white/25">
+              <span className="block h-full rounded-full bg-gold" style={{ width: `${statusPct}%` }} />
+            </span>
+            <span className="shrink-0 whitespace-nowrap">{statusPct}%</span>
+          </button>
+          <button
+            type="button"
+            onClick={jumpToCurrentChapter}
+            aria-label={t("story", "tableOfContents")}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-white shadow-lift"
+          >
+            <ChevronDownIcon strokeWidth={3} />
+          </button>
+        </div>
+      )}
       <div className="fixed inset-x-4 bottom-16 z-40 flex items-center gap-2 rounded-2xl border border-ink/10 bg-sage px-3 py-2 shadow-lift md:bottom-4 lg:hidden">
         {chapters.length > 0 && (
           <ButtonLink to={chapterUrl(resumeChapter)} variant="primary" size="lg" className="min-w-0 flex-1">
