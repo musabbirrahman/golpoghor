@@ -420,17 +420,19 @@ export function Footer() {
 export function Layout({ children }: { children: ReactNode }) {
   const { t } = useApp();
   const { pathname } = useLocation();
-  // Reading pages get no site header at all — the reader's own
-  // floating bar replaces it (same chapter-route test as Header).
+  // Reading pages get no site header and no bottom nav at all — the
+  // reader's own floating bar replaces them (same chapter-route
+  // test as Header); the main's bottom padding also drops to the
+  // footer-only value since nothing floats above it anymore.
   const isReader = /^\/stories\/[^/]+\/[^/]+\/[^/]+$/.test(pathname);
   return (
     <div className="flex min-h-screen flex-col">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-river focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">{t("common", "skipToContent")}</a>
       <DemoBanner />
       {!isReader && <Header />}
-      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 md:pb-12">{children}</main>
+      <main id="main-content" tabIndex={-1} className={`mx-auto w-full max-w-6xl flex-1 px-4 ${isReader ? "pb-12" : "pb-24 md:pb-12"}`}>{children}</main>
       <Footer />
-      <BottomNav />
+      {!isReader && <BottomNav />}
     </div>
   );
 }
