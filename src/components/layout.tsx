@@ -156,8 +156,10 @@ function AccountMenu() {
 export function Header() {
   const { t, session } = useApp();
   const { pathname } = useLocation();
-  // The chapter-reading page is immersive: hide the search box there
-  // (story page and everywhere else keep it). Header chrome stays.
+  // The chapter-reading page is immersive: Layout skips this header
+  // entirely on chapter routes and the reader's own floating bar
+  // replaces it. (The search-box guard below is now dead on those
+  // routes but harmless; story page and everywhere else keep it.)
   const isReader = /^\/stories\/[^/]+\/[^/]+\/[^/]+$/.test(pathname);
   // Mobile search lives in the header row itself: a wide pill that, when
   // tapped, becomes the input and pops wider to the full row (logo, nav
@@ -417,11 +419,15 @@ export function Footer() {
 
 export function Layout({ children }: { children: ReactNode }) {
   const { t } = useApp();
+  const { pathname } = useLocation();
+  // Reading pages get no site header at all — the reader's own
+  // floating bar replaces it (same chapter-route test as Header).
+  const isReader = /^\/stories\/[^/]+\/[^/]+\/[^/]+$/.test(pathname);
   return (
     <div className="flex min-h-screen flex-col">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-river focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">{t("common", "skipToContent")}</a>
       <DemoBanner />
-      <Header />
+      {!isReader && <Header />}
       <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 md:pb-12">{children}</main>
       <Footer />
       <BottomNav />

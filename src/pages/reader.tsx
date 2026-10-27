@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useUsernameRedirect } from "../lib/use-username-redirect";
 import { useStorySlugRedirect } from "../lib/use-story-slug-redirect";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -54,35 +54,67 @@ export function ChapterBody({ doc }: { doc: TiptapDoc }) {
   );
 }
 
-type ReaderTheme = "light" | "sepia" | "dark";
-type FontSize = "sm" | "md" | "lg" | "xl";
-type LineSpacing = "normal" | "relaxed" | "loose";
+type ReaderTheme = "light" | "warm" | "sepia" | "dark";
+type ReaderWidth = "narrow" | "medium" | "wide";
+type ReaderPrefs = { theme: ReaderTheme; fontSize: number; lineHeight: number; width: ReaderWidth };
 
 const READER_KEY = "golpoghor-reader-prefs";
 
-function loadPrefs(): { theme: ReaderTheme; fontSize: FontSize; lineSpacing: LineSpacing } {
+const FONT_SIZE_MAP: Record<string, number> = { sm: 17, md: 19, lg: 21, xl: 24 };
+const LINE_HEIGHTS = [1.4, 1.6, 1.8, 2.0];
+const snapLineHeight = (v: number) =>
+  LINE_HEIGHTS.reduce((best, cur) => (Math.abs(cur - v) < Math.abs(best - v) ? cur : best), LINE_HEIGHTS[0]);
+
+// Old saved prefs used stepped sizes (sm/md/lg/xl) and named spacings;
+// migrate them so existing readers keep (nearly) the look they chose.
+function loadPrefs(): ReaderPrefs {
+  const fallback: ReaderPrefs = { theme: "light", fontSize: 19, lineHeight: 1.8, width: "medium" };
   try {
     const raw = localStorage.getItem(READER_KEY);
-    if (raw) return JSON.parse(raw);
+    if (!raw) return fallback;
+    const saved = JSON.parse(raw) as Partial<Record<string, unknown>>;
+    if (!saved || typeof saved !== "object") return fallback;
+    const theme = (["light", "warm", "sepia", "dark"] as ReaderTheme[]).includes(saved.theme as ReaderTheme)
+      ? (saved.theme as ReaderTheme)
+      : fallback.theme;
+    const fontSize =
+      typeof saved.fontSize === "number"
+        ? Math.min(24, Math.max(17, Math.round(saved.fontSize)))
+        : typeof saved.fontSize === "string" && FONT_SIZE_MAP[saved.fontSize] !== undefined
+          ? FONT_SIZE_MAP[saved.fontSize]
+          : fallback.fontSize;
+    const lineHeight =
+      typeof saved.lineHeight === "number"
+        ? snapLineHeight(saved.lineHeight)
+        : typeof saved.lineSpacing === "number"
+          ? snapLineHeight(saved.lineSpacing)
+          : typeof saved.lineSpacing === "string"
+            ? snapLineHeight({ normal: 1.6, relaxed: 1.85, loose: 2.2 }[saved.lineSpacing] ?? fallback.lineHeight)
+            : fallback.lineHeight;
+    const width = (["narrow", "medium", "wide"] as ReaderWidth[]).includes(saved.width as ReaderWidth)
+      ? (saved.width as ReaderWidth)
+      : fallback.width;
+    return { theme, fontSize, lineHeight, width };
   } catch { /* ignore */ }
-  return { theme: "light", fontSize: "md", lineSpacing: "relaxed" };
+  return fallback;
 }
 
 function ReaderSettings({
   prefs,
   setPrefs,
 }: {
-  prefs: { theme: ReaderTheme; fontSize: FontSize; lineSpacing: LineSpacing };
-  setPrefs: (p: { theme: ReaderTheme; fontSize: FontSize; lineSpacing: LineSpacing }) => void;
+  prefs: ReaderPrefs;
+  setPrefs: (p: ReaderPrefs) => void;
 }) {
   const { t } = useApp();
   const [open, setOpen] = useState(false);
   const row = "flex items-center justify-between gap-3 py-2";
   const segBtn = (active: boolean) =>
     `rounded-lg px-3 py-1.5 text-sm font-medium ${active ? "bg-river text-white" : "bg-sage text-ink hover:bg-sage-dark"}`;
-  const pick = (p: { theme: ReaderTheme; fontSize: FontSize; lineSpacing: LineSpacing }) => {
+  // Adjusting stays in the panel (a slider cannot work if every change
+  // closes it); the panel closes on outside tap or the Aa toggle.
+  const update = (p: ReaderPrefs) => {
     setPrefs(p);
-    setOpen(false);
   };
   return (
     <div className="relative">
@@ -97,33 +129,66 @@ function ReaderSettings({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-50 mt-2 w-72 rounded-xl bg-white p-4 shadow-lift">
-            <div className={row}>
+          <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-4 shadow-lift">
+            <div>
               <span className="text-sm font-medium">{t("reader", "theme")}</span>
-              <div className="flex gap-1">
-                {(["light", "sepia", "dark"] as ReaderTheme[]).map((th) => (
-                  <button key={th} className={segBtn(prefs.theme === th)} onClick={() => pick({ ...prefs, theme: th })}>
-                    {t("reader", th === "light" ? "themeLight" : th === "sepia" ? "themeSepia" : "themeDark")}
+              <div className="mt-2 grid grid-cols-4 gap-2">
+                {([
+                  { key: "light", bg: "#ffffff", label: t("reader", "themeLight") },
+                  { key: "warm", bg: "#F7F3E9", label: t("reader", "themeWarm") },
+                  { key: "sepia", bg: "#f4ecd8", label: t("reader", "themeSepia") },
+                  { key: "dark", bg: "#1c2422", label: t("reader", "themeDark") },
+                ] as const).map((th) => (
+                  <button key={th.key} onClick={() => update({ ...prefs, theme: th.key })} className="flex flex-col items-center gap-1">
+                    <span
+                      className={`relative block h-12 w-full rounded-lg border ${prefs.theme === th.key ? "border-gold ring-2 ring-gold" : "border-ink/15"}`}
+                      style={{ backgroundColor: th.bg }}
+                    >
+                      {prefs.theme === th.key && (
+                        <span className="absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[10px] font-bold text-white">✓</span>
+                      )}
+                    </span>
+                    <span className="text-xs">{th.label}</span>
                   </button>
                 ))}
               </div>
             </div>
-            <div className={row}>
-              <span className="text-sm font-medium">{t("reader", "fontSize")}</span>
-              <div className="flex gap-1" role="group" aria-label={t("reader", "fontSize")}>
-                {(["sm", "md", "lg", "xl"] as FontSize[]).map((s) => (
-                  <button key={s} className={segBtn(prefs.fontSize === s)} onClick={() => pick({ ...prefs, fontSize: s })} aria-label={s}>
-                    A
-                  </button>
-                ))}
+            <div className="mt-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">{t("reader", "fontSize")}</span>
+                <span className="text-sm font-medium">{prefs.fontSize}px</span>
+              </div>
+              <input
+                type="range"
+                min={17}
+                max={24}
+                step={1}
+                value={prefs.fontSize}
+                onChange={(e) => update({ ...prefs, fontSize: Number(e.target.value) })}
+                aria-label={t("reader", "fontSize")}
+                className="mt-2 w-full accent-gold"
+              />
+              <div className="flex justify-between text-xs text-ink-faint">
+                <span>17px</span>
+                <span>24px</span>
               </div>
             </div>
             <div className={row}>
               <span className="text-sm font-medium">{t("reader", "lineSpacing")}</span>
               <div className="flex gap-1">
-                {(["normal", "relaxed", "loose"] as LineSpacing[]).map((s) => (
-                  <button key={s} className={segBtn(prefs.lineSpacing === s)} onClick={() => pick({ ...prefs, lineSpacing: s })}>
-                    {s === "normal" ? "1.6" : s === "relaxed" ? "1.85" : "2.2"}
+                {[1.4, 1.6, 1.8, 2.0].map((v) => (
+                  <button key={v} className={segBtn(prefs.lineHeight === v)} onClick={() => update({ ...prefs, lineHeight: v })}>
+                    {v.toFixed(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className={row}>
+              <span className="text-sm font-medium">{t("reader", "readingWidth")}</span>
+              <div className="flex gap-1">
+                {(["narrow", "medium", "wide"] as ReaderWidth[]).map((w) => (
+                  <button key={w} className={segBtn(prefs.width === w)} onClick={() => update({ ...prefs, width: w })}>
+                    {t("reader", w === "narrow" ? "widthNarrow" : w === "medium" ? "widthMedium" : "widthWide")}
                   </button>
                 ))}
               </div>
@@ -135,7 +200,7 @@ function ReaderSettings({
   );
 }
 
-function Comments({ chapterId }: { chapterId: string }) {
+function Comments({ chapterId, className }: { chapterId: string; className?: string }) {
   const { t, locale, dp, session, profile } = useApp();
   const queryClient = useQueryClient();
   const [body, setBody] = useState("");
@@ -181,7 +246,7 @@ function Comments({ chapterId }: { chapterId: string }) {
             : null;
 
   return (
-    <section className="mx-auto mt-12 max-w-reader" aria-labelledby="comments-heading">
+    <section className={`mx-auto mt-12 ${className ?? "max-w-reader"}`} aria-labelledby="comments-heading">
       <h2 id="comments-heading" className="font-serif text-2xl font-bold">
         {t("comments", "title")} ({commentsQuery.data?.length ?? 0})
       </h2>
@@ -305,6 +370,7 @@ function Comments({ chapterId }: { chapterId: string }) {
 
 export function ReaderPage() {
   const { username = "", slug = "", chapterSlug = "" } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const restart = searchParams.get("restart") === "1";
   const { t, dp, session, isModerator } = useApp();
@@ -622,12 +688,54 @@ export function ReaderPage() {
     }
   }, [story, chapter, session]);
 
-  const themeCls =
+  // Top progress bar: how far the reader has scrolled THROUGH the
+  // chapter (0% at the top, 100% when the chapter's end reaches the
+  // viewport bottom), written straight to the bar's DOM node so
+  // scrolling never re-renders the page.
+  const progressBarRef = useRef<HTMLDivElement | null>(null);
+  const articleRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const update = () => {
+      const bar = progressBarRef.current;
+      const article = articleRef.current;
+      if (!bar || !article) return;
+      const rect = article.getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, -rect.top / Math.max(1, rect.height - window.innerHeight)));
+      bar.style.width = `${Math.round(ratio * 100)}%`;
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [chapter?.id]);
+
+  // Each theme sets the page tint AND the card together, so the card
+  // never blends into its own background (the keepsake-shelf lesson).
+  const pageCls =
+    prefs.theme === "dark"
+      ? "bg-[#121816]"
+      : prefs.theme === "sepia"
+        ? "bg-paper-deep"
+        : prefs.theme === "warm"
+          ? "bg-paper-dark"
+          : "bg-paper";
+  const cardCls =
     prefs.theme === "dark"
       ? "bg-[#1c2422] text-[#e8e4d8]"
       : prefs.theme === "sepia"
         ? "bg-[#f4ecd8] text-[#43382e]"
-        : "bg-white text-ink";
+        : prefs.theme === "warm"
+          ? "bg-paper text-ink"
+          : "bg-white text-ink";
+  const widthCls =
+    prefs.width === "narrow"
+      ? "max-w-[36rem]"
+      : prefs.width === "wide"
+        ? "max-w-[52rem]"
+        : "max-w-reader";
   // The floating keepsake button must stay visible on every reader
   // theme: it takes the theme's text colour as its background and the
   // theme's background as its text (dark page → light button, and
@@ -638,8 +746,7 @@ export function ReaderPage() {
       : prefs.theme === "sepia"
         ? "bg-[#43382e] text-[#f4ecd8]"
         : "bg-ink text-paper";
-  const fontCls = { sm: "text-[17px]", md: "text-[19px]", lg: "text-[21px]", xl: "text-[24px]" }[prefs.fontSize];
-  const leadingCls = { normal: "leading-[1.6]", relaxed: "leading-[1.85]", loose: "leading-[2.2]" }[prefs.lineSpacing];
+
 
   const storyRedirectPending = useUsernameRedirect(
     username,
@@ -664,16 +771,45 @@ export function ReaderPage() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-reader">
-        {/* Breadcrumb + settings */}
-        <div className="mt-6 flex items-center justify-between gap-3">
-          <nav aria-label="Breadcrumb" className="min-w-0 text-sm text-ink-faint">
-            <Link to={storyPath} className="truncate font-medium text-river hover:underline">{story.title}</Link>
-          </nav>
+      <div className={`-mx-4 min-h-screen px-4 pt-4 pb-8 ${pageCls}`}>
+        {/* Gold progress bar pinned to the viewport top */}
+        <div className="fixed inset-x-0 top-0 z-50 h-1 bg-ink/10" aria-hidden="true">
+          <div ref={progressBarRef} className="h-full bg-gold" style={{ width: "0%" }} />
+        </div>
+
+        {/* Floating reader bar: back + title + chapter jump + settings.
+            It replaces the site header on reading pages (Layout skips
+            Header on chapter routes). On phones the title hides — the
+            article eyebrow just below still names the story. */}
+        <div className="sticky top-3 z-40 mx-auto flex max-w-6xl items-center gap-2 rounded-2xl border border-ink/10 bg-sage/95 px-3 py-2 shadow-lift backdrop-blur">
+          <Link
+            to={storyPath}
+            aria-label={t("common", "back")}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg hover:bg-ink/5"
+          >
+            ←
+          </Link>
+          <span className="hidden min-w-0 flex-1 truncate font-medium sm:block">{story.title}</span>
+          <select
+            value={chapter.slug}
+            onChange={(e) => {
+              const target = chapters.find((c) => c.slug === e.target.value);
+              if (target) navigate(chapterUrl(target));
+            }}
+            aria-label={t("story", "chapter")}
+            className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm font-medium"
+          >
+            {chapters.map((c, i) => (
+              <option key={c.id} value={c.slug}>
+                {t("story", "chapter")} {i + 1}: {c.title}
+              </option>
+            ))}
+          </select>
           <ReaderSettings prefs={prefs} setPrefs={setPrefs} />
         </div>
 
-        <article className={`mt-4 rounded-2xl px-5 py-8 shadow-card sm:px-10 sm:py-12 ${themeCls}`}>
+        <div className={`mx-auto mt-6 ${widthCls}`}>
+        <article ref={articleRef} className={`rounded-2xl px-5 py-8 shadow-card sm:px-10 sm:py-12 ${cardCls}`}>
           <header className="mb-8 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-60">
               {t("story", "chapter")} {index + 1} · {story.title}
@@ -685,10 +821,14 @@ export function ReaderPage() {
                 ? ` · ${readingMinutes(chapter.word_count, story.language)} ${t("story", "minRead")}`
                 : ""}
             </p>
-            <div className="mx-auto mt-4 h-px w-16 bg-gold" aria-hidden />
+            <div className="mx-auto mt-4 flex items-center justify-center gap-2 text-gold" aria-hidden="true">
+              <span className="h-px w-12 bg-gold" />
+              <span>❦</span>
+              <span className="h-px w-12 bg-gold" />
+            </div>
           </header>
 
-          <div ref={bodyRef} className={`${fontCls} ${leadingCls}`}>
+          <div ref={bodyRef} style={{ fontSize: `${prefs.fontSize}px`, lineHeight: prefs.lineHeight }}>
             <ChapterBody doc={chapter.body_json} />
           </div>
 
@@ -702,14 +842,21 @@ export function ReaderPage() {
           </footer>
         </article>
 
-        {/* Chapter navigation */}
-        <nav className="mt-6 flex items-center justify-between gap-3" aria-label={t("reader", "contents")}>
+        {/* Chapter navigation cards (the bar's back button + chapter
+            dropdown already cover the return-to-story route, so the
+            old centre Contents link goes away with the row). */}
+        <nav className="mt-6 grid gap-3 sm:grid-cols-2" aria-label={t("reader", "contents")}>
           {prev ? (
-            <ButtonLink to={chapterUrl(prev)} variant="secondary">← {t("reader", "previous")}</ButtonLink>
+            <Link to={chapterUrl(prev)} className="rounded-xl bg-white p-4 shadow-card transition-shadow hover:shadow-lift">
+              <span className="block text-xs font-medium text-ink-faint">{t("reader", "previous")}</span>
+              <span className="mt-1 block truncate font-semibold">← {prev.title}</span>
+            </Link>
           ) : <span />}
-          <Link to={storyPath} className="text-sm font-medium text-river hover:underline">{t("reader", "contents")}</Link>
           {next ? (
-            <ButtonLink to={chapterUrl(next)} variant="secondary">{t("reader", "next")} →</ButtonLink>
+            <Link to={chapterUrl(next)} className="rounded-xl bg-gold-soft p-4 text-right shadow-card transition-shadow hover:shadow-lift">
+              <span className="block text-xs font-medium text-ink-faint">{t("reader", "next")}</span>
+              <span className="mt-1 block truncate font-semibold">{next.title} →</span>
+            </Link>
           ) : <span />}
         </nav>
 
@@ -718,9 +865,10 @@ export function ReaderPage() {
             {t("reader", "storyEnd")}
           </p>
         )}
-      </div>
+        </div>
 
-      <Comments chapterId={chapter.id} />
+        <Comments chapterId={chapter.id} className={widthCls} />
+      </div>
 
       {studioBtn && !studio && (
         <button
