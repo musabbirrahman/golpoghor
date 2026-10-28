@@ -467,6 +467,7 @@ export function DiscoverPage() {
               <ShelfRow stories={featured} />
             </section>
           )}
+          {horror.length > 0 && <HorrorShelf stories={horror} />}
           {complete.length > 0 && (
             <section className="mt-12 border-t border-ink/10 pt-10">
               <ShelfHead icon={<CheckSealIcon />} name={t("discover", "shelfComplete")} tagline={t("discover", "tagComplete")} accent="#A85745" />
@@ -491,7 +492,6 @@ export function DiscoverPage() {
               <ShelfRow stories={classics} />
             </section>
           )}
-          {horror.length > 0 && <HorrorShelf stories={horror} />}
         </>
       )}
 
