@@ -36,6 +36,12 @@ import type {
 export interface StoryFilters {
   language?: StoryLanguage;
   genre?: string;
+  /** Phase 2: stories carrying this sub-category id, whatever their major. */
+  subcategory?: string;
+  /** Phase 2: narrow the default ongoing+complete set to one status. */
+  status?: "ongoing" | "complete";
+  /** Phase 2: reading-time band from word count (see utils). */
+  time?: "under15" | "15to45" | "over45";
   tag?: string;
   q?: string;
   authorId?: string;
@@ -155,6 +161,8 @@ export interface DataProvider {
   updateStory(id: string, patch: Partial<StoryInput & { status: StoryStatus; cover_path: string | null }>): Promise<Story>;
   deleteStory(id: string): Promise<void>;
   listGenres(): Promise<string[]>;
+  /** Phase 2: sub-category ids carried by at least one public story. */
+  listSubcategoriesInUse(): Promise<string[]>;
 
   // ---------------------------------------------------------- chapters
   /** publishedOnly=false is owner-only (dashboard, editor). Lists are light

@@ -46,6 +46,22 @@ export function readingMinutes(wordCount: number, language: "bn" | "en"): number
   return Math.max(1, Math.round(wordCount / READING_WPM[language]));
 }
 
+export type ReadingTimeBand = "under15" | "15to45" | "over45";
+
+/**
+ * Word-count bounds for a reading-time band, per language, consistent
+ * with readingMinutes: a story displays m minutes when its word count
+ * rounds to m, so band edges sit at the .5 points (14.5x and 45.5x wpm).
+ * Returns [min, max) with null for an open end. Used by the Supabase
+ * time filter; the demo provider filters on readingMinutes directly.
+ */
+export function readingTimeWordBounds(band: ReadingTimeBand, language: "bn" | "en"): [number | null, number | null] {
+  const wpm = READING_WPM[language];
+  if (band === "under15") return [null, 14.5 * wpm];
+  if (band === "15to45") return [14.5 * wpm, 45.5 * wpm];
+  return [45.5 * wpm, null];
+}
+
 export function emptyDoc(): TiptapDoc {
   return { type: "doc", content: [{ type: "paragraph" }] };
 }

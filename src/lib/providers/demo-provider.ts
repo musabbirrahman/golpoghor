@@ -54,6 +54,7 @@ import {
   countWords,
   docToText,
   paragraphsToDoc,
+  readingMinutes,
   slugify,
 } from "../utils";
 
@@ -586,6 +587,20 @@ export class DemoProvider implements DataProvider {
       const wanted = normalizeGenre(f.genre);
       rows = rows.filter((s) => normalizeGenre(s.genre) === wanted);
     }
+    if (f.subcategory) {
+      const sub = f.subcategory.trim().toLowerCase();
+      rows = rows.filter((s) => (s.subcategories ?? []).includes(sub));
+    }
+    if (f.status) rows = rows.filter((s) => s.status === f.status);
+    if (f.time) {
+      // Word counts attach from chapters below; run that first so the
+      // band filter sees real counts (same values the page would get).
+      this.attachCounts(rows, { publishedOnly: !f.includeDrafts });
+      rows = rows.filter((s) => {
+        const m = readingMinutes(s.word_count ?? 0, s.language);
+        return f.time === "under15" ? m < 15 : f.time === "15to45" ? m >= 15 && m <= 45 : m > 45;
+      });
+    }
     {
       const tag = f.tag;
       if (tag) rows = rows.filter((s) => s.tags.includes(tag));
@@ -841,6 +856,16 @@ export class DemoProvider implements DataProvider {
       if (this.isPublicStory(s)) set.add(normalizeGenre(s.genre));
     }
     return sortGenres(set);
+  }
+
+  async listSubcategoriesInUse(): Promise<string[]> {
+    const set = new Set<string>();
+    for (const s of this.db.stories) {
+      if (this.isPublicStory(s)) {
+        for (const sub of normalizeSubcategories(s.subcategories)) set.add(sub);
+      }
+    }
+    return [...set].sort();
   }
 
   // ---------------------------------------------------------- chapters

@@ -42,7 +42,7 @@ import {
 } from "../data-provider";
 import { genreAliases, normalizeGenre, sortGenres } from "../genres";
 import { normalizeSubcategories } from "../subcategories";
-import { AppError, countWords, docToText, slugify, thumbPath } from "../utils";
+import { AppError, countWords, docToText, readingTimeWordBounds, slugify, thumbPath } from "../utils";
 import {
   clearCachedUrls,
   dropCachedUrl,
@@ -402,6 +402,20 @@ export class SupabaseProvider implements DataProvider {
     if (f.authorId) q = q.eq("author_id", f.authorId);
     if (f.language) q = q.eq("language", f.language);
     if (f.genre) q = q.in("genre", genreAliases(normalizeGenre(f.genre)));
+    if (f.subcategory) q = q.contains("subcategories", [f.subcategory.trim().toLowerCase()]);
+    if (f.status) q = q.eq("status", f.status);
+    if (f.time) {
+      // One OR group across both languages (each with its own wpm band),
+      // ANDed with every other filter by PostgREST.
+      const clauses = (["bn", "en"] as const).map((lang) => {
+        const [min, max] = readingTimeWordBounds(f.time!, lang);
+        const parts = [`language.eq.${lang}`];
+        if (min !== null) parts.push(`word_count.gte.${Math.ceil(min)}`);
+        if (max !== null) parts.push(`word_count.lt.${Math.ceil(max)}`);
+        return `and(${parts.join(",")})`;
+      });
+      q = q.or(clauses.join(","));
+    }
     if (f.tag) q = q.contains("tags", [f.tag]);
     if (f.q) {
       // Strip PostgREST .or() delimiters too: a comma, paren or quote in
@@ -666,6 +680,20 @@ export class SupabaseProvider implements DataProvider {
       .limit(500);
     if (error) throw toAppError(error);
     return sortGenres((data ?? []).map((r: any) => r.genre as string));
+  }
+
+  async listSubcategoriesInUse(): Promise<string[]> {
+    const { data, error } = await this.sb
+      .from("stories")
+      .select("subcategories")
+      .in("status", ["ongoing", "complete"])
+      .limit(1000);
+    if (error) throw toAppError(error);
+    const set = new Set<string>();
+    for (const r of data ?? []) {
+      for (const sub of normalizeSubcategories((r as any).subcategories)) set.add(sub);
+    }
+    return [...set].sort();
   }
 
   // ---------------------------------------------------------- chapters

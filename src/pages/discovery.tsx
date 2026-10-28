@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
-import { genreLabel, normalizeGenre } from "../lib/genres";
+import { GENRES, genreLabel, normalizeGenre } from "../lib/genres";
+import { SUBCATEGORIES, subLabel } from "../lib/subcategories";
 import { readingMinutes, timeAgo } from "../lib/utils";
 import { Layout } from "../components/layout";
 import { Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
@@ -381,25 +382,151 @@ function HorrorShelf({ stories }: { stories: Story[] }) {
   );
 }
 
+/* Phase 2 filter panel: one button, many options. Each dimension is a
+   single pick (All clears it); genre picks either a major or one sub —
+   a sub pick clears the major and vice versa, so a pick never dead-ends.
+   Empty majors/subs stay hidden (reader panel only); a picked value
+   always stays visible so it can be cleared. The panel is in-flow (no
+   popover positioning) so it behaves on every width. */
+function Pick({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`rounded-full border px-3 py-1 text-sm ${active ? "border-river bg-river text-paper" : "border-ink/20 bg-white hover:border-river"}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function FilterPanel({ language, genre, sub, status, time, genresInUse, subsInUse, set, onDone }: {
+  language: string;
+  genre: string;
+  sub: string;
+  status: string;
+  time: string;
+  genresInUse: string[];
+  subsInUse: string[];
+  set: (patch: Record<string, string>) => void;
+  onDone: () => void;
+}) {
+  const { t, locale } = useApp();
+  const [expanded, setExpanded] = useState<string | null>(() => {
+    const found = SUBCATEGORIES.find((s) => s.id === sub);
+    return found ? found.group : null;
+  });
+  const clearAll = () => set({ language: "", genre: "", sub: "", status: "", time: "" });
+  return (
+    <div className="mt-4 rounded-2xl border border-ink/10 bg-white p-4 shadow-card sm:p-5">
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div>
+          <p className="text-sm font-medium">{t("discover", "language")}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Pick active={!language} onClick={() => set({ language: "" })}>{t("discover", "allLanguages")}</Pick>
+            <Pick active={language === "bn"} onClick={() => set({ language: "bn" })}>{t("discover", "bangla")}</Pick>
+            <Pick active={language === "en"} onClick={() => set({ language: "en" })}>{t("discover", "english")}</Pick>
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-medium">{t("discover", "statusLabel")}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Pick active={!status} onClick={() => set({ status: "" })}>{t("discover", "allOption")}</Pick>
+            <Pick active={status === "ongoing"} onClick={() => set({ status: "ongoing" })}>{t("story", "ongoing")}</Pick>
+            <Pick active={status === "complete"} onClick={() => set({ status: "complete" })}>{t("story", "complete")}</Pick>
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-medium">{t("discover", "readingTime")}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Pick active={!time} onClick={() => set({ time: "" })}>{t("discover", "allOption")}</Pick>
+            <Pick active={time === "under15"} onClick={() => set({ time: "under15" })}>{t("discover", "timeUnder15")}</Pick>
+            <Pick active={time === "15to45"} onClick={() => set({ time: "15to45" })}>{t("discover", "time15to45")}</Pick>
+            <Pick active={time === "over45"} onClick={() => set({ time: "over45" })}>{t("discover", "timeOver45")}</Pick>
+          </div>
+        </div>
+        <div className="sm:col-span-2">
+          <p className="text-sm font-medium">{t("discover", "genre")}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Pick active={!genre && !sub} onClick={() => set({ genre: "", sub: "" })}>{t("discover", "allGenres")}</Pick>
+          </div>
+          <div className="mt-3 flex flex-col gap-3">
+            {GENRES.map((g) => {
+              const subs = SUBCATEGORIES.filter((s) => s.group === g.value);
+              const groupSubsInUse = subs.filter((s) => subsInUse.includes(s.id));
+              const groupVisible = genresInUse.includes(g.value) || groupSubsInUse.length > 0 || genre === g.value || subs.some((s) => s.id === sub);
+              if (!groupVisible) return null;
+              const isOpen = expanded === g.value;
+              return (
+                <div key={g.value}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {genresInUse.includes(g.value) || genre === g.value ? (
+                      <Pick active={genre === g.value} onClick={() => set({ genre: g.value, sub: "" })}>{genreLabel(g.value, locale)}</Pick>
+                    ) : (
+                      <span className="text-sm font-medium">{genreLabel(g.value, locale)}</span>
+                    )}
+                    {subs.length > 0 && (
+                      <button
+                        type="button"
+                        aria-expanded={isOpen}
+                        onClick={() => setExpanded(isOpen ? null : g.value)}
+                        className="text-sm text-ink-soft hover:text-river"
+                      >
+                        {isOpen ? "▴" : "▾"}
+                      </button>
+                    )}
+                  </div>
+                  {isOpen && (
+                    <div className="mt-2 flex flex-wrap gap-2 pl-1">
+                      {subs.filter((s) => subsInUse.includes(s.id) || s.id === sub).map((s) => (
+                        <Pick key={s.id} active={sub === s.id} onClick={() => set({ sub: s.id, genre: "" })}>#{subLabel(s.id)}</Pick>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Button variant="secondary" onClick={clearAll}>{t("discover", "clearFilters")}</Button>
+        <Button onClick={onDone}>{t("discover", "filterDone")}</Button>
+      </div>
+    </div>
+  );
+}
+
 export function DiscoverPage() {
-  const { t, dp, locale } = useApp();
+  const { t, dp } = useApp();
   const [params, setParams] = useSearchParams();
   const language = (params.get("language") || "") as StoryLanguage | "";
   const genre = params.get("genre") || "";
+  const sub = params.get("sub") || "";
+  const status = params.get("status") || "";
+  const time = params.get("time") || "";
   const sort = (params.get("sort") || "newest") as "newest" | "popular" | "most_viewed" | "featured";
   const q = params.get("q") || "";
   const tag = params.get("tag") || "";
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const genresQuery = useQuery({ queryKey: ["genres"], queryFn: () => dp.listGenres() });
-  const genres = genresQuery.data?.length ? genresQuery.data : GENRE_FALLBACK;
+  const genresInUse = genresQuery.data?.length ? genresQuery.data : GENRE_FALLBACK;
+  const subsQuery = useQuery({ queryKey: ["subcategories-in-use"], queryFn: () => dp.listSubcategoriesInUse() });
+  const subsInUse = subsQuery.data ?? [];
 
   const filters = {
     language: (language || undefined) as StoryLanguage | undefined,
     genre: genre || undefined,
+    subcategory: sub || undefined,
+    status: (status || undefined) as "ongoing" | "complete" | undefined,
+    time: (time || undefined) as "under15" | "15to45" | "over45" | undefined,
     q: q || undefined,
     tag: tag || undefined,
     sort,
   };
+  const activeFilterCount = [language, genre || sub, status, time].filter(Boolean).length;
   const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useStoryPages(filters);
   const stories = data?.pages.flatMap((p) => p.stories) ?? [];
   const total = data?.pages[0]?.total ?? 0;
@@ -450,9 +577,9 @@ export function DiscoverPage() {
       </section>
 
       {/* Shelves — View all exists only where the list has a matching
-          filter (Featured, New, Horror); the other shelves gain their
-          View all links when the filter button phase adds list
-          filters for status, reading time, and classics. */}
+          filter. Phase 2 added status + reading-time filters, so
+          Complete, Ongoing, and Quick gained View all; Classics still
+          has none (no classics filter exists). */}
       {shelvesLoading ? <div className="mt-10"><Spinner /></div> : (
         <>
           {newest.length > 0 && (
@@ -470,19 +597,19 @@ export function DiscoverPage() {
           {horror.length > 0 && <HorrorShelf stories={horror} />}
           {complete.length > 0 && (
             <section className="mt-12 border-t border-ink/10 pt-10">
-              <ShelfHead icon={<CheckSealIcon />} name={t("discover", "shelfComplete")} tagline={t("discover", "tagComplete")} accent="#A85745" />
+              <ShelfHead icon={<CheckSealIcon />} name={t("discover", "shelfComplete")} tagline={t("discover", "tagComplete")} accent="#A85745" action={<ShelfViewAll to="/discover?status=complete" label={t("home", "viewAll")} accent="#A85745" />} />
               <ShelfRow stories={complete} />
             </section>
           )}
           {ongoing.length > 0 && (
             <section className="mt-12 border-t border-ink/10 pt-10">
-              <ShelfHead icon={<PenIcon />} name={t("story", "ongoing")} tagline={t("discover", "tagOngoing")} accent="#3A6EA5" />
+              <ShelfHead icon={<PenIcon />} name={t("story", "ongoing")} tagline={t("discover", "tagOngoing")} accent="#3A6EA5" action={<ShelfViewAll to="/discover?status=ongoing" label={t("home", "viewAll")} accent="#3A6EA5" />} />
               <ShelfRow stories={ongoing} />
             </section>
           )}
           {quick.length > 0 && (
             <section className="mt-12 border-t border-ink/10 pt-10">
-              <ShelfHead icon={<BoltIcon />} name={t("discover", "shelfQuick")} tagline={t("discover", "tagQuick")} accent="#6D5BD0" />
+              <ShelfHead icon={<BoltIcon />} name={t("discover", "shelfQuick")} tagline={t("discover", "tagQuick")} accent="#6D5BD0" action={<ShelfViewAll to="/discover?time=under15" label={t("home", "viewAll")} accent="#6D5BD0" />} />
               <ShelfRow stories={quick} />
             </section>
           )}
@@ -495,25 +622,46 @@ export function DiscoverPage() {
         </>
       )}
 
-      {/* All stories list — filters unchanged in v1; the single filter
-          button arrives with the taxonomy phase. */}
+      {/* All stories list — Phase 2: one Filter button + panel replaces
+          the language/genre dropdowns; sort stays its own control. */}
       <section id="all-stories" className="mt-12 border-t border-ink/10 pt-10 scroll-mt-24">
         <h2 className="font-serif text-2xl font-bold">{t("story", "allStories")}</h2>
-        <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
-        <select aria-label={t("discover", "language")} className={selectCls} value={language} onChange={(e) => set({ language: e.target.value })}>
-          <option value="">{t("discover", "allLanguages")}</option>
-          <option value="bn">{t("discover", "bangla")}</option>
-          <option value="en">{t("discover", "english")}</option>
-        </select>
-        <select aria-label={t("discover", "genre")} className={selectCls} value={genre} onChange={(e) => set({ genre: e.target.value })}>
-          <option value="">{t("discover", "allGenres")}</option>
-          {genres.map((g) => <option key={g} value={g}>{genreLabel(g, locale)}</option>)}
-        </select>
+        <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-3">
+        <button
+          type="button"
+          aria-expanded={filterOpen}
+          onClick={() => setFilterOpen((v) => !v)}
+          className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm font-medium hover:border-river"
+        >
+          {t("discover", "filter")}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+        </button>
         <select aria-label={t("discover", "sort")} className={selectCls} value={sort} onChange={(e) => set({ sort: e.target.value })}>
           <option value="newest">{t("discover", "newest")}</option>
           <option value="featured">{t("discover", "featured")}</option>
         </select>
+        {activeFilterCount > 0 && (
+          <button
+            type="button"
+            onClick={() => set({ language: "", genre: "", sub: "", status: "", time: "" })}
+            className="text-sm font-medium text-river hover:underline"
+          >
+            {t("discover", "clearFilters")}
+          </button>
+        )}
       </div>
+      {filterOpen && (
+        <FilterPanel
+          language={language}
+          genre={genre}
+          sub={sub}
+          status={status}
+          time={time}
+          genresInUse={genresInUse}
+          subsInUse={subsInUse}
+          set={set}
+          onDone={() => setFilterOpen(false)}
+        />
+      )}
 
       {tag && (
         <div className="mt-3">
