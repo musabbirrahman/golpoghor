@@ -366,8 +366,9 @@ export function StoryFormPage() {
                     <p className="text-sm font-medium">{genreLabel(g.value, locale)}</p>
                     <div className="mt-1 flex flex-wrap gap-2">
                       {subs.map((s) => (
-                        <label key={s.id} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-sm ${subcategories.includes(s.id) ? "border-river bg-sage" : "border-ink/20"}`}>
+                        <label key={s.id} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-sm ${subcategories.includes(s.id) ? "border-river bg-sage" : "border-ink/20"}${!subcategories.includes(s.id) && subcategories.length >= 4 ? " cursor-not-allowed opacity-50" : ""}`}>
                           <input type="checkbox" className="accent-river" checked={subcategories.includes(s.id)}
+                            disabled={!subcategories.includes(s.id) && subcategories.length >= 4}
                             onChange={() => setSubcategories((cur) => cur.includes(s.id) ? cur.filter((x) => x !== s.id) : [...cur, s.id])} />
                           {s.label}
                         </label>

@@ -40,7 +40,9 @@ export const SUBCATEGORIES: SubcategoryDef[] = [
 
 const SUBCATEGORY_IDS = new Set(SUBCATEGORIES.map((s) => s.id));
 
-/** Keep only vocabulary ids, lowercased, deduped, capped like free tags. */
+/** Keep only vocabulary ids, lowercased, deduped, capped at 4: one major
+    genre + 4 sub-categories = 5 labels per story, so tag rows stay compact
+    on story pages and cards. */
 export function normalizeSubcategories(values: unknown): string[] {
   if (!Array.isArray(values)) return [];
   const out: string[] = [];
@@ -48,7 +50,7 @@ export function normalizeSubcategories(values: unknown): string[] {
     const id = String(v ?? "").trim().toLowerCase();
     if (SUBCATEGORY_IDS.has(id) && !out.includes(id)) out.push(id);
   }
-  return out.slice(0, 10);
+  return out.slice(0, 4);
 }
 
 /** Display term for a stored id (unknown ids pass through). */

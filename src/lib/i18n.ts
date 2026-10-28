@@ -294,7 +294,7 @@ const dict = {
     tags: { bn: "ট্যাগ", en: "Tags" },
     tagsHint: { bn: "কমা দিয়ে আলাদা করুন", en: "Separate with commas" },
     subcategories: { bn: "উপশ্রেণি", en: "Sub-categories" },
-    subcategoriesHint: { bn: "একাধিক বেছে নিতে পারেন — যে কোনো বিভাগ থেকে", en: "Pick as many as fit, from any group" },
+    subcategoriesHint: { bn: "সর্বোচ্চ ৪টি বেছে নিন — যে কোনো বিভাগ থেকে", en: "Pick up to 4, from any group" },
     coverImage: { bn: "প্রচ্ছদ ছবি", en: "Cover image" },
     contentNotice: { bn: "বিষয়বস্তু সতর্কতা (ঐচ্ছিক)", en: "Content notice (optional)" },
     origin: { bn: "গল্পের ধরন", en: "Story origin" },
