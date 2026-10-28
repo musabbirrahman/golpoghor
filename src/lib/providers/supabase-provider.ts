@@ -41,6 +41,7 @@ import {
   resolveNotificationPrefs,
 } from "../data-provider";
 import { genreAliases, normalizeGenre, sortGenres } from "../genres";
+import { normalizeSubcategories } from "../subcategories";
 import { AppError, countWords, docToText, slugify, thumbPath } from "../utils";
 import {
   clearCachedUrls,
@@ -581,6 +582,7 @@ export class SupabaseProvider implements DataProvider {
         language: input.language,
         genre: input.genre.trim() || "general",
         tags: input.tags,
+        subcategories: normalizeSubcategories(input.subcategories),
         content_notice: (input.content_notice ?? "").trim(),
         status: "draft",
         origin_type: input.origin_type ?? "original",
@@ -626,6 +628,7 @@ export class SupabaseProvider implements DataProvider {
     if (patch.language !== undefined) body.language = patch.language;
     if (patch.genre !== undefined) body.genre = patch.genre.trim() || "general";
     if (patch.tags !== undefined) body.tags = patch.tags;
+    if (patch.subcategories !== undefined) body.subcategories = normalizeSubcategories(patch.subcategories);
     if (patch.content_notice !== undefined) body.content_notice = patch.content_notice.trim();
     if (patch.origin_type !== undefined) body.origin_type = patch.origin_type;
     if (patch.original_author !== undefined) body.original_author = patch.original_author?.trim() || null;

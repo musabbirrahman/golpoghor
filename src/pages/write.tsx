@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { GENRES, genreLabel, normalizeGenre } from "../lib/genres";
+import { SUBCATEGORIES, normalizeSubcategories } from "../lib/subcategories";
 import { Layout } from "../components/layout";
 import {
   Badge, Button, ButtonLink, Card, EmptyState, FieldError, Input, Label, Modal,
@@ -138,6 +139,7 @@ export function StoryFormPage() {
   const [language, setLanguage] = useState<StoryLanguage>("bn");
   const [genre, setGenre] = useState("general");
   const [tags, setTags] = useState("");
+  const [subcategories, setSubcategories] = useState<string[]>([]);
   const [notice, setNotice] = useState("");
   // V4-28 attribution: original authors see none of the extra fields.
   const [origin, setOrigin] = useState<"original" | "classic" | "translation" | "adaptation">("original");
@@ -179,6 +181,7 @@ export function StoryFormPage() {
     setLanguage(story.language);
     setGenre(normalizeGenre(story.genre));
     setTags(story.tags.join(", "));
+    setSubcategories(normalizeSubcategories(story.subcategories));
     setNotice(story.content_notice);
     setOrigin(story.origin_type ?? "original");
     setOriginalAuthor(story.original_author ?? "");
@@ -205,6 +208,7 @@ export function StoryFormPage() {
         language,
         genre,
         tags: tags.split(",").map((x) => x.trim()).filter(Boolean),
+        subcategories: normalizeSubcategories(subcategories),
         content_notice: notice,
         origin_type: origin,
         // Original stories carry no attribution fields (clears stale values
@@ -350,6 +354,28 @@ export function StoryFormPage() {
               <Label htmlFor="sf-tags">{t("write", "tags")}</Label>
               <Input id="sf-tags" value={tags} onChange={(e) => setTags(e.target.value)}
                 placeholder={t("write", "tagsHint")} />
+            </div>
+            <div>
+              <Label>{t("write", "subcategories")}</Label>
+              <p className="mt-1 text-sm text-ink/70">{t("write", "subcategoriesHint")}</p>
+              {GENRES.map((g) => {
+                const subs = SUBCATEGORIES.filter((s) => s.group === g.value);
+                if (subs.length === 0) return null;
+                return (
+                  <div key={g.value} className="mt-3">
+                    <p className="text-sm font-medium">{genreLabel(g.value, locale)}</p>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {subs.map((s) => (
+                        <label key={s.id} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-sm ${subcategories.includes(s.id) ? "border-river bg-sage" : "border-ink/20"}`}>
+                          <input type="checkbox" className="accent-river" checked={subcategories.includes(s.id)}
+                            onChange={() => setSubcategories((cur) => cur.includes(s.id) ? cur.filter((x) => x !== s.id) : [...cur, s.id])} />
+                          {s.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             <div>
               <Label htmlFor="sf-notice">{t("write", "contentNotice")}</Label>

@@ -47,6 +47,7 @@ import {
   KEEPSAKE_TEMPLATES,
 } from "../data-provider";
 import { normalizeGenre, sortGenres } from "../genres";
+import { normalizeSubcategories } from "../subcategories";
 import { SEED_AUTHORS, SEED_STORIES, DEMO_PASSWORD } from "../demo-content";
 import {
   AppError,
@@ -726,6 +727,7 @@ export class DemoProvider implements DataProvider {
       language: input.language,
       genre: input.genre.trim().slice(0, 60) || "general",
       tags: input.tags.map((t) => t.trim()).filter(Boolean).slice(0, 10),
+      subcategories: normalizeSubcategories(input.subcategories),
       status: "draft",
       content_notice: (input.content_notice ?? "").trim().slice(0, 500),
       cover_path: null,
@@ -780,6 +782,7 @@ export class DemoProvider implements DataProvider {
     if (patch.language !== undefined) s.language = patch.language;
     if (patch.genre !== undefined) s.genre = patch.genre.trim().slice(0, 60) || "general";
     if (patch.tags !== undefined) s.tags = patch.tags.map((t) => t.trim()).filter(Boolean).slice(0, 10);
+    if (patch.subcategories !== undefined) s.subcategories = normalizeSubcategories(patch.subcategories);
     if (patch.content_notice !== undefined) s.content_notice = patch.content_notice.trim().slice(0, 500);
     if (patch.origin_type !== undefined) {
       // Mirror the SQL trigger: flipping away from 'original' withdraws

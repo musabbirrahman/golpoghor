@@ -53,6 +53,8 @@ export interface StoryInput {
   language: StoryLanguage;
   genre: string;
   tags: string[];
+  /** Phase 1 taxonomy: fixed-vocabulary ids, any group, several per story. */
+  subcategories?: string[];
   content_notice?: string;
   /** V4-28: defaults to "original" on create when omitted. */
   origin_type?: OriginType;

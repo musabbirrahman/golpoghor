@@ -4,7 +4,24 @@ import type { Story } from "../lib/types";
 import { useApp } from "../lib/app-context";
 import { genreLabel } from "../lib/genres";
 import { formatDate, readingMinutes, timeAgo } from "../lib/utils";
-import { LanguageBadge, StatusBadge } from "./ui";
+import { Badge, LanguageBadge, StatusBadge } from "./ui";
+import { subLabel } from "../lib/subcategories";
+
+/** Capped #tag row: full cards show a few, compact cards show none (the
+    caller decides by rendering or omitting this). Overflow counts as +N. */
+function SubTags({ subs, max }: { subs: string[]; max: number }) {
+  const shown = subs.slice(0, max);
+  const rest = subs.length - shown.length;
+  if (shown.length === 0) return null;
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      {shown.map((sub) => (
+        <Badge key={sub} tone="gold">#{subLabel(sub)}</Badge>
+      ))}
+      {rest > 0 && <span className="text-xs text-ink-faint">+{rest}</span>}
+    </span>
+  );
+}
 
 export function storyPath(s: Story): string {
   return `/stories/${s.author?.username ?? "unknown"}/${s.slug}`;
@@ -136,6 +153,7 @@ export function StoryCard({ story, compact = false }: { story: Story; compact?: 
         {!compact && <p className="text-sm text-ink-soft clamp-3">{story.summary}</p>}
         {!compact && (
         <div className="mt-auto flex flex-col gap-1 pt-2 text-xs text-ink-faint">
+          <SubTags subs={story.subcategories ?? []} max={3} />
           <div className="flex flex-wrap items-center gap-2">
             <span className="whitespace-nowrap">
               {story.chapter_count ?? 0}{" "}
@@ -178,6 +196,7 @@ export function StoryRow({ story }: { story: Story }) {
         <p className="text-sm text-ink-faint">
           {t("story", "by")} {story.original_author ?? story.author?.display_name} · {genreLabel(story.genre, locale)}
         </p>
+        <SubTags subs={story.subcategories ?? []} max={2} />
         <p className="text-sm text-ink-soft clamp-2">{story.summary}</p>
         <p className="mt-auto text-xs text-ink-faint">
           {story.chapter_count ?? 0}{" "}

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useUsernameRedirect } from "../lib/use-username-redirect";
 import { useStorySlugRedirect } from "../lib/use-story-slug-redirect";
 import { genreLabel } from "../lib/genres";
+import { subLabel } from "../lib/subcategories";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
@@ -618,6 +619,11 @@ export function StoryPage() {
                 <Badge tone="gold">#{tag}</Badge>
               </Link>
             ))}
+            {/* Phase 1: sub-categories show as #tags like free tags, but
+                plain for now — they gain a filter link with Phase 2. */}
+            {(story.subcategories ?? []).map((sub) => (
+              <Badge key={sub} tone="gold">#{subLabel(sub)}</Badge>
+            ))}
           </div>
           <h1 className="max-lg:text-center text-pretty font-serif text-[28px] font-bold leading-tight sm:text-5xl md:text-[52px] lg:mt-3 lg:text-pretty lg:text-[56px]">{story.title}</h1>
 
@@ -651,6 +657,9 @@ export function StoryPage() {
               <Link key={tag} to={`/discover?tag=${encodeURIComponent(tag)}`}>
                 <Badge tone="gold">#{tag}</Badge>
               </Link>
+            ))}
+            {(story.subcategories ?? []).map((sub) => (
+              <Badge key={sub} tone="gold">#{subLabel(sub)}</Badge>
             ))}
           </div>
 
