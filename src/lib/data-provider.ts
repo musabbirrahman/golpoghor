@@ -36,8 +36,9 @@ import type {
 export interface StoryFilters {
   language?: StoryLanguage;
   genre?: string;
-  /** Phase 2: stories carrying this sub-category id, whatever their major. */
-  subcategory?: string;
+  /** Phase 2 v3: stories carrying ANY of these sub-category ids, whatever
+   *  their major (multi-tag filtering; tap again to unselect). */
+  subcategories?: string[];
   /** Phase 2: narrow the default ongoing+complete set to one status. */
   status?: "ongoing" | "complete";
   /** Phase 2: reading-time band from word count (see utils). */

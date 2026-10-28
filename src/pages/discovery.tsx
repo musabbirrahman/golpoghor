@@ -404,21 +404,26 @@ function Pick({ active, onClick, children }: { active: boolean; onClick: () => v
   );
 }
 
-function FilterDialog({ language, genre, sub, status, time, sort, genresInUse, subsInUse, set, onClose }: {
+/* Phase 2 v3: sub-categories are multi-select — each #tag toggles on
+   and off, and the list shows stories carrying ANY selected tag. A tag
+   pick clears the major; a major pick clears all tags. Every other pill
+   also toggles: tapping an active pick unselects it. */
+function FilterDialog({ language, genre, selectedSubs, status, time, sort, genresInUse, subsInUse, set, toggleSub, onClose }: {
   language: string;
   genre: string;
-  sub: string;
+  selectedSubs: string[];
   status: string;
   time: string;
   sort: string;
   genresInUse: string[];
   subsInUse: string[];
   set: (patch: Record<string, string>) => void;
+  toggleSub: (id: string) => void;
   onClose: () => void;
 }) {
   const { t, locale } = useApp();
   const [expanded, setExpanded] = useState<string | null>(() => {
-    const found = SUBCATEGORIES.find((s) => s.id === sub);
+    const found = SUBCATEGORIES.find((s) => selectedSubs.includes(s.id));
     return found ? found.group : null;
   });
   useEffect(() => {
@@ -445,52 +450,52 @@ function FilterDialog({ language, genre, sub, status, time, sort, genresInUse, s
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{t("discover", "language")}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <Pick active={!language} onClick={() => set({ language: "" })}>{t("discover", "allLanguages")}</Pick>
-              <Pick active={language === "bn"} onClick={() => set({ language: "bn" })}>{t("discover", "bangla")}</Pick>
-              <Pick active={language === "en"} onClick={() => set({ language: "en" })}>{t("discover", "english")}</Pick>
+              <Pick active={language === "bn"} onClick={() => set({ language: language === "bn" ? "" : "bn" })}>{t("discover", "bangla")}</Pick>
+              <Pick active={language === "en"} onClick={() => set({ language: language === "en" ? "" : "en" })}>{t("discover", "english")}</Pick>
             </div>
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{t("discover", "statusLabel")}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <Pick active={!status} onClick={() => set({ status: "" })}>{t("discover", "allOption")}</Pick>
-              <Pick active={status === "ongoing"} onClick={() => set({ status: "ongoing" })}>{t("story", "ongoing")}</Pick>
-              <Pick active={status === "complete"} onClick={() => set({ status: "complete" })}>{t("story", "complete")}</Pick>
+              <Pick active={status === "ongoing"} onClick={() => set({ status: status === "ongoing" ? "" : "ongoing" })}>{t("story", "ongoing")}</Pick>
+              <Pick active={status === "complete"} onClick={() => set({ status: status === "complete" ? "" : "complete" })}>{t("story", "complete")}</Pick>
             </div>
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{t("discover", "readingTime")}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <Pick active={!time} onClick={() => set({ time: "" })}>{t("discover", "allOption")}</Pick>
-              <Pick active={time === "under15"} onClick={() => set({ time: "under15" })}>{t("discover", "timeUnder15")}</Pick>
-              <Pick active={time === "15to45"} onClick={() => set({ time: "15to45" })}>{t("discover", "time15to45")}</Pick>
-              <Pick active={time === "over45"} onClick={() => set({ time: "over45" })}>{t("discover", "timeOver45")}</Pick>
+              <Pick active={time === "under15"} onClick={() => set({ time: time === "under15" ? "" : "under15" })}>{t("discover", "timeUnder15")}</Pick>
+              <Pick active={time === "15to45"} onClick={() => set({ time: time === "15to45" ? "" : "15to45" })}>{t("discover", "time15to45")}</Pick>
+              <Pick active={time === "over45"} onClick={() => set({ time: time === "over45" ? "" : "over45" })}>{t("discover", "timeOver45")}</Pick>
             </div>
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{t("discover", "sort")}</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Pick active={sort === "newest"} onClick={() => set({ sort: "newest" })}>{t("discover", "newest")}</Pick>
-              <Pick active={sort === "featured"} onClick={() => set({ sort: "featured" })}>{t("discover", "featured")}</Pick>
+              <Pick active={sort === "newest"} onClick={() => set({ sort: sort === "newest" ? "" : "newest" })}>{t("discover", "newest")}</Pick>
+              <Pick active={sort === "featured"} onClick={() => set({ sort: sort === "featured" ? "" : "featured" })}>{t("discover", "featured")}</Pick>
             </div>
           </div>
           <div className="rounded-2xl border border-ink/10 bg-white/60 p-4 sm:col-span-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{t("discover", "genre")}</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Pick active={!genre && !sub} onClick={() => set({ genre: "", sub: "" })}>{t("discover", "allGenres")}</Pick>
+              <Pick active={!genre && selectedSubs.length === 0} onClick={() => set({ genre: "", sub: "" })}>{t("discover", "allGenres")}</Pick>
             </div>
             <div className="mt-3 flex flex-col gap-3">
               {GENRES.map((g) => {
                 const subs = SUBCATEGORIES.filter((s) => s.group === g.value);
                 const groupSubsInUse = subs.filter((s) => subsInUse.includes(s.id));
-                const groupVisible = genresInUse.includes(g.value) || groupSubsInUse.length > 0 || genre === g.value || subs.some((s) => s.id === sub);
+                const groupVisible = genresInUse.includes(g.value) || groupSubsInUse.length > 0 || genre === g.value || subs.some((s) => selectedSubs.includes(s.id));
                 if (!groupVisible) return null;
-                const visibleSubs = subs.filter((s) => subsInUse.includes(s.id) || s.id === sub);
+                const visibleSubs = subs.filter((s) => subsInUse.includes(s.id) || selectedSubs.includes(s.id));
                 const isOpen = expanded === g.value;
                 return (
                   <div key={g.value}>
                     <div className="flex flex-wrap items-center gap-2">
                       {genresInUse.includes(g.value) || genre === g.value ? (
-                        <Pick active={genre === g.value} onClick={() => set({ genre: g.value, sub: "" })}>{genreLabel(g.value, locale)}</Pick>
+                        <Pick active={genre === g.value} onClick={() => set({ genre: genre === g.value ? "" : g.value, sub: "" })}>{genreLabel(g.value, locale)}</Pick>
                       ) : (
                         <span className="text-sm font-medium">{genreLabel(g.value, locale)}</span>
                       )}
@@ -508,7 +513,7 @@ function FilterDialog({ language, genre, sub, status, time, sort, genresInUse, s
                     {isOpen && (
                       <div className="mt-2 flex flex-wrap gap-2 pl-4">
                         {visibleSubs.map((s) => (
-                          <Pick key={s.id} active={sub === s.id} onClick={() => set({ sub: s.id, genre: "" })}>#{subLabel(s.id)}</Pick>
+                          <Pick key={s.id} active={selectedSubs.includes(s.id)} onClick={() => toggleSub(s.id)}>#{subLabel(s.id)}</Pick>
                         ))}
                       </div>
                     )}
@@ -533,7 +538,7 @@ export function DiscoverPage() {
   const [params, setParams] = useSearchParams();
   const language = (params.get("language") || "") as StoryLanguage | "";
   const genre = params.get("genre") || "";
-  const sub = params.get("sub") || "";
+  const subs = params.getAll("sub");
   const status = params.get("status") || "";
   const time = params.get("time") || "";
   const sort = (params.get("sort") || "newest") as "newest" | "popular" | "most_viewed" | "featured";
@@ -549,17 +554,17 @@ export function DiscoverPage() {
   const filters = {
     language: (language || undefined) as StoryLanguage | undefined,
     genre: genre || undefined,
-    subcategory: sub || undefined,
+    subcategories: subs.length ? subs : undefined,
     status: (status || undefined) as "ongoing" | "complete" | undefined,
     time: (time || undefined) as "under15" | "15to45" | "over45" | undefined,
     q: q || undefined,
     tag: tag || undefined,
     sort,
   };
-  const activeFilterCount = [language, genre || sub, status, time].filter(Boolean).length;
+  const activeFilterCount = [language, genre || subs.length, status, time].filter(Boolean).length;
   // Phase 2 rework: any active filter hides the shelves, so the page
   // shows only the filtered results (sort alone is ordering, not a filter).
-  const hasActiveFilter = Boolean(language || genre || sub || status || time || tag);
+  const hasActiveFilter = Boolean(language || genre || subs.length || status || time || tag);
   const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useStoryPages(filters);
   const stories = data?.pages.flatMap((p) => p.stories) ?? [];
   const total = data?.pages[0]?.total ?? 0;
@@ -570,6 +575,19 @@ export function DiscoverPage() {
       if (v) next.set(k, v);
       else next.delete(k);
     }
+    setParams(next);
+  };
+
+  // Multi-tag toggle: tapping a selected tag removes just that one;
+  // tapping an unselected tag adds it (and clears the major).
+  const toggleSub = (id: string) => {
+    const next = new URLSearchParams(params);
+    const current = next.getAll("sub");
+    next.delete("sub");
+    const kept = current.filter((v) => v !== id);
+    if (kept.length === current.length) kept.push(id);
+    kept.forEach((v) => next.append("sub", v));
+    next.delete("genre");
     setParams(next);
   };
 
@@ -632,13 +650,14 @@ export function DiscoverPage() {
         <FilterDialog
           language={language}
           genre={genre}
-          sub={sub}
+          selectedSubs={subs}
           status={status}
           time={time}
           sort={sort}
           genresInUse={genresInUse}
           subsInUse={subsInUse}
           set={set}
+          toggleSub={toggleSub}
           onClose={() => setFilterOpen(false)}
         />
       )}

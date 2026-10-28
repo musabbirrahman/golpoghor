@@ -587,9 +587,9 @@ export class DemoProvider implements DataProvider {
       const wanted = normalizeGenre(f.genre);
       rows = rows.filter((s) => normalizeGenre(s.genre) === wanted);
     }
-    if (f.subcategory) {
-      const sub = f.subcategory.trim().toLowerCase();
-      rows = rows.filter((s) => (s.subcategories ?? []).includes(sub));
+    if (f.subcategories?.length) {
+      const ids = f.subcategories.map((s) => s.trim().toLowerCase()).filter(Boolean);
+      rows = rows.filter((s) => ids.some((id) => (s.subcategories ?? []).includes(id)));
     }
     if (f.status) rows = rows.filter((s) => s.status === f.status);
     if (f.time) {

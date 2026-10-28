@@ -42,7 +42,7 @@ import {
 } from "../data-provider";
 import { genreAliases, normalizeGenre, sortGenres } from "../genres";
 import { normalizeSubcategories } from "../subcategories";
-import { AppError, countWords, docToText, readingTimeWordBounds, slugify, thumbPath } from "../utils";
+import { AppError, countWords, docToText, readingMinutes, slugify, thumbPath } from "../utils";
 import {
   clearCachedUrls,
   dropCachedUrl,
@@ -402,20 +402,15 @@ export class SupabaseProvider implements DataProvider {
     if (f.authorId) q = q.eq("author_id", f.authorId);
     if (f.language) q = q.eq("language", f.language);
     if (f.genre) q = q.in("genre", genreAliases(normalizeGenre(f.genre)));
-    if (f.subcategory) q = q.contains("subcategories", [f.subcategory.trim().toLowerCase()]);
-    if (f.status) q = q.eq("status", f.status);
-    if (f.time) {
-      // One OR group across both languages (each with its own wpm band),
-      // ANDed with every other filter by PostgREST.
-      const clauses = (["bn", "en"] as const).map((lang) => {
-        const [min, max] = readingTimeWordBounds(f.time!, lang);
-        const parts = [`language.eq.${lang}`];
-        if (min !== null) parts.push(`word_count.gte.${Math.ceil(min)}`);
-        if (max !== null) parts.push(`word_count.lt.${Math.ceil(max)}`);
-        return `and(${parts.join(",")})`;
-      });
-      q = q.or(clauses.join(","));
+    if (f.subcategories?.length) {
+      // Multi-tag: a story matches if it carries ANY selected sub.
+      const ids = f.subcategories.map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (ids.length) q = q.overlaps("subcategories", ids);
     }
+    if (f.status) q = q.eq("status", f.status);
+    // NOTE: no DB-side time filter here — stories has no word_count
+    // column (live-proven 42703); counts arrive via story_counts below,
+    // so the band filter runs after attachCounts.
     if (f.tag) q = q.contains("tags", [f.tag]);
     if (f.q) {
       // Strip PostgREST .or() delimiters too: a comma, paren or quote in
@@ -458,12 +453,23 @@ export class SupabaseProvider implements DataProvider {
     } else {
       q = q.order("published_at", { ascending: false, nullsFirst: false });
     }
-    q = q.range(offset, offset + limit - 1);
+    // Time-filtered reads fetch every match and page client-side: the
+    // band needs attachCounts values, which only exist after the query.
+    // (PostgREST's 1000-row default caps this; the library is far below
+    // it today, same as the shelf base fetch.)
+    if (!f.time) q = q.range(offset, offset + limit - 1);
 
     const { data, error, count } = await q;
     if (error) throw toAppError(error);
     const stories = (data ?? []).map(mapStory);
     await this.attachCounts(stories, { publishedOnly: !f.includeDrafts });
+    if (f.time) {
+      const kept = stories.filter((s) => {
+        const m = readingMinutes(s.word_count ?? 0, s.language);
+        return f.time === "under15" ? m < 15 : f.time === "15to45" ? m >= 15 && m <= 45 : m > 45;
+      });
+      return { stories: kept.slice(offset, offset + limit), total: kept.length };
+    }
     return { stories, total: count ?? stories.length };
   }
 
