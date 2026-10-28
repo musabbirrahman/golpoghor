@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router-dom";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
@@ -382,119 +383,148 @@ function HorrorShelf({ stories }: { stories: Story[] }) {
   );
 }
 
-/* Phase 2 filter panel: one button, many options. Each dimension is a
-   single pick (All clears it); genre picks either a major or one sub —
-   a sub pick clears the major and vice versa, so a pick never dead-ends.
-   Empty majors/subs stay hidden (reader panel only); a picked value
-   always stays visible so it can be cleared. The panel is in-flow (no
-   popover positioning) so it behaves on every width. */
+/* Phase 2 filter portal: one button, many options, floating above the
+   page (never an in-flow section pushing content down). Each dimension
+   is a single pick (All clears it); genre picks either a major or one
+   sub — a sub pick clears the major and vice versa, so a pick never
+   dead-ends. Empty majors/subs stay hidden (reader panel only); a picked
+   value always stays visible so it can be cleared. Sort lives here too,
+   not as a separate dropdown. Rendered through a body portal so no
+   ancestor transform or clipping can trap it. */
 function Pick({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-sm ${active ? "border-river bg-river text-paper" : "border-ink/20 bg-white hover:border-river"}`}
+      className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${active ? "border-river bg-river text-paper" : "border-ink/20 bg-white hover:border-river"}`}
     >
       {children}
     </button>
   );
 }
 
-function FilterPanel({ language, genre, sub, status, time, genresInUse, subsInUse, set, onDone }: {
+function FilterDialog({ language, genre, sub, status, time, sort, genresInUse, subsInUse, set, onClose }: {
   language: string;
   genre: string;
   sub: string;
   status: string;
   time: string;
+  sort: string;
   genresInUse: string[];
   subsInUse: string[];
   set: (patch: Record<string, string>) => void;
-  onDone: () => void;
+  onClose: () => void;
 }) {
   const { t, locale } = useApp();
   const [expanded, setExpanded] = useState<string | null>(() => {
     const found = SUBCATEGORIES.find((s) => s.id === sub);
     return found ? found.group : null;
   });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
   const clearAll = () => set({ language: "", genre: "", sub: "", status: "", time: "" });
-  return (
-    <div className="mt-4 rounded-2xl border border-ink/10 bg-white p-4 shadow-card sm:p-5">
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div>
-          <p className="text-sm font-medium">{t("discover", "language")}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Pick active={!language} onClick={() => set({ language: "" })}>{t("discover", "allLanguages")}</Pick>
-            <Pick active={language === "bn"} onClick={() => set({ language: "bn" })}>{t("discover", "bangla")}</Pick>
-            <Pick active={language === "en"} onClick={() => set({ language: "en" })}>{t("discover", "english")}</Pick>
-          </div>
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+      <button type="button" aria-label={t("discover", "close")} onClick={onClose} className="absolute inset-0 bg-black/50" />
+      <div role="dialog" aria-modal="true" aria-label={t("discover", "filter")} className="relative max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-paper p-5 shadow-lift sm:p-6">
+        <div className="flex items-center justify-between gap-3 border-b border-ink/10 pb-4">
+          <h3 className="font-serif text-xl font-bold">{t("discover", "filter")}</h3>
+          <button type="button" onClick={onClose} aria-label={t("discover", "close")} className="text-2xl leading-none text-ink-soft hover:text-ink">×</button>
         </div>
-        <div>
-          <p className="text-sm font-medium">{t("discover", "statusLabel")}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Pick active={!status} onClick={() => set({ status: "" })}>{t("discover", "allOption")}</Pick>
-            <Pick active={status === "ongoing"} onClick={() => set({ status: "ongoing" })}>{t("story", "ongoing")}</Pick>
-            <Pick active={status === "complete"} onClick={() => set({ status: "complete" })}>{t("story", "complete")}</Pick>
+        <div className="mt-5 grid gap-x-6 gap-y-6 sm:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{t("discover", "language")}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Pick active={!language} onClick={() => set({ language: "" })}>{t("discover", "allLanguages")}</Pick>
+              <Pick active={language === "bn"} onClick={() => set({ language: "bn" })}>{t("discover", "bangla")}</Pick>
+              <Pick active={language === "en"} onClick={() => set({ language: "en" })}>{t("discover", "english")}</Pick>
+            </div>
           </div>
-        </div>
-        <div>
-          <p className="text-sm font-medium">{t("discover", "readingTime")}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Pick active={!time} onClick={() => set({ time: "" })}>{t("discover", "allOption")}</Pick>
-            <Pick active={time === "under15"} onClick={() => set({ time: "under15" })}>{t("discover", "timeUnder15")}</Pick>
-            <Pick active={time === "15to45"} onClick={() => set({ time: "15to45" })}>{t("discover", "time15to45")}</Pick>
-            <Pick active={time === "over45"} onClick={() => set({ time: "over45" })}>{t("discover", "timeOver45")}</Pick>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{t("discover", "statusLabel")}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Pick active={!status} onClick={() => set({ status: "" })}>{t("discover", "allOption")}</Pick>
+              <Pick active={status === "ongoing"} onClick={() => set({ status: "ongoing" })}>{t("story", "ongoing")}</Pick>
+              <Pick active={status === "complete"} onClick={() => set({ status: "complete" })}>{t("story", "complete")}</Pick>
+            </div>
           </div>
-        </div>
-        <div className="sm:col-span-2">
-          <p className="text-sm font-medium">{t("discover", "genre")}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Pick active={!genre && !sub} onClick={() => set({ genre: "", sub: "" })}>{t("discover", "allGenres")}</Pick>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{t("discover", "readingTime")}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Pick active={!time} onClick={() => set({ time: "" })}>{t("discover", "allOption")}</Pick>
+              <Pick active={time === "under15"} onClick={() => set({ time: "under15" })}>{t("discover", "timeUnder15")}</Pick>
+              <Pick active={time === "15to45"} onClick={() => set({ time: "15to45" })}>{t("discover", "time15to45")}</Pick>
+              <Pick active={time === "over45"} onClick={() => set({ time: "over45" })}>{t("discover", "timeOver45")}</Pick>
+            </div>
           </div>
-          <div className="mt-3 flex flex-col gap-3">
-            {GENRES.map((g) => {
-              const subs = SUBCATEGORIES.filter((s) => s.group === g.value);
-              const groupSubsInUse = subs.filter((s) => subsInUse.includes(s.id));
-              const groupVisible = genresInUse.includes(g.value) || groupSubsInUse.length > 0 || genre === g.value || subs.some((s) => s.id === sub);
-              if (!groupVisible) return null;
-              const isOpen = expanded === g.value;
-              return (
-                <div key={g.value}>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {genresInUse.includes(g.value) || genre === g.value ? (
-                      <Pick active={genre === g.value} onClick={() => set({ genre: g.value, sub: "" })}>{genreLabel(g.value, locale)}</Pick>
-                    ) : (
-                      <span className="text-sm font-medium">{genreLabel(g.value, locale)}</span>
-                    )}
-                    {subs.length > 0 && (
-                      <button
-                        type="button"
-                        aria-expanded={isOpen}
-                        onClick={() => setExpanded(isOpen ? null : g.value)}
-                        className="text-sm text-ink-soft hover:text-river"
-                      >
-                        {isOpen ? "▴" : "▾"}
-                      </button>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{t("discover", "sort")}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Pick active={sort === "newest"} onClick={() => set({ sort: "newest" })}>{t("discover", "newest")}</Pick>
+              <Pick active={sort === "featured"} onClick={() => set({ sort: "featured" })}>{t("discover", "featured")}</Pick>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-ink/10 bg-white/60 p-4 sm:col-span-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{t("discover", "genre")}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Pick active={!genre && !sub} onClick={() => set({ genre: "", sub: "" })}>{t("discover", "allGenres")}</Pick>
+            </div>
+            <div className="mt-3 flex flex-col gap-3">
+              {GENRES.map((g) => {
+                const subs = SUBCATEGORIES.filter((s) => s.group === g.value);
+                const groupSubsInUse = subs.filter((s) => subsInUse.includes(s.id));
+                const groupVisible = genresInUse.includes(g.value) || groupSubsInUse.length > 0 || genre === g.value || subs.some((s) => s.id === sub);
+                if (!groupVisible) return null;
+                const visibleSubs = subs.filter((s) => subsInUse.includes(s.id) || s.id === sub);
+                const isOpen = expanded === g.value;
+                return (
+                  <div key={g.value}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {genresInUse.includes(g.value) || genre === g.value ? (
+                        <Pick active={genre === g.value} onClick={() => set({ genre: g.value, sub: "" })}>{genreLabel(g.value, locale)}</Pick>
+                      ) : (
+                        <span className="text-sm font-medium">{genreLabel(g.value, locale)}</span>
+                      )}
+                      {visibleSubs.length > 0 && (
+                        <button
+                          type="button"
+                          aria-expanded={isOpen}
+                          onClick={() => setExpanded(isOpen ? null : g.value)}
+                          className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/20 text-xs text-ink-soft hover:border-river hover:text-river"
+                        >
+                          {isOpen ? "▴" : "▾"}
+                        </button>
+                      )}
+                    </div>
+                    {isOpen && (
+                      <div className="mt-2 flex flex-wrap gap-2 pl-4">
+                        {visibleSubs.map((s) => (
+                          <Pick key={s.id} active={sub === s.id} onClick={() => set({ sub: s.id, genre: "" })}>#{subLabel(s.id)}</Pick>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  {isOpen && (
-                    <div className="mt-2 flex flex-wrap gap-2 pl-1">
-                      {subs.filter((s) => subsInUse.includes(s.id) || s.id === sub).map((s) => (
-                        <Pick key={s.id} active={sub === s.id} onClick={() => set({ sub: s.id, genre: "" })}>#{subLabel(s.id)}</Pick>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ink/10 pt-5">
+          <Button variant="secondary" onClick={clearAll}>{t("discover", "clearFilters")}</Button>
+          <Button onClick={onClose}>{t("discover", "filterDone")}</Button>
+        </div>
       </div>
-      <div className="mt-6 flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={clearAll}>{t("discover", "clearFilters")}</Button>
-        <Button onClick={onDone}>{t("discover", "filterDone")}</Button>
-      </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -527,6 +557,9 @@ export function DiscoverPage() {
     sort,
   };
   const activeFilterCount = [language, genre || sub, status, time].filter(Boolean).length;
+  // Phase 2 rework: any active filter hides the shelves, so the page
+  // shows only the filtered results (sort alone is ordering, not a filter).
+  const hasActiveFilter = Boolean(language || genre || sub || status || time || tag);
   const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useStoryPages(filters);
   const stories = data?.pages.flatMap((p) => p.stories) ?? [];
   const total = data?.pages[0]?.total ?? 0;
@@ -539,8 +572,6 @@ export function DiscoverPage() {
     }
     setParams(next);
   };
-
-  const selectCls = "rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none";
 
   // Discover shelves v1: rule shelves from fields that already exist.
   // One base fetch (newest first, limit 50) feeds every derived shelf
@@ -576,11 +607,48 @@ export function DiscoverPage() {
         </div>
       </section>
 
+      {/* Filter row stays at the top, above the shelves, so nobody has
+          to scroll down to find it. */}
+      <div className="mt-6 flex flex-wrap items-center gap-2 sm:gap-3">
+        <button
+          type="button"
+          aria-expanded={filterOpen}
+          onClick={() => setFilterOpen((v) => !v)}
+          className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm font-medium hover:border-river"
+        >
+          {t("discover", "filter")}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+        </button>
+        {activeFilterCount > 0 && (
+          <button
+            type="button"
+            onClick={() => set({ language: "", genre: "", sub: "", status: "", time: "" })}
+            className="text-sm font-medium text-river hover:underline"
+          >
+            {t("discover", "clearFilters")}
+          </button>
+        )}
+      </div>
+      {filterOpen && (
+        <FilterDialog
+          language={language}
+          genre={genre}
+          sub={sub}
+          status={status}
+          time={time}
+          sort={sort}
+          genresInUse={genresInUse}
+          subsInUse={subsInUse}
+          set={set}
+          onClose={() => setFilterOpen(false)}
+        />
+      )}
+
       {/* Shelves — View all exists only where the list has a matching
           filter. Phase 2 added status + reading-time filters, so
           Complete, Ongoing, and Quick gained View all; Classics still
-          has none (no classics filter exists). */}
-      {shelvesLoading ? <div className="mt-10"><Spinner /></div> : (
+          has none (no classics filter exists). Shelves hide entirely
+          while any filter is active (Phase 2 rework). */}
+      {!hasActiveFilter && (shelvesLoading ? <div className="mt-10"><Spinner /></div> : (
         <>
           {newest.length > 0 && (
             <section className="mt-12 border-t border-ink/10 pt-10">
@@ -620,48 +688,12 @@ export function DiscoverPage() {
             </section>
           )}
         </>
-      )}
+      ))}
 
-      {/* All stories list — Phase 2: one Filter button + panel replaces
-          the language/genre dropdowns; sort stays its own control. */}
+      {/* All stories list — controls live in the top filter row now;
+          the portal holds every option including sort. */}
       <section id="all-stories" className="mt-12 border-t border-ink/10 pt-10 scroll-mt-24">
         <h2 className="font-serif text-2xl font-bold">{t("story", "allStories")}</h2>
-        <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-3">
-        <button
-          type="button"
-          aria-expanded={filterOpen}
-          onClick={() => setFilterOpen((v) => !v)}
-          className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm font-medium hover:border-river"
-        >
-          {t("discover", "filter")}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-        </button>
-        <select aria-label={t("discover", "sort")} className={selectCls} value={sort} onChange={(e) => set({ sort: e.target.value })}>
-          <option value="newest">{t("discover", "newest")}</option>
-          <option value="featured">{t("discover", "featured")}</option>
-        </select>
-        {activeFilterCount > 0 && (
-          <button
-            type="button"
-            onClick={() => set({ language: "", genre: "", sub: "", status: "", time: "" })}
-            className="text-sm font-medium text-river hover:underline"
-          >
-            {t("discover", "clearFilters")}
-          </button>
-        )}
-      </div>
-      {filterOpen && (
-        <FilterPanel
-          language={language}
-          genre={genre}
-          sub={sub}
-          status={status}
-          time={time}
-          genresInUse={genresInUse}
-          subsInUse={subsInUse}
-          set={set}
-          onDone={() => setFilterOpen(false)}
-        />
-      )}
 
       {tag && (
         <div className="mt-3">

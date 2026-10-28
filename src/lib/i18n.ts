@@ -374,6 +374,7 @@ const dict = {
     tagLabel: { bn: "ট্যাগ", en: "Tag" },
     clearTag: { bn: "ট্যাগ সরান", en: "Clear tag" },
     filter: { bn: "ফিল্টার", en: "Filter" },
+    close: { bn: "বন্ধ করুন", en: "Close" },
     clearFilters: { bn: "সব মুছুন", en: "Clear all" },
     filterDone: { bn: "সম্পন্ন", en: "Done" },
     allOption: { bn: "সব", en: "All" },
