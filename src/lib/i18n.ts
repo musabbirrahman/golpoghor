@@ -372,6 +372,40 @@ const dict = {
     tagLabel: { bn: "ট্যাগ", en: "Tag" },
     clearTag: { bn: "ট্যাগ সরান", en: "Clear tag" },
     loadMore: { bn: "আরও দেখুন", en: "Load more" },
+    vaultTagline: {
+      bn: "পুরো লাইব্রেরি, সাজানো — গল্পনীড়ের সব গল্প, যার যার তাকে।",
+      en: "The whole library, organized — every story on GolpoNeer, shelved where it belongs.",
+    },
+    shelfNew: { bn: "নতুন গল্প", en: "New arrivals" },
+    shelfComplete: { bn: "এক বসায় শেষ", en: "Complete in one go" },
+    shelfQuick: { bn: "দ্রুত পড়া", en: "Quick reads" },
+    tagFeatured: {
+      bn: "ভল্টের সামনের সারির জন্য বাছাই করা।",
+      en: "Handpicked for the front of the vault.",
+    },
+    tagNew: { bn: "সদ্য আসা নতুন গল্প।", en: "The freshest stories, just arrived." },
+    tagComplete: {
+      bn: "শেষ হওয়া গল্প — অপেক্ষা নেই, শেষ পর্যন্ত পড়ুন।",
+      en: "Finished stories — nothing to wait for, read to the end.",
+    },
+    tagOngoing: {
+      bn: "এখনো লেখা চলছে — নতুন অধ্যায় এলে পড়তে থাকুন।",
+      en: "Still being written — follow along as new chapters arrive.",
+    },
+    tagQuick: {
+      bn: "অল্প সময়ের পড়া — ১৫ মিনিটের কম।",
+      en: "Short reads for a short break — under 15 minutes.",
+    },
+    tagClassics: {
+      bn: "কালজয়ী বাংলা ক্লাসিক, যাচাই করা পাবলিক-ডোমেইন লেখা।",
+      en: "Timeless Bangla classics, verified public-domain texts.",
+    },
+    tagHorror: {
+      bn: "মধ্যরাতের পরে পড়া উচিত নয় এমন গল্প।",
+      en: "Stories that should not be read after midnight.",
+    },
+    newChapters: { bn: "নতুন অধ্যায়", en: "New chapters" },
+    newLabel: { bn: "নতুন", en: "new" },
   },
   reports: {
     title: { bn: "রিপোর্ট করুন", en: "Report content" },

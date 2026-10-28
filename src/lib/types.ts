@@ -78,6 +78,8 @@ export interface Story {
   language: StoryLanguage;
   genre: string;
   tags: string[];
+  /** Discover Phase 1 vocabulary (multi-pick, any group). Empty/absent until taxonomy lands. */
+  subcategories?: string[];
   status: StoryStatus;
   content_notice: string;
   cover_path: string | null;

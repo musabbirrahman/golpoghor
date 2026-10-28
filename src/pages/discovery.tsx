@@ -1,12 +1,14 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
-import { genreLabel } from "../lib/genres";
+import { genreLabel, normalizeGenre } from "../lib/genres";
+import { readingMinutes, timeAgo } from "../lib/utils";
 import { Layout } from "../components/layout";
 import { Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
-import { StoryCard, StoryRow } from "../components/story-card";
+import { Cover, StoryCard, StoryRow, storyPath } from "../components/story-card";
 import { CARD_TEMPLATES } from "../lib/keepsake-card";
-import type { StoryLanguage } from "../lib/types";
+import type { Story, StoryLanguage } from "../lib/types";
 
 const PAGE_SIZE = 24;
 
@@ -150,6 +152,235 @@ export function HomePage() {
 
 const GENRE_FALLBACK = ["general"];
 
+/* Discover shelves v1: motifs are small inline SVGs (no new assets).
+   Each shelf's identity is its accent color + motif + tagline; the
+   books themselves are never recolored. */
+function StarIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26" />
+    </svg>
+  );
+}
+function SparkIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" />
+    </svg>
+  );
+}
+function CheckSealIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="8.5 12.5 11 15 15.5 9.5" />
+    </svg>
+  );
+}
+function PenIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z" />
+    </svg>
+  );
+}
+function BoltIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10" />
+    </svg>
+  );
+}
+function BookIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </svg>
+  );
+}
+function ShelfHead({ icon, name, tagline, accent, action }: { icon: React.ReactNode; name: string; tagline: string; accent: string; action?: React.ReactNode }) {
+  return (
+    <div className="mb-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="shrink-0" style={{ color: accent }}>{icon}</span>
+          <h2 className="font-serif text-2xl font-bold">{name}</h2>
+        </div>
+        {action}
+      </div>
+      <p className="mt-1 text-sm text-ink-soft">{tagline}</p>
+      <div className="mt-2 h-0.5 w-10" style={{ backgroundColor: accent }} aria-hidden />
+    </div>
+  );
+}
+
+function ShelfViewAll({ to, label, accent }: { to: string; label: string; accent: string }) {
+  return (
+    <Link
+      to={to}
+      onClick={() => document.getElementById("all-stories")?.scrollIntoView({ behavior: "smooth" })}
+      className="shrink-0 text-sm font-medium hover:underline"
+      style={{ color: accent }}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function ShelfRow({ stories }: { stories: Story[] }) {
+  return (
+    <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
+      {stories.map((s) => (
+        <div key={s.id} className="flex w-36 shrink-0 sm:w-auto">
+          <StoryCard story={s} compact />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* Horror shelf v2: the full-environment template, made to actually read
+   as horror — near-black panel, stronger candlelight + crimson glow,
+   big cobweb, bat silhouettes, mist at the base, crimson glow on the
+   name, and DARK cards (white cards on the dark panel broke the mood).
+   Rows sit in a 2-column grid on desktop so no card stretches the full
+   panel width; phones get dark compact cards in a scroll row. */
+function HorrorRow({ story, onHover, active }: { story: Story; onHover?: () => void; active?: boolean }) {
+  const { t } = useApp();
+  return (
+    <Link
+      to={storyPath(story)}
+      onMouseEnter={onHover}
+      onFocus={onHover}
+      className={`group flex h-full min-w-0 gap-3 p-2.5 sm:p-3${active ? " lg:rounded-xl lg:ring-1 lg:ring-inset lg:ring-gold/70" : ""}`}
+    >
+      <Cover story={story} className="h-24 w-16 shrink-0 rounded-lg sm:h-28 sm:w-20" thumb />
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+        {story.status === "ongoing" && (
+          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "#F0A35A", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>
+            {t("discover", "newChapters")}
+          </p>
+        )}
+        <h3 className="font-serif font-semibold clamp-2 text-base sm:text-lg text-white" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>
+          {story.title}
+        </h3>
+        <p className="truncate text-sm" style={{ color: "#EDE6DA", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>
+          {t("story", "by")} {story.original_author ?? story.author?.display_name}
+        </p>
+        <p className="hidden sm:block lg:hidden"><span className="text-sm clamp-2" style={{ color: "#EDE6DA", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>{story.summary}</span></p>
+      </div>
+    </Link>
+  );
+}
+
+// Panel art registry: major tag + sub-category worlds. The tag ROW is data-driven:
+// the major tag always shows; a sub tag shows only when some story carries it.
+const HORROR_ARTS: Record<string, string> = {
+  all: "/horror-panel-bg.jpg",
+  psychological: "/horror-panel-bg-psychological.jpg",
+  gothic: "/horror-panel-bg-gothic.jpg",
+};
+const HORROR_SUB_ORDER = ["psychological", "gothic"];
+
+function HorrorShelf({ stories }: { stories: Story[] }) {
+  const { t, locale } = useApp();
+  const [activeTag, setActiveTag] = useState("all");
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => { trackRef.current?.scrollTo({ left: 0 }); }, [activeTag]);
+  const subIds = [...new Set(stories.flatMap((st) => (st.subcategories ?? []).map((s) => s.toLowerCase())))];
+  const tagIds = ["all", ...HORROR_SUB_ORDER.filter((id) => subIds.includes(id))];
+  const tagLabel = (id: string) => id === "all" ? `#${genreLabel("হরর", locale)}` : `#${id.charAt(0).toUpperCase() + id.slice(1)}`;
+  const tagArt = (id: string) => HORROR_ARTS[id] ?? HORROR_ARTS.all;
+  const handleStripScroll = () => {
+    const el = trackRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth + 8) return;
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 8) {
+      const idx = tagIds.indexOf(activeTag);
+      setActiveTag(tagIds[(idx + 1) % tagIds.length]);
+    }
+  };
+  const visible = activeTag === "all" ? stories : stories.filter((st) => (st.subcategories ?? []).map((s) => s.toLowerCase()).includes(activeTag));
+  const pages: Story[][] = [];
+  for (let i = 0; i < visible.length; i += 3) pages.push(visible.slice(i, i + 3));
+  const detail = visible.find((st) => st.id === hoverId) ?? visible[0];
+  const detailMinutes = detail ? readingMinutes(detail.word_count ?? 0, detail.language) : 0;
+  const newCount = visible.filter((st) => {
+    const d = st.published_at ? new Date(st.published_at).getTime() : NaN;
+    return !Number.isNaN(d) && Date.now() - d < 30 * 24 * 3600 * 1000;
+  }).length;
+  return (
+    <section className="mt-12 border-t border-ink/10 pt-10">
+      <div className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-[2.5rem] border border-white/20 shadow-lift lg:left-1/2 lg:w-[calc(100vw-2rem)] lg:max-w-none lg:-translate-x-1/2" style={{ backgroundColor: "#100D0B" }}>
+        {tagIds.map((id) => (
+          <div key={id} className="pointer-events-none absolute inset-0 transition-opacity duration-500" aria-hidden style={{ backgroundImage: "url(" + tagArt(id) + ")", backgroundSize: "cover", backgroundPosition: "center 20%", opacity: activeTag === id ? 1 : 0 }} />
+        ))}
+        <div className="pointer-events-none absolute inset-0" aria-hidden style={{ background: "linear-gradient(to bottom, rgba(16,13,11,0.60) 0%, rgba(16,13,11,0.78) 50%, rgba(16,13,11,0.92) 100%)" }} />
+        <div className="relative mx-auto w-full px-4 py-4 sm:px-6 sm:py-6 lg:max-w-6xl">
+          <h2 className="sr-only">{genreLabel("হরর", locale)}</h2>
+          <div className="lg:flex lg:items-start lg:gap-8">
+            {detail && (
+              <div className="hidden lg:sticky lg:top-24 lg:block lg:w-[300px] lg:shrink-0 lg:self-start xl:w-[340px]">
+                <div className="rounded-2xl border border-white/10 bg-black/35 p-5 backdrop-blur-sm">
+                  <div className="flex gap-4">
+                    <Cover story={detail} className="h-44 w-32 shrink-0 rounded-lg" thumb />
+                    <p className="min-w-0 flex-1 text-sm leading-relaxed" style={{ color: "#EDE6DA", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>{detail.summary}</p>
+                  </div>
+                  <h3 className="mt-4 font-serif text-xl font-bold leading-snug text-white" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>{detail.title}</h3>
+                  <p className="mt-1 truncate text-sm" style={{ color: "#EDE6DA", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>
+                    {t("story", "by")} {detail.original_author ?? detail.author?.display_name}
+                  </p>
+                  <p className="mt-3 text-xs" style={{ color: "#D8CFC4", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>
+                    {detail.chapter_count ?? 0}{" "}
+                    {(detail.chapter_count ?? 0) === 1 ? t("story", "chapterSingular") : t("story", "chapters")}
+                    {detailMinutes > 0 ? ` · ~${detailMinutes} ${t("story", "minRead")}` : ""}
+                    {` · ${detail.status === "ongoing" ? t("story", "ongoing") : t("story", "complete")}`}
+                    {` · ${detail.language === "bn" ? t("discover", "bangla") : t("discover", "english")}`}
+                    {detail.published_at ? ` · ${timeAgo(detail.published_at, locale)}` : ""}
+                  </p>
+                  <ButtonLink to={storyPath(detail)} variant="gold" className="mt-4 w-full">
+                    {t("story", "startReading")}
+                  </ButtonLink>
+                </div>
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="flex flex-nowrap gap-x-3 overflow-x-auto text-lg font-bold sm:text-xl">
+                {tagIds.map((id) => (
+                  <button key={id} type="button" className={`shrink-0${activeTag === id ? " underline underline-offset-4 decoration-2" : ""}`} onClick={() => setActiveTag(id)} aria-pressed={activeTag === id} style={{ color: activeTag === id ? "#F2EDE4" : "#9A8F86" }}>{tagLabel(id)}</button>
+                ))}
+              </p>
+              {newCount > 0 && (
+                <p className="mt-2 text-sm font-bold" style={{ color: "#F0A35A" }}>
+                  +{newCount} {t("discover", "newLabel")}
+                </p>
+              )}
+              {visible.length === 0 ? (
+                <p className="mt-4 text-sm" style={{ color: "#D8CFC4" }}>{t("discover", "noResults")}</p>
+              ) : (
+                <>
+                  <div ref={trackRef} onScroll={handleStripScroll} className="mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 lg:hidden">
+                    {pages.map((page, pi) => (
+                      <div key={pi} className="grid w-full shrink-0 snap-start grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
+                        {page.map((st) => <HorrorRow key={st.id} story={st} onHover={() => setHoverId(st.id)} active={detail?.id === st.id} />)}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 hidden gap-x-6 gap-y-4 lg:grid lg:grid-cols-2">
+                    {visible.map((st) => <HorrorRow key={st.id} story={st} onHover={() => setHoverId(st.id)} active={detail?.id === st.id} />)}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function DiscoverPage() {
   const { t, dp, locale } = useApp();
   const [params, setParams] = useSearchParams();
@@ -184,11 +415,91 @@ export function DiscoverPage() {
 
   const selectCls = "rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none";
 
+  // Discover shelves v1: rule shelves from fields that already exist.
+  // One base fetch (newest first, limit 50) feeds every derived shelf
+  // client-side, so no provider or migration change is needed. Every
+  // shelf hides when empty — no shelf ever shows an empty box.
+  const featuredQuery = useQuery({ queryKey: ["stories", { featured: true, limit: 8 }], queryFn: () => dp.listFeaturedStories(8) });
+  const shelfBaseQuery = useQuery({ queryKey: ["stories", { shelfBase: true, limit: 50 }], queryFn: () => dp.listStories({ limit: 50 }) });
+  const shelfBase = shelfBaseQuery.data?.stories ?? [];
+  const featured = featuredQuery.data ?? [];
+  const newest = shelfBase.slice(0, 8);
+  const complete = shelfBase.filter((s) => s.status === "complete").slice(0, 8);
+  const ongoing = shelfBase.filter((s) => s.status === "ongoing").slice(0, 8);
+  const quick = shelfBase.filter((s) => {
+    const m = readingMinutes(s.word_count ?? 0, s.language);
+    return m > 0 && m <= 15;
+  }).slice(0, 8);
+  const classics = shelfBase.filter((s) => s.language === "bn" && s.pd_verified).slice(0, 8);
+  const horror = shelfBase.filter((s) => normalizeGenre(s.genre) === "হরর").slice(0, 8);
+  const shelvesLoading = featuredQuery.isLoading || shelfBaseQuery.isLoading;
+
   return (
     <Layout>
-      <h1 className="mt-6 font-serif text-3xl font-bold">{t("discover", "title")}</h1>
+      {/* Vault entrance */}
+      <section className="relative mt-6 overflow-hidden rounded-2xl bg-ink px-6 py-8 text-center text-paper sm:py-10">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-20"
+          aria-hidden
+          style={{ background: "radial-gradient(ellipse at 30% 20%, #C28A42 0%, transparent 55%), radial-gradient(ellipse at 75% 80%, #285C4B 0%, transparent 50%)" }}
+        />
+        <div className="relative">
+          <h1 className="font-serif text-3xl font-bold sm:text-4xl">{t("discover", "title")}</h1>
+          <p className="mx-auto mt-3 max-w-xl text-paper/80">{t("discover", "vaultTagline")}</p>
+        </div>
+      </section>
 
-      <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
+      {/* Shelves — View all exists only where the list has a matching
+          filter (Featured, New, Horror); the other shelves gain their
+          View all links when the filter button phase adds list
+          filters for status, reading time, and classics. */}
+      {shelvesLoading ? <div className="mt-10"><Spinner /></div> : (
+        <>
+          {newest.length > 0 && (
+            <section className="mt-12 border-t border-ink/10 pt-10">
+              <ShelfHead icon={<SparkIcon />} name={t("discover", "shelfNew")} tagline={t("discover", "tagNew")} accent="#285C4B" action={<ShelfViewAll to="/discover" label={t("home", "viewAll")} accent="#285C4B" />} />
+              <ShelfRow stories={newest} />
+            </section>
+          )}
+          {featured.length > 0 && (
+            <section className="mt-12 border-t border-ink/10 pt-10">
+              <ShelfHead icon={<StarIcon />} name={t("discover", "featured")} tagline={t("discover", "tagFeatured")} accent="#C28A42" action={<ShelfViewAll to="/discover?sort=featured" label={t("home", "viewAll")} accent="#C28A42" />} />
+              <ShelfRow stories={featured} />
+            </section>
+          )}
+          {complete.length > 0 && (
+            <section className="mt-12 border-t border-ink/10 pt-10">
+              <ShelfHead icon={<CheckSealIcon />} name={t("discover", "shelfComplete")} tagline={t("discover", "tagComplete")} accent="#A85745" />
+              <ShelfRow stories={complete} />
+            </section>
+          )}
+          {ongoing.length > 0 && (
+            <section className="mt-12 border-t border-ink/10 pt-10">
+              <ShelfHead icon={<PenIcon />} name={t("story", "ongoing")} tagline={t("discover", "tagOngoing")} accent="#3A6EA5" />
+              <ShelfRow stories={ongoing} />
+            </section>
+          )}
+          {quick.length > 0 && (
+            <section className="mt-12 border-t border-ink/10 pt-10">
+              <ShelfHead icon={<BoltIcon />} name={t("discover", "shelfQuick")} tagline={t("discover", "tagQuick")} accent="#6D5BD0" />
+              <ShelfRow stories={quick} />
+            </section>
+          )}
+          {classics.length > 0 && (
+            <section className="mt-12 border-t border-ink/10 pt-10">
+              <ShelfHead icon={<BookIcon />} name={t("footer", "classicsBn")} tagline={t("discover", "tagClassics")} accent="#8C6A3C" />
+              <ShelfRow stories={classics} />
+            </section>
+          )}
+          {horror.length > 0 && <HorrorShelf stories={horror} />}
+        </>
+      )}
+
+      {/* All stories list — filters unchanged in v1; the single filter
+          button arrives with the taxonomy phase. */}
+      <section id="all-stories" className="mt-12 border-t border-ink/10 pt-10 scroll-mt-24">
+        <h2 className="font-serif text-2xl font-bold">{t("story", "allStories")}</h2>
+        <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
         <select aria-label={t("discover", "language")} className={selectCls} value={language} onChange={(e) => set({ language: e.target.value })}>
           <option value="">{t("discover", "allLanguages")}</option>
           <option value="bn">{t("discover", "bangla")}</option>
@@ -236,6 +547,7 @@ export function DiscoverPage() {
           <EmptyState title={t("discover", "noResults")} />
         )}
       </div>
+      </section>
     </Layout>
   );
 }
