@@ -14,23 +14,38 @@ import type { Chapter, Story, TiptapDoc } from "../lib/types";
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
+  // Re-render on every editor transaction (keystroke, selection move, mark
+  // toggle) so active states and undo/redo availability are never stale:
+  // the parent only re-renders on word-count/save changes, which can lag
+  // several keystrokes behind the cursor.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!editor) return;
+    const refresh = () => setTick((t) => t + 1);
+    editor.on("transaction", refresh);
+    return () => {
+      editor.off("transaction", refresh);
+    };
+  }, [editor]);
   if (!editor) return null;
-  const btn = (active: boolean) =>
-    `rounded-md px-2.5 py-1.5 text-sm font-medium ${active ? "bg-river text-white" : "text-ink-soft hover:bg-sage"}`;
-  const items: { label: string; action: () => void; active: boolean; title: string }[] = [
-    { label: "B", action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive("bold"), title: "Bold" },
-    { label: "I", action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive("italic"), title: "Italic" },
-    { label: "H2", action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: editor.isActive("heading", { level: 2 }), title: "Heading" },
-    { label: "❝", action: () => editor.chain().focus().toggleBlockquote().run(), active: editor.isActive("blockquote"), title: "Quote" },
-    { label: "•", action: () => editor.chain().focus().toggleBulletList().run(), active: editor.isActive("bulletList"), title: "Bullet list" },
-    { label: "1.", action: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive("orderedList"), title: "Numbered list" },
-    { label: "↩", action: () => editor.chain().focus().undo().run(), active: false, title: "Undo" },
-    { label: "↪", action: () => editor.chain().focus().redo().run(), active: false, title: "Redo" },
+  const btn = (active: boolean, disabled: boolean) =>
+    `flex h-11 min-w-11 items-center justify-center rounded-lg px-3 text-base font-semibold ${
+      active ? "bg-river font-bold text-white shadow-sm" : "text-ink hover:bg-sage"
+    } ${disabled ? "cursor-not-allowed opacity-40 hover:bg-transparent" : ""}`;
+  const items: { label: string; action: () => void; active: boolean; disabled: boolean; momentary: boolean; title: string }[] = [
+    { label: "B", action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive("bold"), disabled: false, momentary: false, title: "Bold" },
+    { label: "I", action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive("italic"), disabled: false, momentary: false, title: "Italic" },
+    { label: "H2", action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: editor.isActive("heading", { level: 2 }), disabled: false, momentary: false, title: "Heading" },
+    { label: "❝", action: () => editor.chain().focus().toggleBlockquote().run(), active: editor.isActive("blockquote"), disabled: false, momentary: false, title: "Quote" },
+    { label: "•", action: () => editor.chain().focus().toggleBulletList().run(), active: editor.isActive("bulletList"), disabled: false, momentary: false, title: "Bullet list" },
+    { label: "1.", action: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive("orderedList"), disabled: false, momentary: false, title: "Numbered list" },
+    { label: "↩", action: () => editor.chain().focus().undo().run(), active: false, disabled: !editor.can().undo(), momentary: true, title: "Undo" },
+    { label: "↪", action: () => editor.chain().focus().redo().run(), active: false, disabled: !editor.can().redo(), momentary: true, title: "Redo" },
   ];
   return (
-    <div className="flex flex-wrap gap-1 border-b border-ink/15 px-3 py-1.5" role="toolbar" aria-label="Formatting">
+    <div className="flex flex-wrap gap-1.5 border-b border-ink/15 px-3 py-2" role="toolbar" aria-label="Formatting">
       {items.map((it) => (
-        <button key={it.title} type="button" title={it.title} aria-label={it.title} onClick={it.action} className={btn(it.active)}>
+        <button key={it.title} type="button" title={it.title} aria-label={it.title} aria-pressed={it.momentary ? undefined : it.active} disabled={it.disabled} onClick={it.action} className={btn(it.active, it.disabled)}>
           {it.label}
         </button>
       ))}
