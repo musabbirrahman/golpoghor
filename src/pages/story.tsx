@@ -27,6 +27,14 @@ function BookmarkIcon({ filled }: { filled: boolean }) {
   );
 }
 
+function CheckIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  );
+}
+
 function PencilIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -237,6 +245,12 @@ export function StoryPage() {
     enabled: !!story && !!session,
   });
 
+  const finishedQuery = useQuery({
+    queryKey: ["finished", story?.id],
+    queryFn: () => dp.isFinished(story!.id),
+    enabled: !!story && !!session,
+  });
+
   const followQuery = useQuery({
     queryKey: ["follow", story?.author_id],
     queryFn: async () => ({
@@ -250,10 +264,14 @@ export function StoryPage() {
     queryClient.invalidateQueries({ queryKey: ["like", story?.id] });
     queryClient.invalidateQueries({ queryKey: ["readingList"] });
     queryClient.invalidateQueries({ queryKey: ["follow", story?.author_id] });
+    queryClient.invalidateQueries({ queryKey: ["finished", story?.id] });
+    queryClient.invalidateQueries({ queryKey: ["finishedStories"] });
+    queryClient.invalidateQueries({ queryKey: ["inProgress"] });
   };
 
   const likeMutation = useMutation({ mutationFn: () => dp.toggleLike(story!.id), onSuccess: invalidate });
   const listMutation = useMutation({ mutationFn: () => dp.toggleReadingList(story!.id), onSuccess: invalidate });
+  const finishedMutation = useMutation({ mutationFn: () => dp.toggleFinished(story!.id), onSuccess: invalidate });
   const followMutation = useMutation({ mutationFn: () => dp.toggleFollow(story!.author_id), onSuccess: invalidate });
 
   const storyRedirectPending = useUsernameRedirect(
@@ -765,6 +783,15 @@ export function StoryPage() {
                   <HeartIcon filled={!!likeQuery.data?.liked} />
                   {likeQuery.data?.liked ? t("story", "liked") : t("story", "like")}
                 </Button>
+                <Button
+                  variant={finishedQuery.data ? "secondary" : "outline"}
+                  size="lg"
+                  onClick={() => finishedMutation.mutate()}
+                  disabled={finishedMutation.isPending}
+                  aria-pressed={!!finishedQuery.data}
+                >
+                  {finishedQuery.data ? t("story", "markedFinished") : t("story", "markFinished")}
+                </Button>
               </>
             ) : (
               <ButtonLink to={`/login?next=${encodeURIComponent(window.location.pathname)}`} variant="secondary" size="lg">
@@ -995,6 +1022,16 @@ export function StoryPage() {
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-ink/15 bg-white text-ink"
             >
               <HeartIcon filled={!!likeQuery.data?.liked} />
+            </button>
+            <button
+              type="button"
+              onClick={() => finishedMutation.mutate()}
+              disabled={finishedMutation.isPending}
+              aria-pressed={!!finishedQuery.data}
+              aria-label={finishedQuery.data ? t("story", "markedFinished") : t("story", "markFinished")}
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-ink/15 ${finishedQuery.data ? "bg-sage text-river" : "bg-white text-ink"}`}
+            >
+              <CheckIcon />
             </button>
           </>
         ) : (

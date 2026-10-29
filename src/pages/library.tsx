@@ -8,7 +8,7 @@ import type { NotificationPrefs } from "../lib/types";
 import { MyKeepsakesSection } from "../components/my-keepsakes";
 import { Layout } from "../components/layout";
 import { Avatar, Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
-import { StoryCard, storyPath } from "../components/story-card";
+import { Cover, StoryCard, storyPath } from "../components/story-card";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { t, session, sessionLoading } = useApp();
@@ -39,6 +39,11 @@ export function LibraryPage() {
     queryFn: () => dp.getInProgressStories(),
     enabled: !!session,
   });
+  const finishedQuery = useQuery({
+    queryKey: ["finishedStories"],
+    queryFn: () => dp.getFinishedStories(),
+    enabled: !!session,
+  });
   const followingQuery = useQuery({
     queryKey: ["following", session?.user.id],
     queryFn: () => dp.getFollowing(session!.user.id),
@@ -51,18 +56,22 @@ export function LibraryPage() {
         <h1 className="mt-6 font-serif text-3xl font-bold">{t("library", "title")}</h1>
 
         <section className="mt-8">
-          <h2 className="mb-4 font-serif text-xl font-bold">{t("library", "inProgress")}</h2>
+          <h2 className="font-serif text-xl font-bold">{t("library", "inProgress")}</h2>
+          <div className="mb-4 mt-2 h-0.5 w-10 bg-gold" />
           {progressQuery.isLoading ? <Spinner /> : progressQuery.data?.length ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {progressQuery.data.map(({ story, progress }) => (
-                <Link key={story.id} to={storyPath(story)} className="block h-full rounded-xl bg-white p-4 shadow-card hover:shadow-lift">
-                  <p className="truncate font-serif text-lg font-semibold">{story.title}</p>
-                  <p className="text-sm text-ink-faint">{story.original_author ?? story.author?.display_name}</p>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-sage" role="progressbar"
-                    aria-valuenow={Math.round(progress.scroll_ratio * 100)} aria-valuemin={0} aria-valuemax={100}>
-                    <div className="h-full rounded-full bg-river" style={{ width: `${Math.round(progress.scroll_ratio * 100)}%` }} />
+                <Link key={story.id} to={storyPath(story)} className="flex h-full gap-4 rounded-xl bg-white p-4 shadow-card hover:shadow-lift">
+                  <Cover story={story} className="aspect-[3/4] w-20 shrink-0 rounded-lg" thumb />
+                  <div className="min-w-0 flex-1">
+                    <p className="clamp-2 font-serif text-lg font-semibold leading-snug">{story.title}</p>
+                    <p className="mt-0.5 truncate text-sm text-ink-faint">{story.original_author ?? story.author?.display_name}</p>
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-sage" role="progressbar"
+                      aria-valuenow={Math.round(progress.scroll_ratio * 100)} aria-valuemin={0} aria-valuemax={100}>
+                      <div className="h-full rounded-full bg-river" style={{ width: `${Math.round(progress.scroll_ratio * 100)}%` }} />
+                    </div>
+                    <p className="mt-2 text-sm font-medium text-river">{t("library", "resume")} →</p>
                   </div>
-                  <p className="mt-2 text-sm font-medium text-river">{t("library", "resume")} →</p>
                 </Link>
               ))}
             </div>
@@ -71,10 +80,23 @@ export function LibraryPage() {
           )}
         </section>
 
+        <section className="mt-10">
+          <h2 className="font-serif text-xl font-bold">{t("library", "finished")}</h2>
+          <div className="mb-4 mt-2 h-0.5 w-10 bg-gold" />
+          {finishedQuery.isLoading ? <Spinner /> : finishedQuery.data?.length ? (
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
+              {finishedQuery.data.map((s) => <StoryCard key={s.id} story={s} />)}
+            </div>
+          ) : (
+            <EmptyState title={t("library", "emptyFinished")} />
+          )}
+        </section>
+
         <MyKeepsakesSection limit={3} />
 
         <section className="mt-10">
-          <h2 className="mb-4 font-serif text-xl font-bold">{t("library", "readingList")}</h2>
+          <h2 className="font-serif text-xl font-bold">{t("library", "readingList")}</h2>
+          <div className="mb-4 mt-2 h-0.5 w-10 bg-gold" />
           {listQuery.isLoading ? <Spinner /> : listQuery.data?.length ? (
             <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
               {listQuery.data.map((s) => <StoryCard key={s.id} story={s} />)}
@@ -85,7 +107,8 @@ export function LibraryPage() {
         </section>
 
         <section className="mt-10">
-          <h2 className="mb-4 font-serif text-xl font-bold">{t("library", "following")}</h2>
+          <h2 className="font-serif text-xl font-bold">{t("library", "following")}</h2>
+          <div className="mb-4 mt-2 h-0.5 w-10 bg-gold" />
           {followingQuery.isLoading ? <Spinner /> : followingQuery.data?.length ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {followingQuery.data.map((p) => (

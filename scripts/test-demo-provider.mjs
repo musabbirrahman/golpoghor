@@ -173,6 +173,22 @@ const check = (name, cond) => {
   await dp.signOut();
 }
 
+// 3f. finished stories (Library Finished shelf)
+{
+  await dp.signIn("tanvir@golpoghor.demo", "golpoghor-demo-2026");
+  const s = (await dp.listStories({ q: "বর্ষার চিঠি" })).stories[0];
+  check("finished starts unmarked", (await dp.isFinished(s.id)) === false);
+  check("toggleFinished marks", (await dp.toggleFinished(s.id)) === true);
+  check("finished list contains story", (await dp.getFinishedStories()).some((x) => x.id === s.id));
+  await dp.saveProgress(s.id, null, { scrollRatio: 0.5, blockIndex: 0, blockOffset: 0 });
+  check("finished story leaves in-progress", !(await dp.getInProgressStories()).some((x) => x.story.id === s.id));
+  check("toggleFinished unmarks", (await dp.toggleFinished(s.id)) === false);
+  check("finished list empty after unmark", (await dp.getFinishedStories()).length === 0);
+  check("unmarked story returns to in-progress", (await dp.getInProgressStories()).some((x) => x.story.id === s.id));
+  await dp.signOut();
+  check("guests see no finished mark", (await dp.isFinished(s.id)) === false);
+}
+
 // 3e. author suggestions
 {
   const hits = await dp.searchAuthors("nusrat");

@@ -141,6 +141,7 @@ const files = [
   "supabase/migrations/20261028230000_story_subcategories.sql",
   "supabase/migrations/20261029130000_curated_shelves.sql",
   "supabase/migrations/20261029140000_shelf_slug_tagline.sql",
+  "supabase/migrations/20261029160000_finished_stories.sql",
   "supabase/seed.sql",
 ];
 

@@ -215,6 +215,11 @@ export interface DataProvider {
   toggleReadingList(storyId: string): Promise<boolean>;
   getReadingList(): Promise<Story[]>;
 
+  /** Manual per-reader finished mark (Library "Finished" shelf). */
+  isFinished(storyId: string): Promise<boolean>;
+  toggleFinished(storyId: string): Promise<boolean>;
+  getFinishedStories(): Promise<Story[]>;
+
   getProgress(storyId: string): Promise<ReadingProgress | null>;
   saveProgress(storyId: string, chapterId: string | null, position: ReadingPosition): Promise<void>;
   getInProgressStories(): Promise<{ story: Story; progress: ReadingProgress }[]>;

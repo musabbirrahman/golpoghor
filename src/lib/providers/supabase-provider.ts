@@ -1078,6 +1078,50 @@ export class SupabaseProvider implements DataProvider {
     return stories;
   }
 
+  async isFinished(storyId: string): Promise<boolean> {
+    const session = await this.getSession();
+    if (!session) return false;
+    const { data, error } = await this.sb
+      .from("finished_stories")
+      .select("story_id")
+      .eq("user_id", session.user.id)
+      .eq("story_id", storyId)
+      .maybeSingle();
+    if (error) throw toAppError(error);
+    return !!data;
+  }
+
+  async toggleFinished(storyId: string): Promise<boolean> {
+    const me = await this.uid();
+    const { data } = await this.sb
+      .from("finished_stories")
+      .select("story_id")
+      .eq("user_id", me)
+      .eq("story_id", storyId)
+      .maybeSingle();
+    if (data) {
+      const { error } = await this.sb.from("finished_stories").delete().eq("user_id", me).eq("story_id", storyId);
+      if (error) throw toAppError(error);
+      return false;
+    }
+    const { error } = await this.sb.from("finished_stories").insert({ user_id: me, story_id: storyId });
+    if (error) throw toAppError(error);
+    return true;
+  }
+
+  async getFinishedStories(): Promise<Story[]> {
+    const me = await this.uid();
+    const { data, error } = await this.sb
+      .from("finished_stories")
+      .select(`story:stories!finished_stories_story_id_fkey(${STORY_JOIN})`)
+      .eq("user_id", me)
+      .order("finished_at", { ascending: false });
+    if (error) throw toAppError(error);
+    const stories = (data ?? []).map((r: any) => mapStory(r.story)).filter(Boolean);
+    await this.attachCounts(stories);
+    return stories;
+  }
+
   async getProgress(storyId: string): Promise<ReadingProgress | null> {
     const me = await this.getSession();
     if (!me) return null;
@@ -1119,10 +1163,20 @@ export class SupabaseProvider implements DataProvider {
       .order("updated_at", { ascending: false })
       .limit(20);
     if (error) throw toAppError(error);
+    // Finished stories leave Continue reading for the Finished shelf. If
+    // the lookup fails, show everything rather than breaking the section.
+    let finished = new Set<string>();
+    try {
+      const { data: fin } = await this.sb.from("finished_stories").select("story_id").eq("user_id", me);
+      finished = new Set((fin ?? []).map((f: any) => f.story_id));
+    } catch {
+      finished = new Set();
+    }
     const out: { story: Story; progress: ReadingProgress }[] = [];
     for (const r of data ?? []) {
       if (!r.story) continue;
       const { story, ...prog } = r;
+      if (finished.has(story.id)) continue;
       out.push({ story: mapStory(story), progress: prog as ReadingProgress });
     }
     await this.attachCounts(out.map((o) => o.story));

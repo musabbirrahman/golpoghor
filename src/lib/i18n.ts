@@ -73,6 +73,8 @@ const dict = {
     continueReading: { bn: "চালিয়ে পড়ুন", en: "Continue reading" },
     saveToLibrary: { bn: "লাইব্রেরিতে রাখুন", en: "Save to library" },
     saved: { bn: "সংরক্ষিত", en: "Saved" },
+    markFinished: { bn: "শেষ করেছি", en: "Mark finished" },
+    markedFinished: { bn: "শেষ ✓", en: "Finished ✓" },
     follow: { bn: "অনুসরণ করুন", en: "Follow" },
     following: { bn: "অনুসরণ করছেন", en: "Following" },
     followers: { bn: "অনুসারী", en: "followers" },
@@ -161,6 +163,11 @@ const dict = {
       en: "You're not following anyone yet.",
     },
     resume: { bn: "চালিয়ে যান", en: "Resume" },
+    finished: { bn: "শেষ করা", en: "Finished" },
+    emptyFinished: {
+      bn: "এখনো কোনো গল্প শেষ করেননি। শেষ করা গল্প এখানে জমা হবে।",
+      en: "No finished stories yet. Stories you mark finished will live here.",
+    },
   },
   keepsakes: {
     title: { bn: "কিপসেক", en: "Keepsake" },

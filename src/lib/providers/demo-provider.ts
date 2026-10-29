@@ -74,6 +74,7 @@ interface DemoDB {
   chapters: Chapter[];
   follows: { follower_id: string; author_id: string; created_at: string }[];
   readingList: { user_id: string; story_id: string; created_at: string }[];
+  finished: { user_id: string; story_id: string; finished_at: string }[];
   progress: ReadingProgress[];
   likes: { user_id: string; story_id: string; created_at: string }[];
   comments: Comment[];
@@ -187,6 +188,7 @@ function seed(): DemoDB {
     chapters,
     follows: [],
     readingList: [],
+    finished: [],
     progress: [],
     likes: [],
     comments: [],
@@ -248,6 +250,7 @@ export class DemoProvider implements DataProvider {
           db.licences ??= [];
           db.shelves ??= [];
           db.shelf_items ??= [];
+          db.finished ??= [];
           for (const p of db.profiles) (p as any).notification_prefs ??= {};
           return db;
         }
@@ -1246,6 +1249,39 @@ export class DemoProvider implements DataProvider {
     return stories;
   }
 
+  async isFinished(storyId: string): Promise<boolean> {
+    const me = this.sessionSync()?.user.id;
+    if (!me) return false;
+    return this.db.finished.some((r) => r.user_id === me && r.story_id === storyId);
+  }
+
+  async toggleFinished(storyId: string): Promise<boolean> {
+    const me = await this.requireUid();
+    const i = this.db.finished.findIndex((r) => r.user_id === me && r.story_id === storyId);
+    if (i >= 0) {
+      this.db.finished.splice(i, 1);
+      this.persist();
+      return false;
+    }
+    this.db.finished.push({ user_id: me, story_id: storyId, finished_at: new Date().toISOString() });
+    this.persist();
+    return true;
+  }
+
+  async getFinishedStories(): Promise<Story[]> {
+    const me = await this.requireUid();
+    const ids = this.db.finished
+      .filter((r) => r.user_id === me)
+      .sort((a, b) => b.finished_at.localeCompare(a.finished_at))
+      .map((r) => r.story_id);
+    const stories = ids
+      .map((id) => this.db.stories.find((s) => s.id === id))
+      .filter((s): s is Story => !!s && this.isPublicStory(s))
+      .map((s) => this.withAuthor(s));
+    this.attachCounts(stories);
+    return stories;
+  }
+
   async getProgress(storyId: string): Promise<ReadingProgress | null> {
     const me = this.sessionSync()?.user.id;
     if (!me) return null;
@@ -1273,8 +1309,9 @@ export class DemoProvider implements DataProvider {
   }
 
   async getInProgressStories(): Promise<{ story: Story; progress: ReadingProgress }[]> {    const me = await this.requireUid();
+    const finished = new Set(this.db.finished.filter((r) => r.user_id === me).map((r) => r.story_id));
     return this.db.progress
-      .filter((p) => p.user_id === me)
+      .filter((p) => p.user_id === me && !finished.has(p.story_id))
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
       .slice(0, 20)
       .map((p) => {
