@@ -1,19 +1,9 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { CARD_TEMPLATES, keepsakeAttribution } from "../lib/keepsake-card";
 import { EmptyState, Spinner } from "../components/ui";
 import { Layout } from "../components/layout";
-import type { KeepsakeTemplate } from "../lib/types";
-
-const TEMPLATE_LABEL: Record<KeepsakeTemplate, "templateClassicPaper" | "templateMidnight" | "templateQuietGarden" | "templateOldLetters" | "templateModernInk" | "templateNeer"> = {
-  "classic-paper": "templateClassicPaper",
-  midnight: "templateMidnight",
-  "quiet-garden": "templateQuietGarden",
-  "old-letters": "templateOldLetters",
-  "modern-ink": "templateModernInk",
-  neer: "templateNeer",
-};
 
 /**
  * Public Keepsakes shelf (27c follow-up). Reads ONLY the restricted
@@ -23,6 +13,7 @@ const TEMPLATE_LABEL: Record<KeepsakeTemplate, "templateClassicPaper" | "templat
  */
 export function KeepsakesShelfPage() {
   const { t, dp, locale } = useApp();
+  const navigate = useNavigate();
   const { data, isLoading } = useQuery({
     queryKey: ["public-keepsakes"],
     queryFn: () => dp.listPublicKeepsakes(),
@@ -35,7 +26,11 @@ export function KeepsakesShelfPage() {
     return (
       <Layout>
         <div className="mx-auto max-w-2xl">
-          <EmptyState title={t("keepsakes", "shelfEmpty")} />
+          <h1 className="font-serif text-3xl font-bold sm:text-4xl">{t("keepsakes", "shelfTitle")}</h1>
+          <div className="mt-2 h-0.5 w-10 bg-gold" />
+          <div className="mt-6">
+            <EmptyState title={t("keepsakes", "shelfEmpty")} />
+          </div>
         </div>
       </Layout>
     );
@@ -44,7 +39,8 @@ export function KeepsakesShelfPage() {
   return (
     <Layout>
     <div className="mx-auto max-w-2xl">
-      <h1 className="font-serif text-2xl font-bold sm:text-3xl">{t("keepsakes", "shelfTitle")}</h1>
+      <h1 className="font-serif text-3xl font-bold sm:text-4xl">{t("keepsakes", "shelfTitle")}</h1>
+      <div className="mt-2 h-0.5 w-10 bg-gold" />
       <p className="mt-2 text-sm text-ink-soft">{t("keepsakes", "shelfSubtitle")}</p>
       <div className="mt-6 flex flex-col gap-4">
         {rows.map((k) => {
@@ -60,34 +56,34 @@ export function KeepsakesShelfPage() {
           );
           const tpl = CARD_TEMPLATES[k.template];
           const excerpt = k.excerpt.length > 240 ? k.excerpt.slice(0, 240).trimEnd() + "…" : k.excerpt;
+          // Shelf card, redesigned: the quote and the echo ARE the card.
+          // Everything else is one quiet source line for credit — no
+          // keeper line, no link row, no template label. Tapping the
+          // card opens the full /k/ page, where the keeper, story link
+          // and actions live.
           return (
             <div
               key={k.id}
-              className="min-w-0 rounded-xl p-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg sm:p-5"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/k/${k.slug}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/k/${k.slug}`);
+                }
+              }}
+              className="min-w-0 cursor-pointer rounded-xl p-5 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg sm:p-6"
               style={{ backgroundColor: tpl.bg, color: tpl.ink }}
             >
-              <Link to={`/k/${k.slug}`} className="block">
-                <p className="whitespace-pre-line break-words font-serif text-base leading-relaxed sm:text-lg">“{excerpt}”</p>
-              </Link>
-              <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${tpl.rule}` }}>
+              <p className="whitespace-pre-line break-words font-serif text-lg leading-relaxed sm:text-xl">“{excerpt}”</p>
+              {k.echo && (
+                <p className="mt-4 whitespace-pre-line break-words border-l-2 pl-3 font-serif text-base italic leading-relaxed" style={{ borderColor: tpl.accent, color: tpl.faint }}>{k.echo}</p>
+              )}
+              <div className="mt-5 pt-3" style={{ borderTop: `1px solid ${tpl.rule}` }}>
                 <p className="break-words text-sm" style={{ color: tpl.faint }}>
                   {attr.title} · {attr.author}
                 </p>
-                <p className="mt-1 text-sm" style={{ color: tpl.faint }}>
-                  {t("keepsakes", "keptBy")} {k.keeper_name}
-                </p>
-                {k.echo && (
-                  <p className="mt-2 break-words border-l-2 pl-3 text-sm italic" style={{ borderColor: tpl.accent, color: tpl.faint }}>{k.echo}</p>
-                )}
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                  <Link to={`/k/${k.slug}`} className="font-medium hover:underline" style={{ color: tpl.accent }}>
-                    {t("keepsakes", "viewPublicPage")}
-                  </Link>
-                  <Link to={`/stories/${k.source_author_username}/${k.source_slug}`} className="hover:underline" style={{ color: tpl.faint }}>
-                    {t("keepsakes", "sourceLabel")}: {k.source_title}
-                  </Link>
-                  <span className="text-xs" style={{ color: tpl.faint }}>{t("keepsakes", TEMPLATE_LABEL[k.template])}</span>
-                </div>
               </div>
             </div>
           );

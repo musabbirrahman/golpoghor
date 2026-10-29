@@ -171,7 +171,8 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
 
   return (
     <section className={limit ? "mt-10" : "mx-auto mt-10 max-w-2xl"}>
-      <h2 className="mb-4 font-serif text-xl font-bold">{t("keepsakes", "myKeepsakes")}</h2>
+      <h2 className="font-serif text-xl font-bold">{t("keepsakes", "myKeepsakes")}</h2>
+      <div className="mb-4 mt-2 h-0.5 w-10 bg-gold" />
       {keepsakesQuery.isLoading ? (
         <Spinner />
       ) : data.length ? (
