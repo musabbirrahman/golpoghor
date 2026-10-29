@@ -135,7 +135,7 @@ export function StoryCard({ story, compact = false }: { story: Story; compact?: 
   return (
     <Link
       to={storyPath(story)}
-      className="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl bg-white shadow-card transition-shadow hover:shadow-lift"
+      className="group flex h-full w-full min-w-0 flex-col overflow-hidden rounded-xl bg-white shadow-card transition-shadow hover:shadow-lift"
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-river-soft">
         <Cover story={story} className="h-full w-full transition-transform duration-300 group-hover:scale-[1.03]" thumb />
