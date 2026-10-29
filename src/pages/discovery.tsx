@@ -272,17 +272,57 @@ function GenrePanel({ stories, genre, arts, subOrder, baseRgb }: { stories: Stor
   const [activeTag, setActiveTag] = useState("all");
   const [hoverId, setHoverId] = useState<string | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => { trackRef.current?.scrollTo({ left: 0 }); }, [activeTag]);
+  // Tag paging: a swipe past the strip's edge carries into the next /
+  // previous tag and selects it (same in both directions). When paging
+  // back, the strip lands on the previous tag's LAST page.
+  const navBackRef = useRef(false);
+  const swipeRef = useRef<{ x: number; y: number; scroll: number; tag: string } | null>(null);
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    if (navBackRef.current) {
+      navBackRef.current = false;
+      el.scrollTo({ left: el.scrollWidth });
+    } else {
+      el.scrollTo({ left: 0 });
+    }
+  }, [activeTag]);
   const subIds = [...new Set(stories.flatMap((st) => (st.subcategories ?? []).map((s) => s.toLowerCase())))];
   const tagIds = ["all", ...subOrder.filter((id) => subIds.includes(id))];
   const tagLabel = (id: string) => id === "all" ? `#${genreLabel(genre, locale)}` : `#${id.charAt(0).toUpperCase() + id.slice(1)}`;
   const tagArt = (id: string) => arts[id] ?? arts.all;
-  const handleStripScroll = () => {
+  // NOTE: no onScroll auto-advance — a fling that merely passes through
+  // the end must not skip a page and jump tags. Tag paging happens only
+  // on a deliberate edge swipe (see below).
+  // Edge swipes: only when the gesture STARTED at an edge (already on
+  // the first page swiping back, or on the last page swiping forward),
+  // so an ordinary page-to-page swipe never changes tag. A single-page
+  // strip has no scroll, so every swipe there counts as an edge swipe.
+  // If the scroll handler already advanced mid-gesture, the tag no
+  // longer matches the gesture's start tag and this does nothing.
+  const handleStripTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
     const el = trackRef.current;
-    if (!el || el.scrollWidth <= el.clientWidth + 8) return;
-    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 8) {
-      const idx = tagIds.indexOf(activeTag);
+    swipeRef.current = { x: touch.clientX, y: touch.clientY, scroll: el ? el.scrollLeft : 0, tag: activeTag };
+  };
+  const handleStripTouchEnd = (e: React.TouchEvent) => {
+    const start = swipeRef.current;
+    swipeRef.current = null;
+    if (!start) return;
+    if (start.tag !== activeTag) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < 50 || Math.abs(dx) <= Math.abs(dy)) return;
+    const el = trackRef.current;
+    if (!el) return;
+    const scrollable = el.scrollWidth > el.clientWidth + 8;
+    const idx = tagIds.indexOf(activeTag);
+    if (dx < 0 && (!scrollable || start.scroll + el.clientWidth >= el.scrollWidth - 8)) {
       setActiveTag(tagIds[(idx + 1) % tagIds.length]);
+    } else if (dx > 0 && (!scrollable || start.scroll <= 8)) {
+      navBackRef.current = true;
+      setActiveTag(tagIds[(idx - 1 + tagIds.length) % tagIds.length]);
     }
   };
   const visible = activeTag === "all" ? stories : stories.filter((st) => (st.subcategories ?? []).map((s) => s.toLowerCase()).includes(activeTag));
@@ -332,7 +372,7 @@ function GenrePanel({ stories, genre, arts, subOrder, baseRgb }: { stories: Stor
             <div className="min-w-0 flex-1">
               <p className="flex flex-nowrap gap-x-3 overflow-x-auto text-lg font-bold sm:text-xl">
                 {tagIds.map((id) => (
-                  <button key={id} type="button" className={`shrink-0${activeTag === id ? " underline underline-offset-4 decoration-2" : ""}`} onClick={() => setActiveTag(id)} aria-pressed={activeTag === id} style={{ color: activeTag === id ? "#F2EDE4" : "#9A8F86" }}>{tagLabel(id)}</button>
+                  <button key={id} type="button" className="shrink-0" onClick={() => setActiveTag(id)} aria-pressed={activeTag === id} style={{ color: activeTag === id ? "#F2EDE4" : "#9A8F86" }}>{tagLabel(id)}</button>
                 ))}
               </p>
               {newCount > 0 && (
@@ -344,7 +384,7 @@ function GenrePanel({ stories, genre, arts, subOrder, baseRgb }: { stories: Stor
                 <p className="mt-4 text-sm" style={{ color: "#D8CFC4" }}>{t("discover", "noResults")}</p>
               ) : (
                 <>
-                  <div ref={trackRef} onScroll={handleStripScroll} className="mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 lg:hidden">
+                  <div ref={trackRef} onTouchStart={handleStripTouchStart} onTouchEnd={handleStripTouchEnd} className="mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 lg:hidden">
                     {pages.map((page, pi) => (
                       <div key={pi} className="grid w-full shrink-0 snap-start grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
                         {page.map((st) => <PanelRow key={st.id} story={st} onHover={() => setHoverId(st.id)} active={detail?.id === st.id} />)}
