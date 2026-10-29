@@ -370,7 +370,7 @@ function GenrePanel({ stories, genre, arts, subOrder, baseRgb }: { stories: Stor
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <p className="flex flex-nowrap gap-x-3 overflow-x-auto text-lg font-bold sm:text-xl">
+              <p className="no-scrollbar flex flex-nowrap gap-x-3 overflow-x-auto text-lg font-bold sm:text-xl">
                 {tagIds.map((id) => (
                   <button key={id} type="button" className="shrink-0" onClick={() => setActiveTag(id)} aria-pressed={activeTag === id} style={{ color: activeTag === id ? "#F2EDE4" : "#9A8F86" }}>{tagLabel(id)}</button>
                 ))}
@@ -384,7 +384,7 @@ function GenrePanel({ stories, genre, arts, subOrder, baseRgb }: { stories: Stor
                 <p className="mt-4 text-sm" style={{ color: "#D8CFC4" }}>{t("discover", "noResults")}</p>
               ) : (
                 <>
-                  <div ref={trackRef} onTouchStart={handleStripTouchStart} onTouchEnd={handleStripTouchEnd} className="mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 lg:hidden">
+                  <div ref={trackRef} onTouchStart={handleStripTouchStart} onTouchEnd={handleStripTouchEnd} className="no-scrollbar mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 lg:hidden">
                     {pages.map((page, pi) => (
                       <div key={pi} className="grid w-full shrink-0 snap-start grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
                         {page.map((st) => <PanelRow key={st.id} story={st} onHover={() => setHoverId(st.id)} active={detail?.id === st.id} />)}

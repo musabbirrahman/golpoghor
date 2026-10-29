@@ -103,6 +103,16 @@ body {
   border-radius: 999px;
 }
 
+/* Hide the native scrollbar but keep swipe/scroll working (panel tag row,
+   story strip). A visible slider under the tags is browser chrome, not UI. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Line clamp helpers beyond tailwind defaults */
 .clamp-2 {
   display: -webkit-box;
