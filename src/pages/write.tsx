@@ -7,7 +7,7 @@ import { SUBCATEGORIES, normalizeSubcategories } from "../lib/subcategories";
 import { Layout } from "../components/layout";
 import {
   Badge, Button, ButtonLink, Card, EmptyState, FieldError, Input, Label, Modal,
-  Select, Spinner, StatusBadge, Textarea, LanguageBadge,
+  Dropdown, Spinner, StatusBadge, Textarea, LanguageBadge,
 } from "../components/ui";
 import { Cover } from "../components/story-card";
 import { AppError, slugify, timeAgo } from "../lib/utils";
@@ -359,16 +359,24 @@ export function StoryFormPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="sf-lang">{t("write", "language")}</Label>
-                <Select id="sf-lang" value={language} onChange={(e) => setLanguage(e.target.value as StoryLanguage)}>
-                  <option value="bn">{t("discover", "bangla")}</option>
-                  <option value="en">{t("discover", "english")}</option>
-                </Select>
+                <Dropdown
+                  id="sf-lang"
+                  value={language}
+                  onChange={(v) => setLanguage(v as StoryLanguage)}
+                  options={[
+                    { value: "bn", label: t("discover", "bangla") },
+                    { value: "en", label: t("discover", "english") },
+                  ]}
+                />
               </div>
               <div>
                 <Label htmlFor="sf-genre">{t("write", "genre")}</Label>
-                <Select id="sf-genre" value={genre} onChange={(e) => setGenre(e.target.value)}>
-                  {GENRES.map((g) => <option key={g.value} value={g.value}>{genreLabel(g.value, locale)}</option>)}
-                </Select>
+                <Dropdown
+                  id="sf-genre"
+                  value={genre}
+                  onChange={(v) => setGenre(v)}
+                  options={GENRES.map((g) => ({ value: g.value, label: genreLabel(g.value, locale) }))}
+                />
               </div>
             </div>
             <div>
@@ -410,12 +418,17 @@ export function StoryFormPage() {
             </div>
             <div>
               <Label htmlFor="sf-origin">{t("write", "origin")}</Label>
-              <Select id="sf-origin" value={origin} onChange={(e) => setOrigin(e.target.value as typeof origin)}>
-                <option value="original">{t("write", "originOriginal")}</option>
-                <option value="classic">{t("write", "originClassic")}</option>
-                <option value="translation">{t("write", "originTranslation")}</option>
-                <option value="adaptation">{t("write", "originAdaptation")}</option>
-              </Select>
+              <Dropdown
+                id="sf-origin"
+                value={origin}
+                onChange={(v) => setOrigin(v as typeof origin)}
+                options={[
+                  { value: "original", label: t("write", "originOriginal") },
+                  { value: "classic", label: t("write", "originClassic") },
+                  { value: "translation", label: t("write", "originTranslation") },
+                  { value: "adaptation", label: t("write", "originAdaptation") },
+                ]}
+              />
             </div>
             {origin !== "original" && (
               <>
