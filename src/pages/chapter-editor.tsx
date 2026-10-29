@@ -28,7 +28,7 @@ function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
     { label: "↪", action: () => editor.chain().focus().redo().run(), active: false, title: "Redo" },
   ];
   return (
-    <div className="flex flex-wrap gap-1 rounded-xl border border-ink/15 bg-white p-1.5" role="toolbar" aria-label="Formatting">
+    <div className="flex flex-wrap gap-1 border-b border-ink/15 px-3 py-1.5" role="toolbar" aria-label="Formatting">
       {items.map((it) => (
         <button key={it.title} type="button" title={it.title} aria-label={it.title} onClick={it.action} className={btn(it.active)}>
           {it.label}
@@ -113,7 +113,7 @@ export function ChapterEditorPage() {
     ],
     content: emptyDoc(),
     editorProps: {
-      attributes: { class: "tiptap richtext min-h-[320px] rounded-xl border border-ink/15 bg-white px-5 py-4 text-[19px] leading-[1.85] focus:border-river" },
+      attributes: { class: "tiptap richtext min-h-[320px] px-5 py-4 text-[19px] leading-[1.85] focus:outline-none" },
     },
     onUpdate: ({ editor }) => {
       setLiveWords(countWords(docToText(editor.getJSON() as TiptapDoc)));
@@ -324,7 +324,7 @@ export function ChapterEditorPage() {
             <Link to={`/write/stories/${story.id}`} className="text-sm text-river hover:underline">
               ← {story.title}
             </Link>
-            <h1 className="mt-1 font-serif text-2xl font-bold">{isNew ? t("write", "newChapter") : t("write", "chapterTitle")}</h1>
+            <h1 className="mt-1 font-serif text-2xl font-bold">{isNew ? t("write", "newChapter") : (title || t("write", "chapterTitle"))}</h1>
           </div>
           <div className="flex items-center gap-2">
             {chapter && <StatusBadge status={chapter.status} />}
@@ -340,6 +340,7 @@ export function ChapterEditorPage() {
             )}
           </div>
         </div>
+        <div className="mt-2 h-0.5 w-10 bg-gold" />
 
         {error && <p className="mt-3 rounded-lg bg-clay-soft px-3 py-2 text-sm text-clay-dark" role="alert">{error}</p>}
 
@@ -372,14 +373,14 @@ export function ChapterEditorPage() {
             <ChapterBody doc={(editor?.getJSON() as TiptapDoc) ?? emptyDoc()} />
           </div>
         ) : (
-          <div className="mt-4 flex flex-col gap-3">
+          <div className="mt-4 rounded-xl border border-ink/15 bg-white shadow-card focus-within:border-river">
             <label htmlFor="chapter-title" className="sr-only">{t("write", "chapterTitle")}</label>
             <input
               id="chapter-title"
               value={title}
               onChange={(e) => { setTitle(e.target.value); dirtyRef.current = true; scheduleSave(); }}
               placeholder={t("write", "chapterTitle")}
-              className="w-full rounded-xl border border-ink/15 bg-white px-5 py-3 font-serif text-2xl font-semibold focus:border-river focus:outline-none focus:ring-1 focus:ring-river"
+              className="w-full rounded-t-xl border-b border-ink/15 bg-white px-5 py-3 font-serif text-2xl font-semibold focus:border-river focus:outline-none"
             />
             <Toolbar editor={editor} />
             <EditorContent editor={editor} />
