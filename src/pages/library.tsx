@@ -7,7 +7,7 @@ import { resolveNotificationPrefs } from "../lib/data-provider";
 import type { NotificationPrefs, ReadingProgress, Story } from "../lib/types";
 import { MyKeepsakesSection } from "../components/my-keepsakes";
 import { Layout } from "../components/layout";
-import { Avatar, Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
+import { Avatar, Button, ButtonLink, EmptyState, Spinner, fieldBase } from "../components/ui";
 import { Cover, StoryCard, storyPath } from "../components/story-card";
 
 /** Continue-reading card: cover + title + author + the chapter the reader
@@ -229,6 +229,7 @@ export function SettingsPage() {
       <Layout>
         <div className="mx-auto mt-6 max-w-2xl">
           <h1 className="font-serif text-3xl font-bold">{t("settings", "title")}</h1>
+          <div className="mt-2 h-0.5 w-10 bg-gold" />
           <form
             className="mt-6 flex flex-col gap-4 rounded-xl bg-white p-6 shadow-card"
             onSubmit={async (e) => {
@@ -284,13 +285,13 @@ export function SettingsPage() {
               <label className="mb-1 block text-sm font-medium text-ink-soft" htmlFor="set-name">
                 {t("settings", "displayName")}
               </label>
-              <input id="set-name" className="w-full rounded-lg border border-ink/15 bg-white px-3 py-2" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={80} />
+              <input id="set-name" className={fieldBase} value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={80} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-ink-soft" htmlFor="set-bio">
                 {t("settings", "bio")}
               </label>
-              <textarea id="set-bio" className="w-full rounded-lg border border-ink/15 bg-white px-3 py-2" rows={3} value={bio} onChange={(e) => setBio(e.target.value)} maxLength={500} />
+              <textarea id="set-bio" className={fieldBase} rows={3} value={bio} onChange={(e) => setBio(e.target.value)} maxLength={500} />
             </div>
             <div>
               <span className="mb-1 block text-sm font-medium text-ink-soft">{t("settings", "interfaceLanguage")}</span>
@@ -371,6 +372,7 @@ function NotificationPrefsCard() {
   return (
     <div className="mt-6 rounded-xl bg-white p-6 shadow-card">
       <h2 className="font-serif text-xl font-bold">{t("notifications", "prefsTitle")}</h2>
+      <div className="mt-2 h-0.5 w-10 bg-gold" />
       <div className="mt-4 flex flex-col gap-3">
         {rows.filter((r) => r.show).map((r) => (
           <button
@@ -440,14 +442,13 @@ function AccountCard() {
       ? new Date(changedAt + 30 * 86400000)
       : null;
 
-  const inputCls =
-    "w-full rounded-lg border border-ink/15 bg-white px-3 py-2";
   const labelCls = "mb-1 block text-sm font-medium text-ink-soft";
 
   return (
     <>
       <div className="mt-6 flex flex-col gap-5 rounded-xl bg-white p-6 shadow-card">
         <h2 className="font-serif text-xl font-bold">{t("settings", "account")}</h2>
+        <div className="mt-2 h-0.5 w-10 bg-gold" />
 
         <form
           className="flex flex-col gap-3"
@@ -475,11 +476,11 @@ function AccountCard() {
           <h3 className="text-sm font-semibold">{t("settings", "changePassword")}</h3>
           <div>
             <label className={labelCls} htmlFor="acct-pw1">{t("settings", "newPassword")}</label>
-            <input id="acct-pw1" type="password" autoComplete="new-password" className={inputCls} value={pw1} onChange={(e) => setPw1(e.target.value)} minLength={6} required />
+            <input id="acct-pw1" type="password" autoComplete="new-password" className={fieldBase} value={pw1} onChange={(e) => setPw1(e.target.value)} minLength={6} required />
           </div>
           <div>
             <label className={labelCls} htmlFor="acct-pw2">{t("settings", "confirmPassword")}</label>
-            <input id="acct-pw2" type="password" autoComplete="new-password" className={inputCls} value={pw2} onChange={(e) => setPw2(e.target.value)} minLength={6} required />
+            <input id="acct-pw2" type="password" autoComplete="new-password" className={fieldBase} value={pw2} onChange={(e) => setPw2(e.target.value)} minLength={6} required />
           </div>
           {pwError && <p className="text-sm text-red-700" role="alert">{pwError}</p>}
           {pwDone && <p className="text-sm text-river" role="status">{t("settings", "passwordChanged")}</p>}
@@ -524,7 +525,7 @@ function AccountCard() {
             <>
               <div>
                 <label className={labelCls} htmlFor="acct-username">{t("settings", "changeUsername")}</label>
-                <input id="acct-username" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder={profile.username} autoComplete="off" required />
+                <input id="acct-username" className={fieldBase} value={name} onChange={(e) => setName(e.target.value)} placeholder={profile.username} autoComplete="off" required />
               </div>
               {nameError && <p className="text-sm text-red-700" role="alert">{nameError}</p>}
               {nameDone && <p className="text-sm text-river" role="status">{t("settings", "usernameChanged")}</p>}
@@ -545,7 +546,7 @@ function AccountCard() {
           <label className={labelCls} htmlFor="acct-delete-confirm">
             {t("settings", "deleteConfirmLabel")} (@{profile.username})
           </label>
-          <input id="acct-delete-confirm" className={inputCls} value={confirmName} onChange={(e) => setConfirmName(e.target.value)} autoComplete="off" />
+          <input id="acct-delete-confirm" className={fieldBase} value={confirmName} onChange={(e) => setConfirmName(e.target.value)} autoComplete="off" />
         </div>
         {delError && <p className="text-sm text-red-700" role="alert">{delError}</p>}
         <div>

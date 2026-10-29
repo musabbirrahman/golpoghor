@@ -55,7 +55,7 @@ export function ButtonLink({
   );
 }
 
-const fieldBase =
+export const fieldBase =
   "w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-ink placeholder:text-ink-faint focus:border-river focus:outline-none focus:ring-1 focus:ring-river";
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
