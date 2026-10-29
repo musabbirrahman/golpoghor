@@ -251,6 +251,16 @@ export function StoryPage() {
     enabled: !!story && !!session,
   });
 
+  // Per-chapter finished marks for the Contents ticks. Hidden while the
+  // query errors (e.g. before the finished_chapters migration is applied)
+  // so a missing table never breaks the chapter list.
+  const finishedChaptersQuery = useQuery({
+    queryKey: ["finishedChapters", story?.id],
+    queryFn: () => dp.getFinishedChapterIds(story!.id),
+    enabled: !!story && !!session,
+  });
+  const finishedChapterIds = new Set(finishedChaptersQuery.data ?? []);
+
   const followQuery = useQuery({
     queryKey: ["follow", story?.author_id],
     queryFn: async () => ({
@@ -265,6 +275,7 @@ export function StoryPage() {
     queryClient.invalidateQueries({ queryKey: ["readingList"] });
     queryClient.invalidateQueries({ queryKey: ["follow", story?.author_id] });
     queryClient.invalidateQueries({ queryKey: ["finished", story?.id] });
+    queryClient.invalidateQueries({ queryKey: ["finishedChapters", story?.id] });
     queryClient.invalidateQueries({ queryKey: ["finishedStories"] });
     queryClient.invalidateQueries({ queryKey: ["inProgress"] });
   };
@@ -272,7 +283,30 @@ export function StoryPage() {
   const likeMutation = useMutation({ mutationFn: () => dp.toggleLike(story!.id), onSuccess: invalidate });
   const listMutation = useMutation({ mutationFn: () => dp.toggleReadingList(story!.id), onSuccess: invalidate });
   const finishedMutation = useMutation({ mutationFn: () => dp.toggleFinished(story!.id), onSuccess: invalidate });
+  const chapterFinishedMutation = useMutation({
+    mutationFn: ({ chapterId, finished }: { chapterId: string; finished: boolean }) =>
+      dp.setChapterFinished(story!.id, chapterId, finished),
+    onSuccess: invalidate,
+  });
   const followMutation = useMutation({ mutationFn: () => dp.toggleFollow(story!.author_id), onSuccess: invalidate });
+
+  // Heal once per story visit: if an auto story mark survived a new
+  // chapter being published (or a chapter unmark), drop it so the
+  // Finished button and shelf stay truthful. Never inserts, so a
+  // manual story unmark is never undone by healing.
+  const healedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const list = chaptersQuery.data;
+    if (!story || !session || !list || list.length === 0 || healedRef.current === story.id) return;
+    healedRef.current = story.id;
+    dp.healAutoFinished(story.id)
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["finished", story.id] });
+        queryClient.invalidateQueries({ queryKey: ["finishedStories"] });
+        queryClient.invalidateQueries({ queryKey: ["inProgress"] });
+      })
+      .catch(() => {});
+  }, [story?.id, session, chaptersQuery.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const storyRedirectPending = useUsernameRedirect(
     username,
@@ -865,7 +899,8 @@ export function StoryPage() {
               <ol className="mt-4 divide-y divide-ink/10 rounded-xl bg-white shadow-card">
                 {(contentsExpanded ? chapters : chapters.slice(0, CONTENTS_PAGE_SIZE)).map((c, i) => (
                   <li key={c.id} id={`contents-chapter-${i}`} className="scroll-mt-24">
-                    <Link to={chapterStartUrl(c)} className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-sage/40">
+                    <div className="flex items-center gap-1 pr-2">
+                    <Link to={chapterStartUrl(c)} className="flex min-w-0 flex-1 items-center gap-4 px-4 py-3.5 transition-colors hover:bg-sage/40">
                       <span className="w-8 shrink-0 text-center font-serif text-lg text-ink-faint">{i + 1}</span>
                       <div className="min-w-0 flex-1">
                         <span className="block truncate font-bold">{c.title}</span>
@@ -885,6 +920,20 @@ export function StoryPage() {
                       )}
                       <span aria-hidden className="text-ink-faint">→</span>
                     </Link>
+                    {session && finishedChaptersQuery.data && (
+                      <button
+                        type="button"
+                        aria-label={finishedChapterIds.has(c.id) ? t("story", "unmarkChapterFinished") : t("story", "markChapterFinished")}
+                        aria-pressed={finishedChapterIds.has(c.id)}
+                        onClick={() => chapterFinishedMutation.mutate({ chapterId: c.id, finished: !finishedChapterIds.has(c.id) })}
+                        className={finishedChapterIds.has(c.id)
+                          ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-river text-white"
+                          : "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-ink/30 text-transparent"}
+                      >
+                        <CheckIcon />
+                      </button>
+                    )}
+                    </div>
                   </li>
                 ))}
               </ol>

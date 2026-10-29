@@ -507,6 +507,9 @@ export function ReaderPage() {
    *  unmount/hide save: on a ?restart=1 visit the restore effect plants
    *  a 0 position, and saving it unseen would overwrite real progress. */
   const scrolledRef = useRef(false);
+  // Chapters already auto-marked finished in this reader session, so one
+  // long scroll to the bottom marks once instead of firing per scroll event.
+  const markedRef = useRef<string | null>(null);
 
   const setPrefs = (p: typeof prefs) => {
     setPrefsState(p);
@@ -622,6 +625,27 @@ export function ReaderPage() {
       .catch(() => {});
   };
 
+  /** Automatic chapter finish: scrolling to the end of a published
+   *  chapter (live ratio >= 0.99 — throttled saves cap at 0.99, so 0.99
+   *  means the bottom) marks that chapter finished. The reader can still
+   *  unmark it by hand in Contents (accidental scrolls). Draft previews
+   *  never auto-mark. */
+  const markIfAtEnd = (ratio: number) => {
+    if (!story || !chapter || !session) return;
+    if (chapter.status !== "published") return;
+    if (ratio < 0.99) return;
+    if (markedRef.current === chapter.id) return;
+    markedRef.current = chapter.id;
+    dp.setChapterFinished(story.id, chapter.id, true)
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["finishedChapters", story.id] });
+        queryClient.invalidateQueries({ queryKey: ["finished", story.id] });
+        queryClient.invalidateQueries({ queryKey: ["finishedStories"] });
+        queryClient.invalidateQueries({ queryKey: ["inProgress"] });
+      })
+      .catch(() => {});
+  };
+
   // Restore the saved position once this chapter has rendered, or start at
   // the top when there is nothing to restore (or the user restarted manually).
   useEffect(() => {
@@ -691,6 +715,9 @@ export function ReaderPage() {
   // last measured position, never a fresh measurement at teardown time.
   useEffect(() => {
     if (!story || !chapter || !session) return;
+    // Fresh chapter visit: allow auto-mark again (the reader may have
+    // unmarked this chapter in Contents and come back to re-read it).
+    markedRef.current = null;
     scrolledRef.current = false;
     const scheduleSave = () => {
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
@@ -702,6 +729,7 @@ export function ReaderPage() {
       if (!pos) return; // transition/teardown measurement — ignore
       lastPositionRef.current = pos;
       scrolledRef.current = true;
+      markIfAtEnd(pos.scrollRatio);
       scheduleSave();
     };
     const onHidden = () => {
@@ -713,6 +741,9 @@ export function ReaderPage() {
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", onHidden);
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
+      // Leaving at the bottom (e.g. restored at the end, then closed)
+      // counts as having reached the end too.
+      if (lastPositionRef.current) markIfAtEnd(lastPositionRef.current.scrollRatio);
       if (!restart || scrolledRef.current) saveNow(1);
     };
   }, [story, chapter, session, dp, restart]);

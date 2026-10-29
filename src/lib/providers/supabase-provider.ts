@@ -1104,13 +1104,17 @@ export class SupabaseProvider implements DataProvider {
       if (error) throw toAppError(error);
       return false;
     }
-    const { error } = await this.sb.from("finished_stories").insert({ user_id: me, story_id: storyId });
+    const { error } = await this.sb.from("finished_stories").insert({ user_id: me, story_id: storyId, is_auto: false });
     if (error) throw toAppError(error);
     return true;
   }
 
   async getFinishedStories(): Promise<Story[]> {
     const me = await this.uid();
+    // Self-heal first: an auto row goes stale when a new chapter is
+    // published (or one unmarked) — drop it so the shelf never shows a
+    // story whose chapters are not all finished.
+    await this.healAutoRows(me);
     const { data, error } = await this.sb
       .from("finished_stories")
       .select(`story:stories!finished_stories_story_id_fkey(${STORY_JOIN})`)
@@ -1120,6 +1124,94 @@ export class SupabaseProvider implements DataProvider {
     const stories = (data ?? []).map((r: any) => mapStory(r.story)).filter(Boolean);
     await this.attachCounts(stories);
     return stories;
+  }
+
+  async getFinishedChapterIds(storyId: string): Promise<string[]> {
+    const session = await this.getSession();
+    if (!session) return [];
+    const { data, error } = await this.sb
+      .from("finished_chapters")
+      .select("chapter_id")
+      .eq("user_id", session.user.id)
+      .eq("story_id", storyId);
+    if (error) throw toAppError(error);
+    return (data ?? []).map((r: any) => r.chapter_id);
+  }
+
+  async setChapterFinished(storyId: string, chapterId: string, finished: boolean): Promise<boolean> {
+    const me = await this.uid();
+    if (finished) {
+      const { error } = await this.sb.from("finished_chapters").upsert(
+        { user_id: me, story_id: storyId, chapter_id: chapterId },
+        { onConflict: "user_id,chapter_id" },
+      );
+      if (error) throw toAppError(error);
+    } else {
+      const { error } = await this.sb.from("finished_chapters").delete().eq("user_id", me).eq("chapter_id", chapterId);
+      if (error) throw toAppError(error);
+    }
+    await this.syncStoryFinished(me, storyId);
+    return finished;
+  }
+
+  async healAutoFinished(storyId: string): Promise<void> {
+    const session = await this.getSession();
+    if (!session) return;
+    await this.healAutoRows(session.user.id, [storyId]);
+  }
+
+  /** Re-sync the story mark after a chapter change: all published
+   *  chapters finished → ensure a row (auto, unless one already exists);
+   *  otherwise remove an auto row only — a manual story mark survives
+   *  chapter unmarks. */
+  private async syncStoryFinished(me: string, storyId: string): Promise<void> {
+    const published = await this.listChapters(storyId, { publishedOnly: true });
+    const finished = new Set(await this.finishedChapterIdsFor(me, storyId));
+    const allFinished = published.length > 0 && published.every((c) => finished.has(c.id));
+    if (allFinished) {
+      // Insert-if-absent, never overwrite: a manual mark (is_auto=false)
+      // must survive, and two tabs finishing the last chapter at once
+      // must not trip a duplicate-key error.
+      const { error } = await this.sb.from("finished_stories").upsert(
+        { user_id: me, story_id: storyId, is_auto: true },
+        { onConflict: "user_id,story_id", ignoreDuplicates: true },
+      );
+      if (error) throw toAppError(error);
+      return;
+    }
+    const { error } = await this.sb
+      .from("finished_stories")
+      .delete()
+      .eq("user_id", me)
+      .eq("story_id", storyId)
+      .eq("is_auto", true);
+    if (error) throw toAppError(error);
+  }
+
+  /** Delete stale auto rows (auto row exists but not every published
+   *  chapter is finished). Never inserts. When storyIds is omitted, all
+   *  of the reader's auto rows are checked. */
+  private async healAutoRows(me: string, storyIds?: string[]): Promise<void> {
+    let q = this.sb.from("finished_stories").select("story_id").eq("user_id", me).eq("is_auto", true);
+    if (storyIds) q = q.in("story_id", storyIds);
+    const { data } = await q;
+    for (const row of data ?? []) {
+      const published = await this.listChapters(row.story_id, { publishedOnly: true });
+      const finished = new Set(await this.finishedChapterIdsFor(me, row.story_id));
+      if (!(published.length > 0 && published.every((c) => finished.has(c.id)))) {
+        await this.sb.from("finished_stories").delete().eq("user_id", me).eq("story_id", row.story_id).eq("is_auto", true);
+      }
+    }
+  }
+
+  private async finishedChapterIdsFor(me: string, storyId: string): Promise<string[]> {
+    const { data, error } = await this.sb
+      .from("finished_chapters")
+      .select("chapter_id")
+      .eq("user_id", me)
+      .eq("story_id", storyId);
+    if (error) throw toAppError(error);
+    return (data ?? []).map((r: any) => r.chapter_id);
   }
 
   async getProgress(storyId: string): Promise<ReadingProgress | null> {
@@ -1165,8 +1257,12 @@ export class SupabaseProvider implements DataProvider {
     if (error) throw toAppError(error);
     // Finished stories leave Continue reading for the Finished shelf. If
     // the lookup fails, show everything rather than breaking the section.
+    // Heal auto rows for these stories first, so a story with a newly
+    // published (unread) chapter returns to Continue reading.
     let finished = new Set<string>();
     try {
+      const ids = (data ?? []).map((r: any) => r.story?.id).filter(Boolean);
+      await this.healAutoRows(me, ids);
       const { data: fin } = await this.sb.from("finished_stories").select("story_id").eq("user_id", me);
       finished = new Set((fin ?? []).map((f: any) => f.story_id));
     } catch {

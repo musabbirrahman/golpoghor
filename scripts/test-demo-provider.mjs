@@ -189,6 +189,31 @@ const check = (name, cond) => {
   check("guests see no finished mark", (await dp.isFinished(s.id)) === false);
 }
 
+// 3g. finished chapters (Contents ticks + auto story finish)
+{
+  await dp.signIn("tanvir@golpoghor.demo", "golpoghor-demo-2026");
+  const s = (await dp.listStories({ q: "বর্ষার চিঠি" })).stories[0];
+  const chs = await dp.listChapters(s.id, { publishedOnly: true });
+  check("finished chapters start empty", (await dp.getFinishedChapterIds(s.id)).length === 0);
+  check("mark one chapter", (await dp.setChapterFinished(s.id, chs[0].id, true)) === true);
+  check("chapter id recorded", (await dp.getFinishedChapterIds(s.id)).includes(chs[0].id));
+  check("story not finished until all chapters done", (await dp.isFinished(s.id)) === false);
+  await dp.saveProgress(s.id, chs[0].id, { scrollRatio: 0.5, blockIndex: 0, blockOffset: 0 });
+  for (const c of chs.slice(1)) await dp.setChapterFinished(s.id, c.id, true);
+  check("all chapters finished auto-finishes story", (await dp.isFinished(s.id)) === true);
+  check("auto-finished story in Finished shelf", (await dp.getFinishedStories()).some((x) => x.id === s.id));
+  check("auto-finished story leaves in-progress", !(await dp.getInProgressStories()).some((x) => x.story.id === s.id));
+  await dp.setChapterFinished(s.id, chs[0].id, false);
+  check("unmarking a chapter clears the auto story mark", (await dp.isFinished(s.id)) === false);
+  check("story returns to in-progress after chapter unmark", (await dp.getInProgressStories()).some((x) => x.story.id === s.id));
+  check("manual story mark survives chapter unmark", (await dp.toggleFinished(s.id)) === true && (await dp.setChapterFinished(s.id, chs[0].id, false)) === false && (await dp.isFinished(s.id)) === true);
+  await dp.healAutoFinished(s.id);
+  check("heal never removes a manual mark", (await dp.isFinished(s.id)) === true);
+  await dp.toggleFinished(s.id);
+  await dp.signOut();
+  check("guests see no finished chapters", (await dp.getFinishedChapterIds(s.id)).length === 0);
+}
+
 // 3e. author suggestions
 {
   const hits = await dp.searchAuthors("nusrat");

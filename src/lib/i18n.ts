@@ -75,6 +75,8 @@ const dict = {
     saved: { bn: "সংরক্ষিত", en: "Saved" },
     markFinished: { bn: "শেষ করেছি", en: "Mark finished" },
     markedFinished: { bn: "শেষ ✓", en: "Finished ✓" },
+    markChapterFinished: { bn: "অধ্যায় শেষ হিসেবে চিহ্নিত করুন", en: "Mark chapter finished" },
+    unmarkChapterFinished: { bn: "অধ্যায় শেষ চিহ্ন সরান", en: "Unmark chapter finished" },
     follow: { bn: "অনুসরণ করুন", en: "Follow" },
     following: { bn: "অনুসরণ করছেন", en: "Following" },
     followers: { bn: "অনুসারী", en: "followers" },
@@ -170,6 +172,7 @@ const dict = {
     },
     storySingular: { bn: "টি গল্প", en: "story" },
     storiesPlural: { bn: "টি গল্প", en: "stories" },
+    storyProgress: { bn: "গল্পের অগ্রগতি", en: "Story progress" },
   },
   keepsakes: {
     title: { bn: "কিপসেক", en: "Keepsake" },

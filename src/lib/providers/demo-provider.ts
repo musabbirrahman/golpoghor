@@ -74,7 +74,8 @@ interface DemoDB {
   chapters: Chapter[];
   follows: { follower_id: string; author_id: string; created_at: string }[];
   readingList: { user_id: string; story_id: string; created_at: string }[];
-  finished: { user_id: string; story_id: string; finished_at: string }[];
+  finished: { user_id: string; story_id: string; finished_at: string; is_auto?: boolean }[];
+  finishedChapters: { user_id: string; story_id: string; chapter_id: string; finished_at: string }[];
   progress: ReadingProgress[];
   likes: { user_id: string; story_id: string; created_at: string }[];
   comments: Comment[];
@@ -189,6 +190,7 @@ function seed(): DemoDB {
     follows: [],
     readingList: [],
     finished: [],
+    finishedChapters: [],
     progress: [],
     likes: [],
     comments: [],
@@ -251,6 +253,7 @@ export class DemoProvider implements DataProvider {
           db.shelves ??= [];
           db.shelf_items ??= [];
           db.finished ??= [];
+          db.finishedChapters ??= [];
           for (const p of db.profiles) (p as any).notification_prefs ??= {};
           return db;
         }
@@ -1263,13 +1266,67 @@ export class DemoProvider implements DataProvider {
       this.persist();
       return false;
     }
-    this.db.finished.push({ user_id: me, story_id: storyId, finished_at: new Date().toISOString() });
+    this.db.finished.push({ user_id: me, story_id: storyId, finished_at: new Date().toISOString(), is_auto: false });
     this.persist();
     return true;
   }
 
+  async getFinishedChapterIds(storyId: string): Promise<string[]> {
+    const me = this.sessionSync()?.user.id;
+    if (!me) return [];
+    return this.db.finishedChapters.filter((r) => r.user_id === me && r.story_id === storyId).map((r) => r.chapter_id);
+  }
+
+  async setChapterFinished(storyId: string, chapterId: string, finished: boolean): Promise<boolean> {
+    const me = await this.requireUid();
+    const i = this.db.finishedChapters.findIndex((r) => r.user_id === me && r.chapter_id === chapterId);
+    if (finished && i < 0) {
+      this.db.finishedChapters.push({ user_id: me, story_id: storyId, chapter_id: chapterId, finished_at: new Date().toISOString() });
+    } else if (!finished && i >= 0) {
+      this.db.finishedChapters.splice(i, 1);
+    }
+    this.syncFinishedStory(me, storyId);
+    this.persist();
+    return finished;
+  }
+
+  async healAutoFinished(storyId: string): Promise<void> {
+    const me = this.sessionSync()?.user.id;
+    if (!me) return;
+    this.healAutoRows(me, [storyId]);
+    this.persist();
+  }
+
+  /** Demo mirror of the Supabase sync: all published chapters finished →
+   *  ensure a row (auto, unless one already exists); otherwise remove an
+   *  auto row only — a manual story mark survives chapter unmarks. */
+  private syncFinishedStory(me: string, storyId: string): void {
+    const published = this.db.chapters.filter((c) => c.story_id === storyId && c.status === "published");
+    const finished = new Set(this.db.finishedChapters.filter((r) => r.user_id === me && r.story_id === storyId).map((r) => r.chapter_id));
+    const allFinished = published.length > 0 && published.every((c) => finished.has(c.id));
+    const row = this.db.finished.find((r) => r.user_id === me && r.story_id === storyId);
+    if (allFinished) {
+      if (!row) this.db.finished.push({ user_id: me, story_id: storyId, finished_at: new Date().toISOString(), is_auto: true });
+      return;
+    }
+    if (row?.is_auto) this.db.finished.splice(this.db.finished.indexOf(row), 1);
+  }
+
+  /** Demo mirror of the Supabase heal: delete stale auto rows, never insert. */
+  private healAutoRows(me: string, storyIds?: string[]): void {
+    for (const row of [...this.db.finished].filter((r) => r.user_id === me && r.is_auto && (!storyIds || storyIds.includes(r.story_id)))) {
+      const published = this.db.chapters.filter((c) => c.story_id === row.story_id && c.status === "published");
+      const finished = new Set(this.db.finishedChapters.filter((r) => r.user_id === me && r.story_id === row.story_id).map((r) => r.chapter_id));
+      if (!(published.length > 0 && published.every((c) => finished.has(c.id)))) {
+        this.db.finished.splice(this.db.finished.indexOf(row), 1);
+      }
+    }
+  }
+
   async getFinishedStories(): Promise<Story[]> {
     const me = await this.requireUid();
+    this.healAutoRows(me);
+    this.persist();
     const ids = this.db.finished
       .filter((r) => r.user_id === me)
       .sort((a, b) => b.finished_at.localeCompare(a.finished_at))
@@ -1309,6 +1366,8 @@ export class DemoProvider implements DataProvider {
   }
 
   async getInProgressStories(): Promise<{ story: Story; progress: ReadingProgress }[]> {    const me = await this.requireUid();
+    this.healAutoRows(me, this.db.progress.filter((p) => p.user_id === me).map((p) => p.story_id));
+    this.persist();
     const finished = new Set(this.db.finished.filter((r) => r.user_id === me).map((r) => r.story_id));
     return this.db.progress
       .filter((p) => p.user_id === me && !finished.has(p.story_id))

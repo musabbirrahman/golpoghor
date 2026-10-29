@@ -4,11 +4,62 @@ import { AppError, fileToAvatarFile } from "../lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { resolveNotificationPrefs } from "../lib/data-provider";
-import type { NotificationPrefs } from "../lib/types";
+import type { NotificationPrefs, ReadingProgress, Story } from "../lib/types";
 import { MyKeepsakesSection } from "../components/my-keepsakes";
 import { Layout } from "../components/layout";
 import { Avatar, Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
 import { Cover, StoryCard, storyPath } from "../components/story-card";
+
+/** Continue-reading card: cover + title + author + the chapter the reader
+ *  is actually in ("Chapter 2/9 · 64%") + progress bar. The chapter comes
+ *  from the same published-chapter list the story page uses, so the number
+ *  matches what the reader sees there. While that list loads, a blank line
+ *  holds the space so the card does not jump. */
+function ContinueCard({ story, progress }: { story: Story; progress: ReadingProgress }) {
+  const { t, dp } = useApp();
+  const chaptersQuery = useQuery({
+    queryKey: ["chapters", story.id],
+    queryFn: () => dp.listChapters(story.id, { publishedOnly: true }),
+  });
+  const pct = Math.round(progress.scroll_ratio * 100);
+  let line = `${pct}%`;
+  // Whole-story progress, same chapter-count formula the story page's
+  // overall bar uses, so both pages agree: (chapters before this one +
+  // this chapter's ratio) / all chapters. The bar above stays the
+  // current chapter's progress; this count is the extra story number.
+  let storyPct: number | null = null;
+  if (progress.chapter_id) {
+    const chapters = chaptersQuery.data;
+    if (!chapters) line = "\u00A0";
+    else {
+      const idx = chapters.findIndex((c) => c.id === progress.chapter_id);
+      if (idx >= 0) {
+        line = `${t("story", "chapter")} ${idx + 1}/${chapters.length} · ${pct}%`;
+        storyPct = Math.round(((idx + progress.scroll_ratio) / chapters.length) * 100);
+      } else {
+        line = `${pct}%`;
+      }
+    }
+  }
+  return (
+    <Link to={storyPath(story)} className="flex h-full gap-4 rounded-xl bg-white p-4 shadow-card hover:shadow-lift">
+      <Cover story={story} className="aspect-[3/4] w-20 shrink-0 rounded-lg" thumb />
+      <div className="min-w-0 flex-1">
+        <p className="clamp-2 font-serif text-lg font-semibold leading-snug">{story.title}</p>
+        <p className="mt-0.5 truncate text-sm text-ink-faint">{story.original_author ?? story.author?.display_name}</p>
+        <p className="mt-2 text-sm font-medium text-ink">{line}</p>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sage" role="progressbar"
+          aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+          <div className="h-full rounded-full bg-river" style={{ width: `${pct}%` }} />
+        </div>
+        {storyPct != null && (
+          <p className="mt-1.5 text-xs text-ink-faint">{t("library", "storyProgress")} {storyPct}%</p>
+        )}
+        <p className="mt-2 text-sm font-medium text-river">{t("library", "resume")} →</p>
+      </div>
+    </Link>
+  );
+}
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { t, session, sessionLoading } = useApp();
@@ -75,18 +126,7 @@ export function LibraryPage() {
           {progressQuery.isLoading ? <Spinner /> : progressQuery.data?.length ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {progressQuery.data.map(({ story, progress }) => (
-                <Link key={story.id} to={storyPath(story)} className="flex h-full gap-4 rounded-xl bg-white p-4 shadow-card hover:shadow-lift">
-                  <Cover story={story} className="aspect-[3/4] w-20 shrink-0 rounded-lg" thumb />
-                  <div className="min-w-0 flex-1">
-                    <p className="clamp-2 font-serif text-lg font-semibold leading-snug">{story.title}</p>
-                    <p className="mt-0.5 truncate text-sm text-ink-faint">{story.original_author ?? story.author?.display_name}</p>
-                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-sage" role="progressbar"
-                      aria-valuenow={Math.round(progress.scroll_ratio * 100)} aria-valuemin={0} aria-valuemax={100}>
-                      <div className="h-full rounded-full bg-river" style={{ width: `${Math.round(progress.scroll_ratio * 100)}%` }} />
-                    </div>
-                    <p className="mt-2 text-sm font-medium text-river">{t("library", "resume")} →</p>
-                  </div>
-                </Link>
+                <ContinueCard key={story.id} story={story} progress={progress} />
               ))}
             </div>
           ) : (
@@ -113,7 +153,7 @@ export function LibraryPage() {
           <div className="mb-4 mt-2 h-0.5 w-10 bg-gold" />
           {listQuery.isLoading ? <Spinner /> : listQuery.data?.length ? (
             <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
-              {listQuery.data.map((s) => <StoryCard key={s.id} story={s} />)}
+              {listQuery.data.map((s) => <StoryCard key={s.id} story={s} compact />)}
             </div>
           ) : (
             <EmptyState title={t("library", "empty")} />

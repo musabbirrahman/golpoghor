@@ -215,10 +215,22 @@ export interface DataProvider {
   toggleReadingList(storyId: string): Promise<boolean>;
   getReadingList(): Promise<Story[]>;
 
-  /** Manual per-reader finished mark (Library "Finished" shelf). */
+  /** Per-reader story finished mark (Library "Finished" shelf): manual
+   *  via the story button, or automatic when every published chapter is
+   *  finished (is_auto rows, maintained by setChapterFinished). */
   isFinished(storyId: string): Promise<boolean>;
   toggleFinished(storyId: string): Promise<boolean>;
   getFinishedStories(): Promise<Story[]>;
+
+  /** Per-chapter finished marks: automatic when the reader scrolls to a
+   *  chapter's end, toggleable by hand in the story Contents list.
+   *  setChapterFinished re-syncs the story mark after every change. */
+  getFinishedChapterIds(storyId: string): Promise<string[]>;
+  setChapterFinished(storyId: string, chapterId: string, finished: boolean): Promise<boolean>;
+  /** Delete a stale auto story mark (auto row exists but not every
+   *  published chapter is finished). Never inserts, so a manual story
+   *  unmark is never undone by healing. */
+  healAutoFinished(storyId: string): Promise<void>;
 
   getProgress(storyId: string): Promise<ReadingProgress | null>;
   saveProgress(storyId: string, chapterId: string | null, position: ReadingPosition): Promise<void>;
