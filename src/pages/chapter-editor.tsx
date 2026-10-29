@@ -28,9 +28,12 @@ function ToolbarButtons({ editor }: { editor: ReturnType<typeof useEditor> }) {
     };
   }, [editor]);
   if (!editor) return null;
+  // NOTE: deliberately no hover tint on these buttons. On touch screens
+  // :hover sticks after a tap, so an unselected button kept a faded tint
+  // that looked like a half-selection.
   const btn = (active: boolean, disabled: boolean) =>
     `flex h-11 min-w-11 items-center justify-center rounded-lg px-3 text-base font-semibold ${
-      active ? "bg-river font-bold text-white shadow-sm" : "text-ink hover:bg-sage"
+      active ? "bg-river font-bold text-white shadow-sm" : "text-ink"
     } ${disabled ? "cursor-not-allowed opacity-40 hover:bg-transparent" : ""}`;
   const items: { label: string; action: () => void; active: boolean; disabled: boolean; momentary: boolean; title: string }[] = [
     { label: "B", action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive("bold"), disabled: false, momentary: false, title: "Bold" },
