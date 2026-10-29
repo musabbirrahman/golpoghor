@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "../lib/app-context";
 import { Button, Input, Modal, Textarea } from "./ui";
-import { KEEPSAKE_TEMPLATES } from "../lib/data-provider";
+import { KEEPSAKE_EXCERPT_MAX, KEEPSAKE_TEMPLATES } from "../lib/data-provider";
 import type { KeepsakeTemplate } from "../lib/types";
 import {
   CARD_TEMPLATES,
@@ -50,11 +50,15 @@ export function StandaloneKeepsake({
   }, [open ]);
 
   // Preview = the export-resolution canvas itself, shown scaled.
+  // NOTE: the words state stays RAW while typing. Normalizing on
+  // every keystroke trims each line, which eats a trailing space
+  // the instant it is typed — "hello world" came out "helloworld".
+  // Cleanup happens only here, at render time.
   useEffect(() => {
     if (!open || !canvasRef.current) return;
     let cancelled = false;
     renderKeepsakeCard(canvasRef.current, {
-      excerpt: words,
+      excerpt: normalizeExcerpt(words),
       title: title.trim(),
       author: profile?.display_name ?? "",
       template,
@@ -83,7 +87,7 @@ export function StandaloneKeepsake({
           id="own-words"
           rows={4}
           value={words}
-          onChange={(e) => setWords(normalizeExcerpt(e.target.value))}
+          onChange={(e) => setWords(e.target.value.slice(0, KEEPSAKE_EXCERPT_MAX))}
           placeholder={t("keepsakes", "ownWordsPlaceholder")}
           className="mt-1"
         />
