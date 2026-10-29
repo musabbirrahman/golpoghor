@@ -619,10 +619,12 @@ export function StoryPage() {
                 <Badge tone="gold">#{tag}</Badge>
               </Link>
             ))}
-            {/* Phase 1: sub-categories show as #tags like free tags, but
-                plain for now — they gain a filter link with Phase 2. */}
+            {/* Sub-categories link like free tags: tapping one filters
+                Discover to stories carrying that sub. */}
             {(story.subcategories ?? []).map((sub) => (
-              <Badge key={sub} tone="gold">#{subLabel(sub)}</Badge>
+              <Link key={sub} to={`/discover?sub=${encodeURIComponent(sub)}`}>
+                <Badge tone="gold">#{subLabel(sub)}</Badge>
+              </Link>
             ))}
           </div>
           <h1 className="max-lg:text-center text-pretty font-serif text-[28px] font-bold leading-tight sm:text-5xl md:text-[52px] lg:mt-3 lg:text-pretty lg:text-[56px]">{story.title}</h1>
@@ -659,7 +661,9 @@ export function StoryPage() {
               </Link>
             ))}
             {(story.subcategories ?? []).map((sub) => (
-              <Badge key={sub} tone="gold">#{subLabel(sub)}</Badge>
+              <Link key={sub} to={`/discover?sub=${encodeURIComponent(sub)}`}>
+                <Badge tone="gold">#{subLabel(sub)}</Badge>
+              </Link>
             ))}
           </div>
 
