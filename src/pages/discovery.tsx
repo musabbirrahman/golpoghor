@@ -436,7 +436,7 @@ function FilterDialog({ language, genre, selectedSubs, status, time, sort, genre
       document.body.style.overflow = prev;
     };
   }, [onClose]);
-  const clearAll = () => set({ language: "", genre: "", sub: "", status: "", time: "" });
+  const clearAll = () => set({ language: "", genre: "", sub: "", status: "", time: "", new: "" });
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
       <button type="button" aria-label={t("discover", "close")} onClick={onClose} className="absolute inset-0 bg-black/50" />
@@ -541,6 +541,7 @@ export function DiscoverPage() {
   const subs = params.getAll("sub");
   const status = params.get("status") || "";
   const time = params.get("time") || "";
+  const newOnly = params.get("new") === "1";
   const sort = (params.get("sort") || "newest") as "newest" | "popular" | "most_viewed" | "featured";
   const q = params.get("q") || "";
   const tag = params.get("tag") || "";
@@ -557,14 +558,17 @@ export function DiscoverPage() {
     subcategories: subs.length ? subs : undefined,
     status: (status || undefined) as "ongoing" | "complete" | undefined,
     time: (time || undefined) as "under15" | "15to45" | "over45" | undefined,
+    newOnly: newOnly || undefined,
     q: q || undefined,
     tag: tag || undefined,
     sort,
   };
-  const activeFilterCount = [language, genre || subs.length, status, time].filter(Boolean).length;
+  const activeFilterCount = [language, genre || subs.length, status, time, newOnly].filter(Boolean).length;
   // Phase 2 rework: any active filter hides the shelves, so the page
-  // shows only the filtered results (sort alone is ordering, not a filter).
-  const hasActiveFilter = Boolean(language || genre || subs.length || status || time || tag);
+  // shows only the filtered results. Featured sort hides them too: its
+  // list is a subset (the picks only), not the whole library — while
+  // Newest sort shows everything, so the shelves stay for it.
+  const hasActiveFilter = Boolean(language || genre || subs.length || status || time || tag || newOnly);
   const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useStoryPages(filters);
   const stories = data?.pages.flatMap((p) => p.stories) ?? [];
   const total = data?.pages[0]?.total ?? 0;
@@ -613,7 +617,7 @@ export function DiscoverPage() {
   return (
     <Layout>
       {/* Vault entrance */}
-      <section className="relative mt-6 overflow-hidden rounded-2xl bg-ink px-6 py-8 text-center text-paper sm:py-10">
+      <section className="relative mt-6 overflow-hidden rounded-2xl bg-ink px-6 py-6 text-center text-paper sm:py-10">
         <div
           className="pointer-events-none absolute inset-0 opacity-20"
           aria-hidden
@@ -639,7 +643,7 @@ export function DiscoverPage() {
         {activeFilterCount > 0 && (
           <button
             type="button"
-            onClick={() => set({ language: "", genre: "", sub: "", status: "", time: "" })}
+            onClick={() => set({ language: "", genre: "", sub: "", status: "", time: "", new: "" })}
             className="text-sm font-medium text-river hover:underline"
           >
             {t("discover", "clearFilters")}
@@ -667,11 +671,11 @@ export function DiscoverPage() {
           Complete, Ongoing, and Quick gained View all; Classics still
           has none (no classics filter exists). Shelves hide entirely
           while any filter is active (Phase 2 rework). */}
-      {!hasActiveFilter && (shelvesLoading ? <div className="mt-10"><Spinner /></div> : (
+      {!hasActiveFilter && sort !== "featured" && (shelvesLoading ? <div className="mt-10"><Spinner /></div> : (
         <>
           {newest.length > 0 && (
-            <section className="mt-12 border-t border-ink/10 pt-10">
-              <ShelfHead icon={<SparkIcon />} name={t("discover", "shelfNew")} tagline={t("discover", "tagNew")} accent="#285C4B" action={<ShelfViewAll to="/discover" label={t("home", "viewAll")} accent="#285C4B" />} />
+            <section className="mt-8 border-t border-ink/10 pt-6 sm:mt-12 sm:pt-10">
+              <ShelfHead icon={<SparkIcon />} name={t("discover", "shelfNew")} tagline={t("discover", "tagNew")} accent="#285C4B" action={<ShelfViewAll to="/discover?new=1" label={t("home", "viewAll")} accent="#285C4B" />} />
               <ShelfRow stories={newest} />
             </section>
           )}
@@ -710,8 +714,10 @@ export function DiscoverPage() {
       ))}
 
       {/* All stories list — controls live in the top filter row now;
-          the portal holds every option including sort. */}
-      <section id="all-stories" className="mt-12 border-t border-ink/10 pt-10 scroll-mt-24">
+          the portal holds every option including sort. When the shelves
+          are hidden it is the first block after the filter row, so it
+          takes the same tighter phone spacing as the first shelf. */}
+      <section id="all-stories" className={hasActiveFilter || sort === "featured" ? "mt-8 border-t border-ink/10 pt-6 sm:mt-12 sm:pt-10 scroll-mt-24" : "mt-12 border-t border-ink/10 pt-10 scroll-mt-24"}>
         <h2 className="font-serif text-2xl font-bold">{t("story", "allStories")}</h2>
 
       {tag && (

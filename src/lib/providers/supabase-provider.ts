@@ -408,6 +408,10 @@ export class SupabaseProvider implements DataProvider {
       if (ids.length) q = q.overlaps("subcategories", ids);
     }
     if (f.status) q = q.eq("status", f.status);
+    if (f.newOnly) {
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      q = q.gte("published_at", since);
+    }
     // NOTE: no DB-side time filter here — stories has no word_count
     // column (live-proven 42703); counts arrive via story_counts below,
     // so the band filter runs after attachCounts.

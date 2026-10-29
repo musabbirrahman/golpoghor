@@ -592,6 +592,13 @@ export class DemoProvider implements DataProvider {
       rows = rows.filter((s) => ids.some((id) => (s.subcategories ?? []).includes(id)));
     }
     if (f.status) rows = rows.filter((s) => s.status === f.status);
+    if (f.newOnly) {
+      const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      rows = rows.filter((s) => {
+        const p = Date.parse((s as any).published_at ?? (s as any).created_at ?? "");
+        return !Number.isNaN(p) && p >= since;
+      });
+    }
     if (f.time) {
       // Word counts attach from chapters below; run that first so the
       // band filter sees real counts (same values the page would get).

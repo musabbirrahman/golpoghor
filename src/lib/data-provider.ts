@@ -43,6 +43,9 @@ export interface StoryFilters {
   status?: "ongoing" | "complete";
   /** Phase 2: reading-time band from word count (see utils). */
   time?: "under15" | "15to45" | "over45";
+  /** Phase 2 v4: published within 30 days — the same window as the
+   *  panel's "+N new" count. Powers the New arrivals View-all link. */
+  newOnly?: boolean;
   tag?: string;
   q?: string;
   authorId?: string;
