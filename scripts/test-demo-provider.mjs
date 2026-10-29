@@ -173,6 +173,14 @@ const check = (name, cond) => {
   await dp.signOut();
 }
 
+// 3e. author suggestions
+{
+  const hits = await dp.searchAuthors("nusrat");
+  check("author search matches username/display name", hits.some((p) => p.username === "nusrat_rahman"));
+  check("author search caps at 5", (await dp.searchAuthors("a")).length <= 5);
+  check("author search empty on blank", (await dp.searchAuthors("  ")).length === 0);
+}
+
 // 4. signup + signin
 {
   await dp.signUp({ email: "test@example.com", password: "secret12", username: "test_author", displayName: "Test Author" });

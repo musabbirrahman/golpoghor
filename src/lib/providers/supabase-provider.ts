@@ -361,6 +361,18 @@ export class SupabaseProvider implements DataProvider {
     return (data as Profile) ?? null;
   }
 
+  async searchAuthors(term: string): Promise<Profile[]> {
+    const clean = term.trim().replace(/[%_,()."]/g, "");
+    if (!clean) return [];
+    const { data, error } = await this.sb
+      .from("profiles")
+      .select("id, username, display_name, bio, avatar_path, locale, role, created_at, updated_at")
+      .or(`username.ilike.%${clean}%,display_name.ilike.%${clean}%`)
+      .limit(5);
+    if (error) throw toAppError(error);
+    return (data as Profile[]) ?? [];
+  }
+
   async updateProfile(
     id: string,
     patch: Partial<Pick<Profile, "display_name" | "bio" | "locale" | "avatar_path">>

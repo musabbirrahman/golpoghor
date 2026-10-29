@@ -2,6 +2,7 @@ import { Link, NavLink, useLocation, useNavigate, useNavigationType } from "reac
 import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { useApp } from "../lib/app-context";
 import { NotificationBell } from "./notifications";
+import { SearchSuggestions } from "./search-suggestions";
 
 /**
  * New-page navigations start at the top (e.g. tapping a footer link deep at
@@ -56,13 +57,43 @@ function LocaleToggle() {
 function SearchBox({ mobile = false, inputRef, onClose, onSubmitDone }: { mobile?: boolean; inputRef?: Ref<HTMLInputElement>; onClose?: () => void; onSubmitDone?: () => void }) {
   const { t } = useApp();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [q, setQ] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
+  const [show, setShow] = useState(false);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  // Suggestions wait for a typing pause so every keystroke is not a query.
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQ(q), 250);
+    return () => clearTimeout(id);
+  }, [q]);
+  // A navigation (suggestion tap, submit) hides the dropdown; the header
+  // itself never unmounts, so nothing else would.
+  useEffect(() => {
+    setShow(false);
+  }, [pathname]);
+  // Tapping anywhere outside the form hides the dropdown (mobile's
+  // search-area handler closes the whole search on top of this).
+  useEffect(() => {
+    if (!show) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (formRef.current && !formRef.current.contains(e.target as Node)) setShow(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+    };
+  }, [show]);
   return (
     <form
+      ref={formRef}
       role="search"
-      className={mobile ? "min-w-0 flex-1" : "hidden w-64 lg:block lg:w-80"}
+      className={mobile ? "relative min-w-0 flex-1" : "relative hidden w-64 lg:block lg:w-80"}
       onSubmit={(e) => {
         e.preventDefault();
+        setShow(false);
         navigate(q.trim() ? `/search?q=${encodeURIComponent(q.trim())}` : "/discover");
         onSubmitDone?.();
       }}
@@ -71,14 +102,22 @@ function SearchBox({ mobile = false, inputRef, onClose, onSubmitDone }: { mobile
         type="search"
         value={q}
         ref={inputRef}
+        onFocus={() => setShow(true)}
         onKeyDown={(e) => {
-          if (e.key === "Escape") onClose?.();
+          if (e.key === "Escape") {
+            if (show) setShow(false);
+            else onClose?.();
+          }
         }}
-        onChange={(e) => setQ(e.target.value)}
+        onChange={(e) => {
+          setQ(e.target.value);
+          setShow(true);
+        }}
         placeholder={t("discover", "searchPlaceholder")}
         aria-label={t("nav", "search")}
         className={`w-full border border-ink/15 bg-white px-4 py-2 text-sm placeholder:text-ink-faint focus:border-river focus:outline-none focus:ring-1 focus:ring-river ${mobile ? "rounded-xl focus-visible:rounded-xl" : "rounded-full focus-visible:rounded-full"}`}
       />
+      {show && <SearchSuggestions query={debouncedQ} onPick={() => setShow(false)} />}
     </form>
   );
 }

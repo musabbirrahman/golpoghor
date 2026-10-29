@@ -143,6 +143,8 @@ export interface DataProvider {
   // ---------------------------------------------------------- profiles
   getProfile(id: string): Promise<Profile | null>;
   getProfileByUsername(username: string): Promise<Profile | null>;
+  /** Public: authors whose username or display name contains the term (suggestions). */
+  searchAuthors(term: string): Promise<Profile[]>;
   updateProfile(
     id: string,
     patch: Partial<Pick<Profile, "display_name" | "bio" | "locale" | "avatar_path">>

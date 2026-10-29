@@ -513,6 +513,14 @@ export class DemoProvider implements DataProvider {
     return this.db.profiles.find((p) => p.username === username.toLowerCase()) ?? null;
   }
 
+  async searchAuthors(term: string): Promise<Profile[]> {
+    const clean = term.trim().toLowerCase();
+    if (!clean) return [];
+    return this.db.profiles
+      .filter((p) => p.username.toLowerCase().includes(clean) || p.display_name.toLowerCase().includes(clean))
+      .slice(0, 5);
+  }
+
   async updateProfile(
     id: string,
     patch: Partial<Pick<Profile, "display_name" | "bio" | "locale" | "avatar_path">>

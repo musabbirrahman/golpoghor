@@ -355,6 +355,13 @@ const dict = {
       bn: "গল্প, লেখক বা ট্যাগ খুঁজুন…",
       en: "Search stories, authors, tags…",
     },
+    suggestionsStories: { bn: "গল্প", en: "Stories" },
+    suggestionsAuthors: { bn: "লেখক", en: "Authors" },
+    suggestionsGenres: { bn: "ধরন", en: "Genres" },
+    suggestionsEmpty: {
+      bn: "কিছু মেলেনি — পুরো সার্চ দেখতে এখানে চাপুন",
+      en: "No matches — tap here for the full search",
+    },
     language: { bn: "ভাষা", en: "Language" },
     allLanguages: { bn: "সব ভাষা", en: "All languages" },
     bangla: { bn: "বাংলা", en: "Bangla" },
