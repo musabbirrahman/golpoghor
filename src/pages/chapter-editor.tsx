@@ -13,7 +13,7 @@ import type { Chapter, Story, TiptapDoc } from "../lib/types";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
-function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
+function ToolbarButtons({ editor }: { editor: ReturnType<typeof useEditor> }) {
   // Re-render on every editor transaction (keystroke, selection move, mark
   // toggle) so active states and undo/redo availability are never stale:
   // the parent only re-renders on word-count/save changes, which can lag
@@ -43,12 +43,21 @@ function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
     { label: "↪", action: () => editor.chain().focus().redo().run(), active: false, disabled: !editor.can().redo(), momentary: true, title: "Redo" },
   ];
   return (
-    <div className="flex flex-wrap gap-1.5 border-b border-ink/15 px-3 py-2" role="toolbar" aria-label="Formatting">
+    <>
       {items.map((it) => (
         <button key={it.title} type="button" title={it.title} aria-label={it.title} aria-pressed={it.momentary ? undefined : it.active} disabled={it.disabled} onClick={it.action} className={btn(it.active, it.disabled)}>
           {it.label}
         </button>
       ))}
+    </>
+  );
+}
+
+function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
+  if (!editor) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5 border-b border-ink/15 px-3 py-2" role="toolbar" aria-label="Formatting">
+      <ToolbarButtons editor={editor} />
     </div>
   );
 }
@@ -85,6 +94,12 @@ export function ChapterEditorPage() {
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [liveWords, setLiveWords] = useState(0);
+  // Floating format trigger: hidden at the top (the in-card toolbar is
+  // visible there) and while scrolling down; a scroll-up deep in a long
+  // chapter reveals only the small trigger, never the full bar, so
+  // re-reading is never covered. Tapping the trigger opens the full bar.
+  const [floatVisible, setFloatVisible] = useState(false);
+  const [floatOpen, setFloatOpen] = useState(false);
 
   // Serialize saves: each save waits for the previous one, newest doc always wins.
   const saveChain = useRef<Promise<void>>(Promise.resolve());
@@ -240,6 +255,33 @@ export function ChapterEditorPage() {
       }
     };
   }, [saveNow]);
+
+  // Floating trigger visibility follows scroll direction: up reveals it,
+  // down hides it; near the top it stays hidden (the in-card toolbar is
+  // right there). Opening preview hides both.
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const dy = y - lastY;
+      lastY = y;
+      if (Math.abs(dy) < 4) return;
+      if (y < 200) {
+        setFloatVisible(false);
+        return;
+      }
+      setFloatVisible(dy < 0);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (preview) {
+      setFloatOpen(false);
+      setFloatVisible(false);
+    }
+  }, [preview]);
 
   async function runAction(action: "publish" | "unpublish" | "delete") {    if (!chapter) return;
     setError(null);
@@ -425,6 +467,40 @@ export function ChapterEditorPage() {
           </Button>
         </div>
       </Modal>
+
+      {!preview && editor && (
+        <>
+          <button
+            type="button"
+            aria-label={t("write", "formatting")}
+            onClick={() => setFloatOpen(true)}
+            className={`fixed right-4 top-20 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-river text-base font-bold text-white shadow-lift transition-all duration-300 md:right-8 md:top-20 ${floatVisible && !floatOpen ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-4 opacity-0"}`}
+          >
+            Aa
+          </button>
+          {floatOpen && (
+            <div className="fixed inset-x-4 top-20 z-50 rounded-2xl border border-ink/15 bg-white p-3 shadow-lift sm:left-auto sm:right-6 sm:w-[380px] md:top-20" role="toolbar" aria-label="Formatting">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-sm font-semibold text-ink-soft">{t("write", "formatting")}</span>
+                <button
+                  type="button"
+                  aria-label={t("common", "close")}
+                  onClick={() => {
+                    setFloatOpen(false);
+                    if (window.scrollY > 200) setFloatVisible(true);
+                  }}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-lg text-ink-soft hover:bg-sage"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <ToolbarButtons editor={editor} />
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </Layout>
   );
 }

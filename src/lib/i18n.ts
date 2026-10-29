@@ -331,6 +331,7 @@ const dict = {
     moveUp: { bn: "উপরে তুলুন", en: "Move up" },
     moveDown: { bn: "নিচে নামান", en: "Move down" },
     chapterTitle: { bn: "অধ্যায়ের শিরোনাম", en: "Chapter title" },
+    formatting: { bn: "ফরম্যাটিং", en: "Formatting" },
     saving: { bn: "সংরক্ষণ হচ্ছে…", en: "Saving…" },
     savedAt: { bn: "সংরক্ষিত", en: "Saved" },
     saveFailed: { bn: "সংরক্ষণ ব্যর্থ — পুনরায় চেষ্টা", en: "Save failed — retry" },
