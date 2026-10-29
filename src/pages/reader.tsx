@@ -495,6 +495,8 @@ export function ReaderPage() {
   const [studioBtn, setStudioBtn] = useState<{ top: number; left: number } | null>(null);
   const saveTimer = useRef<number | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
+  const articleRef = useRef<HTMLElement | null>(null);
+  const endMarkRef = useRef<HTMLParagraphElement | null>(null);
   /** Saves are blocked until the restore decision for this chapter has settled,
    *  so loading/initial state can never overwrite a valid saved position. */
   const readyRef = useRef(false);
@@ -576,15 +578,31 @@ export function ReaderPage() {
     enabled: !!story && !!session,
   });
 
-  /** Capture the current position: a content-block anchor (preferred) plus the
-   *  whole-document scroll ratio as a fallback. Returns null when the chapter
-   *  body is not live DOM (route transition/teardown) — such measurements are
-   *  garbage and must never be persisted. */
+  /** How far through the CHAPTER the reader is (0 at its top, 1 when its
+   *  end reaches the viewport bottom), measured on the article element.
+   *  The page keeps growing below the chapter (comments, footer), so a
+   *  page-based ratio stops at ~75% on a fully read chapter and the
+   *  end-of-chapter auto-mark never fires. For a chapter shorter than
+   *  the viewport, the fraction is how much of it is on screen. */
+  const articleFraction = (): number | null => {
+    const article = articleRef.current;
+    if (!article || !article.isConnected) return null;
+    const r = article.getBoundingClientRect();
+    const vh = window.innerHeight;
+    if (r.height > vh) return Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - vh)));
+    return Math.min(1, Math.max(0, (vh - r.top) / Math.max(1, r.height)));
+  };
+
+  /** Capture the current position: a content-block anchor (preferred) plus
+   *  the chapter fraction (for the % displays and the fallback restore).
+   *  Returns null when the chapter body is not live DOM (route
+   *  transition/teardown) — such measurements are garbage and must never
+   *  be persisted. */
   const capturePosition = (): ReadingPosition | null => {
     const root = bodyRef.current;
     if (!root || !root.isConnected) return null;
     const el = document.documentElement;
-    const ratio = el.scrollTop / Math.max(1, el.scrollHeight - el.clientHeight);
+    const ratio = articleFraction() ?? el.scrollTop / Math.max(1, el.scrollHeight - el.clientHeight);
     const blocks = root.querySelectorAll(":scope > .richtext > *");
     let blockIndex: number | null = null;
     let blockOffset: number | null = null;
@@ -625,15 +643,23 @@ export function ReaderPage() {
       .catch(() => {});
   };
 
-  /** Automatic chapter finish: scrolling to the end of a published
-   *  chapter (live ratio >= 0.99 — throttled saves cap at 0.99, so 0.99
-   *  means the bottom) marks that chapter finished. The reader can still
+  /** Automatic chapter finish: the reader has reached the end of a
+   *  published chapter when the "End of chapter" mark is on screen, or
+   *  the chapter fraction is >= 0.99 (same moment the gold bar hits
+   *  100%). Measured on the chapter, never the page — comments below
+   *  the chapter must not move the goalposts. The reader can still
    *  unmark it by hand in Contents (accidental scrolls). Draft previews
    *  never auto-mark. */
-  const markIfAtEnd = (ratio: number) => {
+  const markIfAtEnd = (ratio: number, allowEndMark = true) => {
     if (!story || !chapter || !session) return;
     if (chapter.status !== "published") return;
-    if (ratio < 0.99) return;
+    // At teardown the end-mark ref may already point at the NEXT chapter
+    // (refs update before effect cleanup runs), so cleanup passes
+    // allowEndMark=false and marks on the ratio alone.
+    const endVisible = allowEndMark && endMarkRef.current
+      ? endMarkRef.current.getBoundingClientRect().top <= window.innerHeight + 20
+      : false;
+    if (!endVisible && ratio < 0.99) return;
     if (markedRef.current === chapter.id) return;
     markedRef.current = chapter.id;
     dp.setChapterFinished(story.id, chapter.id, true)
@@ -683,9 +709,19 @@ export function ReaderPage() {
         const target = r.top + window.scrollY + frac * r.height - RESTORE_PAD;
         window.scrollTo({ top: Math.max(0, target) });
       } else {
-        // Fallback: whole-document ratio.
-        const el = document.documentElement;
-        window.scrollTo({ top: Math.max(0, progress.scroll_ratio * (el.scrollHeight - el.clientHeight)) });
+        // Fallback: the saved fraction is chapter-based (see
+        // capturePosition), so map it back through the article's own
+        // geometry, not the page's — otherwise comments below the
+        // chapter would push the landing spot past the chapter end.
+        const article = articleRef.current;
+        if (article) {
+          const r = article.getBoundingClientRect();
+          const target = r.top + window.scrollY + progress.scroll_ratio * Math.max(1, r.height - window.innerHeight);
+          window.scrollTo({ top: Math.max(0, target) });
+        } else {
+          const el = document.documentElement;
+          window.scrollTo({ top: Math.max(0, progress.scroll_ratio * (el.scrollHeight - el.clientHeight)) });
+        }
       }
       readyRef.current = true;
       restoredForRef.current = chapter.id;
@@ -742,8 +778,9 @@ export function ReaderPage() {
       document.removeEventListener("visibilitychange", onHidden);
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
       // Leaving at the bottom (e.g. restored at the end, then closed)
-      // counts as having reached the end too.
-      if (lastPositionRef.current) markIfAtEnd(lastPositionRef.current.scrollRatio);
+      // counts as having reached the end too. Ratio only here — see
+      // markIfAtEnd on why the end-mark must not be consulted at teardown.
+      if (lastPositionRef.current) markIfAtEnd(lastPositionRef.current.scrollRatio, false);
       if (!restart || scrolledRef.current) saveNow(1);
     };
   }, [story, chapter, session, dp, restart]);
@@ -831,14 +868,11 @@ export function ReaderPage() {
   // viewport bottom), written straight to the bar's DOM node so
   // scrolling never re-renders the page.
   const progressBarRef = useRef<HTMLDivElement | null>(null);
-  const articleRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     const update = () => {
       const bar = progressBarRef.current;
-      const article = articleRef.current;
-      if (!bar || !article) return;
-      const rect = article.getBoundingClientRect();
-      const ratio = Math.min(1, Math.max(0, -rect.top / Math.max(1, rect.height - window.innerHeight)));
+      if (!bar) return;
+      const ratio = articleFraction() ?? 0;
       bar.style.width = `${Math.round(ratio * 100)}%`;
     };
     update();
@@ -995,7 +1029,7 @@ export function ReaderPage() {
           </div>
 
           <footer className="mt-10 border-t border-current/10 pt-6 text-center opacity-80">
-            <p className="font-serif italic">❦ {t("reader", "endOfChapter")} ❦</p>
+            <p ref={endMarkRef} className="font-serif italic">❦ {t("reader", "endOfChapter")} ❦</p>
             {session && (
               <button onClick={() => setReportOpen(true)} className="mt-3 text-sm underline hover:opacity-100">
                 {t("story", "report")}
