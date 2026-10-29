@@ -108,6 +108,17 @@ export interface Story {
   word_count?: number;
 }
 
+/** Discover Phase 3b: a moderator-curated shelf. Stories arrive in item order. */
+export type ShelfLayout = "horizontal" | "vertical";
+
+export interface CuratedShelf {
+  id: string;
+  name: string;
+  layout: ShelfLayout;
+  position: number;
+  stories: Story[];
+}
+
 export interface Chapter {
   id: string;
   story_id: string;

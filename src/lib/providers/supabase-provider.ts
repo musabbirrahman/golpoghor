@@ -13,6 +13,7 @@ import type {
   Chapter,
   ChapterListItem,
   Comment,
+  CuratedShelf,
   Keepsake,
   KeepsakeLicence,
   KeepsakeTemplate,
@@ -27,6 +28,7 @@ import type {
   ReportStatus,
   ReportTarget,
   Session,
+  ShelfLayout,
   Story,
 } from "../types";
 import type {
@@ -521,6 +523,93 @@ export class SupabaseProvider implements DataProvider {
 
   async setFeaturedPosition(id: string, position: number | null): Promise<void> {
     const { error } = await this.sb.from("stories").update({ featured_position: position }).eq("id", id);
+    if (error) throw toAppError(error);
+  }
+
+  async listCuratedShelves(): Promise<CuratedShelf[]> {
+    const { data: shelves, error } = await this.sb
+      .from("shelves")
+      .select("id, name, layout, position")
+      .order("position", { ascending: true });
+    if (error) throw toAppError(error);
+    const out: CuratedShelf[] = [];
+    // One items query per shelf: shelf counts are moderator-curated (single
+    // digits), and the nested-select alternative cannot order items cleanly.
+    for (const sh of shelves ?? []) {
+      const { data: items, error: itemsError } = await this.sb
+        .from("shelf_items")
+        .select(`position, story:stories(${STORY_JOIN})`)
+        .eq("shelf_id", sh.id)
+        .order("position", { ascending: true });
+      if (itemsError) throw toAppError(itemsError);
+      const stories = (items ?? [])
+        .map((it: any) => mapStory(it.story))
+        .filter((s) => s && (s.status === "ongoing" || s.status === "complete"));
+      await this.attachCounts(stories);
+      out.push({ id: sh.id, name: sh.name, layout: sh.layout, position: sh.position, stories });
+    }
+    return out;
+  }
+
+  async createShelf(name: string, layout: ShelfLayout): Promise<CuratedShelf> {
+    const { data: shelves, error: posError } = await this.sb
+      .from("shelves")
+      .select("position")
+      .order("position", { ascending: false })
+      .limit(1);
+    if (posError) throw toAppError(posError);
+    const position = (shelves?.[0]?.position ?? 0) + 1;
+    const { data, error } = await this.sb
+      .from("shelves")
+      .insert({ name: name.trim(), layout, position })
+      .select("id, name, layout, position")
+      .single();
+    if (error) throw toAppError(error);
+    return { ...data, stories: [] };
+  }
+
+  async updateShelf(id: string, patch: { name?: string; layout?: ShelfLayout; position?: number }): Promise<void> {
+    const clean: Record<string, unknown> = {};
+    if (patch.name !== undefined) clean.name = patch.name.trim();
+    if (patch.layout !== undefined) clean.layout = patch.layout;
+    if (patch.position !== undefined) clean.position = patch.position;
+    if (!Object.keys(clean).length) return;
+    const { error } = await this.sb.from("shelves").update(clean).eq("id", id);
+    if (error) throw toAppError(error);
+  }
+
+  async deleteShelf(id: string): Promise<void> {
+    const { error } = await this.sb.from("shelves").delete().eq("id", id);
+    if (error) throw toAppError(error);
+  }
+
+  async addShelfItem(shelfId: string, storyId: string): Promise<void> {
+    const { data: items, error: posError } = await this.sb
+      .from("shelf_items")
+      .select("position")
+      .eq("shelf_id", shelfId)
+      .order("position", { ascending: false })
+      .limit(1);
+    if (posError) throw toAppError(posError);
+    const { error } = await this.sb
+      .from("shelf_items")
+      .insert({ shelf_id: shelfId, story_id: storyId, position: (items?.[0]?.position ?? 0) + 1 });
+    // Already on the shelf: the unique (shelf_id, story_id) raises 23505.
+    // Treat that as a no-op, not a failure.
+    if (error && (error as any).code !== "23505") throw toAppError(error);
+  }
+
+  async removeShelfItem(shelfId: string, storyId: string): Promise<void> {
+    const { error } = await this.sb.from("shelf_items").delete().eq("shelf_id", shelfId).eq("story_id", storyId);
+    if (error) throw toAppError(error);
+  }
+
+  async setShelfItemPosition(shelfId: string, storyId: string, position: number): Promise<void> {
+    const { error } = await this.sb
+      .from("shelf_items")
+      .update({ position })
+      .eq("shelf_id", shelfId)
+      .eq("story_id", storyId);
     if (error) throw toAppError(error);
   }
 

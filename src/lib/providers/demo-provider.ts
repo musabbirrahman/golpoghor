@@ -32,7 +32,9 @@ import type {
   ReportStatus,
   ReportTarget,
   Session,
+  ShelfLayout,
   Story,
+  CuratedShelf,
   KeepsakeLicence,
 } from "../types";
 import type {
@@ -85,6 +87,9 @@ interface DemoDB {
   keepsakes: Keepsake[];
   /** Per-story Sharing Licence acceptances (27c): { story_id, author_id, licence_version, accepted_at, withdrawn_at }. */
   licences: { story_id: string; author_id: string; licence_version: string; accepted_at: string; withdrawn_at: string | null }[];
+  /** Phase 3b curated shelves (empty until a moderator creates one). */
+  shelves: { id: string; name: string; layout: ShelfLayout; position: number; created_at: string }[];
+  shelf_items: { shelf_id: string; story_id: string; position: number }[];
   sessionUserId: string | null;
 }
 
@@ -194,6 +199,8 @@ function seed(): DemoDB {
     storySlugRedirects: [],
     keepsakes: [],
     licences: [],
+    shelves: [],
+    shelf_items: [],
     sessionUserId: null,
   };
 }
@@ -239,6 +246,8 @@ export class DemoProvider implements DataProvider {
           db.storySlugRedirects ??= [];
           db.keepsakes ??= [];
           db.licences ??= [];
+          db.shelves ??= [];
+          db.shelf_items ??= [];
           for (const p of db.profiles) (p as any).notification_prefs ??= {};
           return db;
         }
@@ -692,6 +701,87 @@ export class DemoProvider implements DataProvider {
       throw new AppError("generic", "Invalid featured position");
     s.featured_position = position;
     s.updated_at = new Date().toISOString();
+    this.persist();
+  }
+
+  private async requireShelfModerator(): Promise<void> {
+    const me = await this.requireUid();
+    const actor = this.db.profiles.find((p) => p.id === me);
+    if (actor?.role !== "moderator" && actor?.role !== "admin")
+      throw new AppError("notAllowed", "Only moderators can manage shelves");
+  }
+
+  async listCuratedShelves(): Promise<CuratedShelf[]> {
+    const shelves = (this.db.shelves ?? []).slice().sort((a, b) => a.position - b.position);
+    return shelves.map((sh) => {
+      const stories = (this.db.shelf_items ?? [])
+        .filter((it) => it.shelf_id === sh.id)
+        .sort((a, b) => a.position - b.position)
+        .map((it) => this.db.stories.find((s) => s.id === it.story_id))
+        .filter((s): s is Story => !!s && this.isPublicStory(s))
+        .map((s) => this.withAuthor(s));
+      this.attachCounts(stories);
+      return { id: sh.id, name: sh.name, layout: sh.layout, position: sh.position, stories };
+    });
+  }
+
+  async createShelf(name: string, layout: ShelfLayout): Promise<CuratedShelf> {
+    await this.requireShelfModerator();
+    const clean = name.trim();
+    if (!clean || clean.length > 80) throw new AppError("generic", "Invalid shelf name");
+    const position = Math.max(0, ...(this.db.shelves ?? []).map((s) => s.position)) + 1;
+    const shelf = { id: uuid(), name: clean, layout, position, created_at: new Date().toISOString() };
+    (this.db.shelves ??= []).push(shelf);
+    this.persist();
+    return { ...shelf, stories: [] };
+  }
+
+  async updateShelf(id: string, patch: { name?: string; layout?: ShelfLayout; position?: number }): Promise<void> {
+    await this.requireShelfModerator();
+    const sh = (this.db.shelves ?? []).find((s) => s.id === id);
+    if (!sh) throw new AppError("notFound", "Shelf not found");
+    if (patch.name !== undefined) {
+      const clean = patch.name.trim();
+      if (!clean || clean.length > 80) throw new AppError("generic", "Invalid shelf name");
+      sh.name = clean;
+    }
+    if (patch.layout !== undefined) sh.layout = patch.layout;
+    if (patch.position !== undefined) {
+      if (!Number.isInteger(patch.position) || patch.position < 1) throw new AppError("generic", "Invalid shelf position");
+      sh.position = patch.position;
+    }
+    this.persist();
+  }
+
+  async deleteShelf(id: string): Promise<void> {
+    await this.requireShelfModerator();
+    this.db.shelves = (this.db.shelves ?? []).filter((s) => s.id !== id);
+    this.db.shelf_items = (this.db.shelf_items ?? []).filter((it) => it.shelf_id !== id);
+    this.persist();
+  }
+
+  async addShelfItem(shelfId: string, storyId: string): Promise<void> {
+    await this.requireShelfModerator();
+    if (!(this.db.shelves ?? []).some((s) => s.id === shelfId)) throw new AppError("notFound", "Shelf not found");
+    if (!(this.db.shelf_items ?? []).some((it) => it.shelf_id === shelfId && it.story_id === storyId)) {
+      const position = Math.max(0, ...(this.db.shelf_items ?? []).filter((it) => it.shelf_id === shelfId).map((it) => it.position)) + 1;
+      (this.db.shelf_items ??= []).push({ shelf_id: shelfId, story_id: storyId, position });
+      this.persist();
+    }
+  }
+
+  async removeShelfItem(shelfId: string, storyId: string): Promise<void> {
+    await this.requireShelfModerator();
+    this.db.shelf_items = (this.db.shelf_items ?? []).filter((it) => !(it.shelf_id === shelfId && it.story_id === storyId));
+    this.persist();
+  }
+
+  async setShelfItemPosition(shelfId: string, storyId: string, position: number): Promise<void> {
+    await this.requireShelfModerator();
+    const it = (this.db.shelf_items ?? []).find((x) => x.shelf_id === shelfId && x.story_id === storyId);
+    if (!it) throw new AppError("notFound", "Shelf item not found");
+    if (!Number.isInteger(position) || position < 1) throw new AppError("generic", "Invalid item position");
+    it.position = position;
     this.persist();
   }
 

@@ -116,6 +116,47 @@ const check = (name, cond) => {
   await dp.signOut();
 }
 
+// 3c. curated shelves (Phase 3b)
+{
+  let shelves = await dp.listCuratedShelves();
+  check("no curated shelves at seed", shelves.length === 0);
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  const pub = await dp.listStories({});
+  const [a, b] = pub.stories;
+  const shelf = await dp.createShelf("Editor's picks", "vertical");
+  check("shelf created at position 1, vertical", shelf.position === 1 && shelf.layout === "vertical" && shelf.stories.length === 0);
+  await dp.addShelfItem(shelf.id, a.id);
+  await dp.addShelfItem(shelf.id, b.id);
+  await dp.addShelfItem(shelf.id, a.id);
+  shelves = await dp.listCuratedShelves();
+  check("items append in order, duplicate ignored", shelves[0].stories.length === 2 && shelves[0].stories[0].id === a.id && shelves[0].stories[1].id === b.id);
+  await dp.setShelfItemPosition(shelf.id, b.id, 1);
+  await dp.setShelfItemPosition(shelf.id, a.id, 2);
+  shelves = await dp.listCuratedShelves();
+  check("item swap reorders", shelves[0].stories[0].id === b.id && shelves[0].stories[1].id === a.id);
+  await dp.removeShelfItem(shelf.id, b.id);
+  shelves = await dp.listCuratedShelves();
+  check("item removal leaves the rest", shelves[0].stories.length === 1 && shelves[0].stories[0].id === a.id);
+  await dp.updateShelf(shelf.id, { name: "Renamed", layout: "horizontal" });
+  shelves = await dp.listCuratedShelves();
+  check("rename + relayout apply", shelves[0].name === "Renamed" && shelves[0].layout === "horizontal");
+  const second = await dp.createShelf("Second", "horizontal");
+  check("second shelf at position 2", second.position === 2);
+  await dp.updateShelf(second.id, { position: 1 });
+  await dp.updateShelf(shelf.id, { position: 2 });
+  shelves = await dp.listCuratedShelves();
+  check("shelf swap reorders", shelves[0].id === second.id && shelves[1].id === shelf.id);
+  await dp.deleteShelf(second.id);
+  shelves = await dp.listCuratedShelves();
+  check("shelf delete removes it (items cascade)", shelves.length === 1 && shelves[0].id === shelf.id);
+  await dp.signOut();
+  await dp.signIn("tanvir@golpoghor.demo", "golpoghor-demo-2026");
+  let blocked = false;
+  try { await dp.createShelf("Nope", "horizontal"); } catch (e) { blocked = e?.code === "notAllowed"; }
+  check("author cannot create shelves (guard)", blocked);
+  await dp.signOut();
+}
+
 // 4. signup + signin
 {
   await dp.signUp({ email: "test@example.com", password: "secret12", username: "test_author", displayName: "Test Author" });

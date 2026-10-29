@@ -13,6 +13,7 @@ import type {
   Chapter,
   ChapterListItem,
   Comment,
+  CuratedShelf,
   Keepsake,
   KeepsakeLicence,
   KeepsakeTemplate,
@@ -27,6 +28,7 @@ import type {
   ReportStatus,
   ReportTarget,
   Session,
+  ShelfLayout,
   Story,
   StoryLanguage,
   StoryStatus,
@@ -158,6 +160,20 @@ export interface DataProvider {
   listAllFeatured(): Promise<Story[]>;
   /** Moderator only (DB trigger blocks anyone else): set position or null to unfeature. */
   setFeaturedPosition(id: string, position: number | null): Promise<void>;
+  /** Public: curated shelves in position order, each with its public stories in item order. */
+  listCuratedShelves(): Promise<CuratedShelf[]>;
+  /** Moderator only (RLS gates writes): create a shelf; position is appended. */
+  createShelf(name: string, layout: ShelfLayout): Promise<CuratedShelf>;
+  /** Moderator only: rename, relayout, or reposition a shelf. */
+  updateShelf(id: string, patch: { name?: string; layout?: ShelfLayout; position?: number }): Promise<void>;
+  /** Moderator only: delete a shelf (items cascade) and renumber the rest. */
+  deleteShelf(id: string): Promise<void>;
+  /** Moderator only: append a story to a shelf (ignored when already present). */
+  addShelfItem(shelfId: string, storyId: string): Promise<void>;
+  /** Moderator only: remove a story from a shelf. */
+  removeShelfItem(shelfId: string, storyId: string): Promise<void>;
+  /** Moderator only: set an item's position (swap/renumber handled by the caller). */
+  setShelfItemPosition(shelfId: string, storyId: string, position: number): Promise<void>;
   getStory(id: string): Promise<Story | null>;
   /** Public lookup by author username + slug. Returns null for drafts unless owner. */
   getStoryBySlug(authorUsername: string, slug: string): Promise<Story | null>;

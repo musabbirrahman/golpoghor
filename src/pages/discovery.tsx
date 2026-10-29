@@ -202,7 +202,19 @@ function BookIcon() {
     </svg>
   );
 }
-function ShelfHead({ icon, name, tagline, accent, action }: { icon: React.ReactNode; name: string; tagline: string; accent: string; action?: React.ReactNode }) {
+function ShelfIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 19V5" />
+      <path d="M9 19V8" />
+      <path d="M14 19V5" />
+      <path d="M19 19V10" />
+      <path d="M2 19h20" />
+    </svg>
+  );
+}
+
+function ShelfHead({ icon, name, tagline, accent, action }: { icon: React.ReactNode; name: string; tagline?: string; accent: string; action?: React.ReactNode }) {
   return (
     <div className="mb-4">
       <div className="flex items-center justify-between gap-3">
@@ -212,7 +224,7 @@ function ShelfHead({ icon, name, tagline, accent, action }: { icon: React.ReactN
         </div>
         {action}
       </div>
-      <p className="mt-1 text-sm text-ink-soft">{tagline}</p>
+      {tagline ? <p className="mt-1 text-sm text-ink-soft">{tagline}</p> : null}
       <div className="mt-2 h-0.5 w-10" style={{ backgroundColor: accent }} aria-hidden />
     </div>
   );
@@ -644,8 +656,10 @@ export function DiscoverPage() {
   // shelf hides when empty — no shelf ever shows an empty box.
   const featuredQuery = useQuery({ queryKey: ["stories", { featured: true, limit: 8 }], queryFn: () => dp.listFeaturedStories(8) });
   const shelfBaseQuery = useQuery({ queryKey: ["stories", { shelfBase: true, limit: 50 }], queryFn: () => dp.listStories({ limit: 50 }) });
+  const curatedQuery = useQuery({ queryKey: ["curated-shelves"], queryFn: () => dp.listCuratedShelves() });
   const shelfBase = shelfBaseQuery.data?.stories ?? [];
   const featured = featuredQuery.data ?? [];
+  const curated = curatedQuery.data ?? [];
   const newest = shelfBase.slice(0, 8);
   const complete = shelfBase.filter((s) => s.status === "complete").slice(0, 8);
   const ongoing = shelfBase.filter((s) => s.status === "ongoing").slice(0, 8);
@@ -655,7 +669,7 @@ export function DiscoverPage() {
   }).slice(0, 8);
   const classics = shelfBase.filter((s) => s.language === "bn" && s.pd_verified).slice(0, 8);
   const horror = shelfBase.filter((s) => normalizeGenre(s.genre) === "হরর").slice(0, 8);
-  const shelvesLoading = featuredQuery.isLoading || shelfBaseQuery.isLoading;
+  const shelvesLoading = featuredQuery.isLoading || shelfBaseQuery.isLoading || curatedQuery.isLoading;
 
   return (
     <Layout>
@@ -756,6 +770,18 @@ export function DiscoverPage() {
               <VerticalShelfList stories={classics} />
             </section>
           )}
+          {/* Phase 3b curated shelves: moderator-picked, in shelf order, after
+              the rule shelves. Empty shelves never render. */}
+          {curated.filter((s) => s.stories.length > 0).map((shelf) => (
+            <section key={shelf.id} className="mt-12 border-t border-ink/10 pt-10">
+              <ShelfHead icon={<ShelfIcon />} name={shelf.name} accent="#C28A42" />
+              {shelf.layout === "vertical" ? (
+                <VerticalShelfList stories={shelf.stories} />
+              ) : (
+                <ShelfRow stories={shelf.stories} />
+              )}
+            </section>
+          ))}
         </>
       ))}
 
