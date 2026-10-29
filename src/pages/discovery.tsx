@@ -288,7 +288,7 @@ function HorrorShelf({ stories }: { stories: Story[] }) {
   }).length;
   return (
     <section className="mt-12 border-t border-ink/10 pt-10">
-      <div className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-[2.5rem] border border-white/20 shadow-lift lg:max-w-6xl" style={{ backgroundColor: "#100D0B" }}>
+      <div className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/20 shadow-lift lg:max-w-6xl" style={{ backgroundColor: "#100D0B" }}>
         {tagIds.map((id) => (
           <div key={id} className="pointer-events-none absolute inset-0 transition-opacity duration-500" aria-hidden style={{ backgroundImage: "url(" + tagArt(id) + ")", backgroundSize: "cover", backgroundPosition: "center 20%", opacity: activeTag === id ? 1 : 0 }} />
         ))}
