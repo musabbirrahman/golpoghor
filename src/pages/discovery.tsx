@@ -7,7 +7,7 @@ import { GENRES, genreLabel, normalizeGenre } from "../lib/genres";
 import { SUBCATEGORIES, subLabel } from "../lib/subcategories";
 import { readingMinutes, timeAgo } from "../lib/utils";
 import { Layout } from "../components/layout";
-import { Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
+import { Button, ButtonLink, EmptyState, Spinner, StatusBadge } from "../components/ui";
 import { Cover, StoryCard, StoryRow, storyPath } from "../components/story-card";
 import { CARD_TEMPLATES } from "../lib/keepsake-card";
 import type { Story, StoryLanguage } from "../lib/types";
@@ -239,6 +239,49 @@ function ShelfRow({ stories }: { stories: Story[] }) {
           <StoryCard story={s} compact />
         </div>
       ))}
+    </div>
+  );
+}
+
+/* Vertical signature-shelf template (owner-approved 2026-10-29) — the
+   §3d reference-1 pattern: cover left, #tags FIRST above the title,
+   then author, summary, and a small meta line. Plain rows with
+   hairline dividers, no card boxes, so the shelf reads like a list of
+   books rather than a strip of covers. */
+function VerticalShelfList({ stories }: { stories: Story[] }) {
+  const { t } = useApp();
+  return (
+    <div className="divide-y divide-ink/10">
+      {stories.map((s) => {
+        const minutes = readingMinutes(s.word_count ?? 0, s.language);
+        const tagItems = [
+          ...(s.subcategories ?? []).map((sub) => `#${subLabel(sub)}`),
+          ...(s.tags ?? []).map((tag) => `#${tag}`),
+        ];
+        const shown = tagItems.slice(0, 4);
+        const rest = tagItems.length - shown.length;
+        return (
+          <Link key={s.id} to={storyPath(s)} className="flex gap-4 py-4 first:pt-0 last:pb-0 sm:gap-5 sm:py-5">
+            <Cover story={s} className="aspect-[3/4] w-24 shrink-0 rounded-lg sm:w-28" thumb />
+            <div className="min-w-0 flex-1">
+              {shown.length > 0 && (
+                <p className="flex flex-wrap gap-1.5 text-xs font-medium text-gold">
+                  {shown.map((tag) => <span key={tag}>{tag}</span>)}
+                  {rest > 0 && <span>+{rest}</span>}
+                </p>
+              )}
+              <h3 className="clamp-2 mt-1 font-serif text-lg font-bold leading-snug sm:text-xl">{s.title}</h3>
+              <p className="mt-1 truncate text-sm text-ink-soft">{s.author?.display_name}</p>
+              {s.summary && <p className="clamp-2 mt-1.5 text-sm text-ink-soft">{s.summary}</p>}
+              <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
+                <StatusBadge status={s.status} />
+                <span>{s.chapter_count} {s.chapter_count === 1 ? t("story", "chapterSingular") : t("story", "chapters")}</span>
+                {minutes > 0 && <span>~{minutes} {t("story", "minRead")}</span>}
+              </p>
+            </div>
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -710,7 +753,7 @@ export function DiscoverPage() {
           {classics.length > 0 && (
             <section className="mt-12 border-t border-ink/10 pt-10">
               <ShelfHead icon={<BookIcon />} name={t("footer", "classicsBn")} tagline={t("discover", "tagClassics")} accent="#8C6A3C" />
-              <ShelfRow stories={classics} />
+              <VerticalShelfList stories={classics} />
             </section>
           )}
         </>
