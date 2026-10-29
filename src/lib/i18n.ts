@@ -239,6 +239,16 @@ const dict = {
     echoPublicNote: { bn: "মালিকের প্রতিধ্বনি (প্রকাশ্য)", en: "The owner's echo (shared publicly)" },
     licenceTitle: { bn: "কিপসেক শেয়ারিং লাইসেন্স", en: "Keepsake Sharing Licence" },
     shelfTitle: { bn: "কিপসেক শেলফ", en: "Keepsakes shelf" },
+    makeOwn: { bn: "নিজের কিপসেক বানান", en: "Make your own keepsake" },
+    makeOwnTitle: { bn: "নিজের কিপসেক", en: "My own keepsake" },
+    ownWordsLabel: { bn: "আপনার লেখা", en: "Your words" },
+    ownWordsPlaceholder: { bn: "এখানে আপনার প্রিয় লাইনটি লিখুন…", en: "Write your own line here…" },
+    ownTitleLabel: { bn: "শিরোনাম (ঐচ্ছিক)", en: "Title (optional)" },
+    ownTitlePlaceholder: { bn: "কার্ডের শিরোনাম", en: "A title for the card" },
+    ownDownloadNote: {
+      bn: "এই কিপসেক শুধু ডাউনলোড করা যাবে — এটি লাইব্রেরিতে সংরক্ষণ বা শেলফে প্রকাশ করা যাবে না।",
+      en: "This keepsake is download-only — it isn't saved to your library or published to the shelf.",
+    },
     shelfSubtitle: {
       bn: "পাঠকদের প্রকাশ্যে শেয়ার করা প্রিয় লাইনগুলো — কার্ড দেখতে যেকোনো একটিতে চাপ দিন।",
       en: "Lines readers chose to share publicly — tap any card to see it.",

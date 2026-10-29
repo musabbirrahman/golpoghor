@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { CARD_TEMPLATES, keepsakeAttribution } from "../lib/keepsake-card";
-import { EmptyState, Spinner } from "../components/ui";
+import { Button, EmptyState, Spinner } from "../components/ui";
 import { Layout } from "../components/layout";
+import { StandaloneKeepsake } from "../components/standalone-keepsake";
 
 /**
  * Public Keepsakes shelf (27c follow-up). Reads ONLY the restricted
@@ -14,6 +16,7 @@ import { Layout } from "../components/layout";
 export function KeepsakesShelfPage() {
   const { t, dp, locale } = useApp();
   const navigate = useNavigate();
+  const [makerOpen, setMakerOpen] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["public-keepsakes"],
     queryFn: () => dp.listPublicKeepsakes(),
@@ -28,10 +31,17 @@ export function KeepsakesShelfPage() {
         <div className="mx-auto max-w-2xl">
           <h1 className="font-serif text-3xl font-bold sm:text-4xl">{t("keepsakes", "shelfTitle")}</h1>
           <div className="mt-2 h-0.5 w-10 bg-gold" />
+          <p className="mt-2 text-sm text-ink-soft">{t("keepsakes", "shelfSubtitle")}</p>
+          <div className="mt-4">
+            <Button variant="secondary" onClick={() => setMakerOpen(true)}>
+              {t("keepsakes", "makeOwn")}
+            </Button>
+          </div>
           <div className="mt-6">
             <EmptyState title={t("keepsakes", "shelfEmpty")} />
           </div>
         </div>
+        <StandaloneKeepsake open={makerOpen} onClose={() => setMakerOpen(false)} />
       </Layout>
     );
   }
@@ -42,6 +52,11 @@ export function KeepsakesShelfPage() {
       <h1 className="font-serif text-3xl font-bold sm:text-4xl">{t("keepsakes", "shelfTitle")}</h1>
       <div className="mt-2 h-0.5 w-10 bg-gold" />
       <p className="mt-2 text-sm text-ink-soft">{t("keepsakes", "shelfSubtitle")}</p>
+      <div className="mt-4">
+        <Button variant="secondary" onClick={() => setMakerOpen(true)}>
+          {t("keepsakes", "makeOwn")}
+        </Button>
+      </div>
       <div className="mt-6 flex flex-col gap-4">
         {rows.map((k) => {
           const attr = keepsakeAttribution(
@@ -95,6 +110,7 @@ export function KeepsakesShelfPage() {
         })}
       </div>
     </div>
+    <StandaloneKeepsake open={makerOpen} onClose={() => setMakerOpen(false)} />
     </Layout>
   );
 }
