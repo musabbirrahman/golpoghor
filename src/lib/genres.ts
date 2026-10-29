@@ -7,6 +7,9 @@ import type { Locale } from "./types";
  * the freeze may carry English duplicates — normalizeGenre() maps those
  * aliases onto the canonical value so filters and lists group correctly
  * even before the data migration runs.
+ * 2026-10-29 (owner-approved extension of D6): Thriller added as a 10th
+ * major — "thriller" moved out of Mystery's aliases into its own entry,
+ * so thriller stories no longer file under Mystery.
  */
 export interface GenreDef {
   value: string;
@@ -20,7 +23,8 @@ export const GENRES: GenreDef[] = [
   { value: "ছোটগল্প", bn: "ছোটগল্প", en: "Short story", aliases: ["short story", "short-story", "short stories"] },
   { value: "সমকালীন", bn: "সমকালীন", en: "Contemporary", aliases: ["contemporary"] },
   { value: "রোমান্স", bn: "রোমান্স", en: "Romance", aliases: ["romance"] },
-  { value: "রহস্য", bn: "রহস্য", en: "Mystery", aliases: ["mystery", "thriller"] },
+  { value: "রহস্য", bn: "রহস্য", en: "Mystery", aliases: ["mystery"] },
+  { value: "থ্রিলার", bn: "থ্রিলার", en: "Thriller", aliases: ["thriller"] },
   { value: "ফ্যান্টাসি", bn: "ফ্যান্টাসি", en: "Fantasy", aliases: ["fantasy"] },
   { value: "হরর", bn: "হরর", en: "Horror", aliases: ["horror"] },
   { value: "ইতিহাস", bn: "ইতিহাস", en: "History", aliases: ["history", "historical"] },
