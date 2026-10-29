@@ -28,7 +28,7 @@ function Brand() {
   return (
     <Link to="/" className="flex items-center gap-2" aria-label="GolpoNeer home">
       <img src="/logo.png" alt="" className="h-8 w-8 rounded-lg object-cover sm:h-9 sm:w-9" />
-      <span className="hidden font-serif text-lg font-bold tracking-tight min-[400px]:inline sm:text-xl">{t("brand", "brand")}</span>
+      <span className="hidden font-serif text-lg font-bold tracking-tight sm:inline sm:text-xl">{t("brand", "brand")}</span>
     </Link>
   );
 }
