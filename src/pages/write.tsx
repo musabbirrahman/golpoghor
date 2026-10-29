@@ -30,7 +30,7 @@ function RequireAuthor({ children }: { children: React.ReactNode }) {
 }
 
 export function WriteDashboard() {
-  const { t, dp } = useApp();
+  const { t, dp, locale } = useApp();
   const storiesQuery = useQuery({
     queryKey: ["myStories"],
     queryFn: () => dp.listStories({ includeDrafts: true, limit: 100 }),
@@ -43,23 +43,35 @@ export function WriteDashboard() {
           <h1 className="font-serif text-3xl font-bold">{t("write", "dashboard")}</h1>
           <ButtonLink to="/write/stories/new">+ {t("write", "newStory")}</ButtonLink>
         </div>
+        <div className="mt-2 h-0.5 w-10 bg-gold" />
+        {storiesQuery.data && storiesQuery.data.stories.length > 0 && (
+          <p className="mt-2 text-sm text-ink-faint">
+            {storiesQuery.data.stories.length}{" "}
+            {storiesQuery.data.stories.length === 1
+              ? t("library", "storySingular")
+              : t("library", "storiesPlural")}
+          </p>
+        )}
 
         <div className="mt-6">
           {storiesQuery.isLoading ? <Spinner /> : storiesQuery.data?.stories.length ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {storiesQuery.data.stories.map((s) => (
                 <Link key={s.id} to={`/write/stories/${s.id}`} className="block min-w-0">
-                  <Card className="flex gap-4 p-4 transition-shadow hover:shadow-lift">
-                    <Cover story={s} className="h-24 w-16 shrink-0 rounded-lg" thumb />
+                  <Card className="flex h-full gap-4 p-4 transition-shadow hover:shadow-lift">
+                    <Cover story={s} className="h-32 w-24 shrink-0 rounded-lg" thumb />
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <StatusBadge status={s.status} />
                         <LanguageBadge language={s.language} />
                       </div>
-                      <h3 className="mt-1.5 truncate font-serif text-lg font-semibold">{s.title}</h3>
+                      <h3 className="clamp-2 mt-1.5 font-serif text-lg font-semibold">{s.title}</h3>
                       <p className="text-sm text-ink-faint">
                         {s.chapter_count ?? 0}{" "}
                         {(s.chapter_count ?? 0) === 1 ? t("story", "chapterSingular") : t("story", "chapters")}
+                      </p>
+                      <p className="text-sm text-ink-faint">
+                        {t("story", "updatedOn")} {timeAgo(s.updated_at, locale)}
                       </p>
                     </div>
                   </Card>
