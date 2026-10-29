@@ -102,6 +102,7 @@ export function InboxPage() {
             </Button>
           )}
         </div>
+        <div className="mt-2 h-0.5 w-10 bg-gold" />
 
         <div className="mt-6">
           {listQuery.isLoading ? (
