@@ -215,7 +215,7 @@ export function QuoteStudio({
 
   return (
     <Modal open={open} onClose={onClose} title={t("keepsakes", "title")}>
-      <div className="max-h-[80vh] overflow-y-auto pr-1">
+      <div className="max-h-[80vh] overflow-y-auto px-1">
         <label className="text-sm font-medium" htmlFor="qs-excerpt">
           {t("keepsakes", "excerptLabel")} · {excerpt.length} / 1000 {t("keepsakes", "chars")}
         </label>
@@ -229,7 +229,7 @@ export function QuoteStudio({
         {trimmed && <p className="mt-1 text-xs text-ink-faint">{t("keepsakes", "trimmedNote")}</p>}
 
         <p className="mt-4 text-sm font-medium">{t("keepsakes", "templateLabel")}</p>
-        <div className="mt-2 grid grid-cols-3 gap-2">
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {KEEPSAKE_TEMPLATES.map((tpl) => {
             const pal = CARD_TEMPLATES[tpl];
             const active = tpl === template;

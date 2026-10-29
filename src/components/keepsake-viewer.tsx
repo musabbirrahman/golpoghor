@@ -71,7 +71,7 @@ export function KeepsakeViewer({
 
   return (
     <Modal open onClose={onClose} title={t("keepsakes", "title")}>
-      <div className="max-h-[75vh] overflow-y-auto px-1">
+      <div className="max-h-[80vh] overflow-y-auto px-1">
         <canvas ref={canvasRef} className="w-full rounded-xl shadow-card" aria-label={t("keepsakes", "title")} />
         {/* The canvas already carries the passage, title and author —
             repeating them below only buried the echo, so the echo is
@@ -153,6 +153,9 @@ export function KeepsakeViewer({
           </Button>
         )}
         {error && <p className="mt-3 text-sm text-clay">{error}</p>}
+        {/* Actions, grouped so the row doesn't wrap loosely on phones:
+            download (+ its echo opt-in), then sharing, then delete
+            apart behind a rule — same buttons, same variants, same order. */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Button size="sm" variant="secondary" onClick={() => onDownload(keepsake, includeEcho)}>
             {t("keepsakes", "downloadAgain")}
@@ -167,6 +170,8 @@ export function KeepsakeViewer({
               {t("keepsakes", "includeEchoOnCard")}
             </label>
           )}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {keepsake.visibility !== "public" && (
             <Button size="sm" variant="ghost" onClick={() => onPublish(keepsake)} disabled={busy}>
               {t("keepsakes", "publish")}
@@ -184,6 +189,8 @@ export function KeepsakeViewer({
               </Button>
             </>
           )}
+        </div>
+        <div className="mt-4 border-t border-ink/10 pt-3">
           <Button
             size="sm"
             variant={confirmDelete ? "danger" : "ghost"}
