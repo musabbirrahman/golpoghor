@@ -126,6 +126,36 @@ function AccountMenu() {
   const { t, session, profile, isModerator, dp } = useApp();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Any navigation dismisses the menu (not just menu-item taps).
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // Outside tap + Escape dismiss it. NOTE: the old fixed inset-0
+  // backdrop div could not do this job — the header's backdrop-blur
+  // makes the header the containing block for fixed descendants, so
+  // that backdrop only ever covered the 64px header strip and page
+  // taps below it never reached it.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open ]);
 
   if (!session) {
     return (
@@ -139,7 +169,7 @@ function AccountMenu() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={wrapRef}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex h-9 w-9 items-center justify-center rounded-full bg-river font-serif font-semibold text-paper"
@@ -150,9 +180,7 @@ function AccountMenu() {
         {(profile?.display_name ?? "?").charAt(0).toUpperCase()}
       </button>
       {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-xl bg-white py-1 shadow-lift" role="menu">
+        <div className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-xl bg-white py-1 shadow-lift" role="menu">
             <div className="border-b border-ink/10 px-4 py-2">
               <p className="truncate text-sm font-semibold">{profile?.display_name}</p>
               <p className="truncate text-xs text-ink-faint">@{profile?.username}</p>
@@ -186,7 +214,6 @@ function AccountMenu() {
               {t("nav", "signOut")}
             </button>
           </div>
-        </>
       )}
     </div>
   );
