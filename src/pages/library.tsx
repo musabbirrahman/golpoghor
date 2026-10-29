@@ -85,7 +85,7 @@ export function LibraryPage() {
           <div className="mb-4 mt-2 h-0.5 w-10 bg-gold" />
           {finishedQuery.isLoading ? <Spinner /> : finishedQuery.data?.length ? (
             <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
-              {finishedQuery.data.map((s) => <StoryCard key={s.id} story={s} />)}
+              {finishedQuery.data.map((s) => <StoryCard key={s.id} story={s} compact />)}
             </div>
           ) : (
             <EmptyState title={t("library", "emptyFinished")} />
