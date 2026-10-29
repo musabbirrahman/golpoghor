@@ -114,6 +114,9 @@ export type ShelfLayout = "horizontal" | "vertical";
 export interface CuratedShelf {
   id: string;
   name: string;
+  /** Public URL key (/shelves/<slug>), set at creation, never changed on rename. */
+  slug: string;
+  tagline: string | null;
   layout: ShelfLayout;
   position: number;
   stories: Story[];

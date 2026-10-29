@@ -157,6 +157,22 @@ const check = (name, cond) => {
   await dp.signOut();
 }
 
+// 3d. shelf pages (slug + tagline)
+{
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  const first = await dp.createShelf("My Picks", "horizontal", "A line about this shelf");
+  check("slug derived from name, tagline stored", first.slug === "my-picks" && first.tagline === "A line about this shelf");
+  const dup = await dp.createShelf("My Picks", "vertical");
+  check("duplicate name de-dupes slug", dup.slug === "my-picks-2");
+  const found = await dp.getShelfBySlug("my-picks");
+  check("getShelfBySlug finds by slug", !!found && found.id === first.id);
+  check("getShelfBySlug misses unknown", (await dp.getShelfBySlug("no-such-shelf")) === null);
+  await dp.updateShelf(first.id, { name: "Renamed Picks", tagline: "New line" });
+  const after = await dp.getShelfBySlug("my-picks");
+  check("rename keeps slug, updates tagline", !!after && after.name === "Renamed Picks" && after.tagline === "New line");
+  await dp.signOut();
+}
+
 // 4. signup + signin
 {
   await dp.signUp({ email: "test@example.com", password: "secret12", username: "test_author", displayName: "Test Author" });

@@ -140,6 +140,7 @@ const files = [
   "supabase/migrations/20261025160000_story_slug_redirects.sql",
   "supabase/migrations/20261028230000_story_subcategories.sql",
   "supabase/migrations/20261029130000_curated_shelves.sql",
+  "supabase/migrations/20261029140000_shelf_slug_tagline.sql",
   "supabase/seed.sql",
 ];
 

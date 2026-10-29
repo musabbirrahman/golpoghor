@@ -162,10 +162,12 @@ export interface DataProvider {
   setFeaturedPosition(id: string, position: number | null): Promise<void>;
   /** Public: curated shelves in position order, each with its public stories in item order. */
   listCuratedShelves(): Promise<CuratedShelf[]>;
-  /** Moderator only (RLS gates writes): create a shelf; position is appended. */
-  createShelf(name: string, layout: ShelfLayout): Promise<CuratedShelf>;
-  /** Moderator only: rename, relayout, or reposition a shelf. */
-  updateShelf(id: string, patch: { name?: string; layout?: ShelfLayout; position?: number }): Promise<void>;
+  /** Public: one shelf by its URL slug, or null. */
+  getShelfBySlug(slug: string): Promise<CuratedShelf | null>;
+  /** Moderator only (RLS gates writes): create a shelf; position is appended, slug derived from the name. */
+  createShelf(name: string, layout: ShelfLayout, tagline?: string | null): Promise<CuratedShelf>;
+  /** Moderator only: rename, retagline, relayout, or reposition a shelf (slug never changes). */
+  updateShelf(id: string, patch: { name?: string; tagline?: string | null; layout?: ShelfLayout; position?: number }): Promise<void>;
   /** Moderator only: delete a shelf (items cascade) and renumber the rest. */
   deleteShelf(id: string): Promise<void>;
   /** Moderator only: append a story to a shelf (ignored when already present). */

@@ -88,7 +88,7 @@ interface DemoDB {
   /** Per-story Sharing Licence acceptances (27c): { story_id, author_id, licence_version, accepted_at, withdrawn_at }. */
   licences: { story_id: string; author_id: string; licence_version: string; accepted_at: string; withdrawn_at: string | null }[];
   /** Phase 3b curated shelves (empty until a moderator creates one). */
-  shelves: { id: string; name: string; layout: ShelfLayout; position: number; created_at: string }[];
+  shelves: { id: string; name: string; slug: string; tagline: string | null; layout: ShelfLayout; position: number; created_at: string }[];
   shelf_items: { shelf_id: string; story_id: string; position: number }[];
   sessionUserId: string | null;
 }
@@ -721,22 +721,38 @@ export class DemoProvider implements DataProvider {
         .filter((s): s is Story => !!s && this.isPublicStory(s))
         .map((s) => this.withAuthor(s));
       this.attachCounts(stories);
-      return { id: sh.id, name: sh.name, layout: sh.layout, position: sh.position, stories };
+      return { id: sh.id, name: sh.name, slug: sh.slug ?? slugify(sh.name), tagline: sh.tagline ?? null, layout: sh.layout, position: sh.position, stories };
     });
   }
 
-  async createShelf(name: string, layout: ShelfLayout): Promise<CuratedShelf> {
+  async getShelfBySlug(slug: string): Promise<CuratedShelf | null> {
+    const sh = (this.db.shelves ?? []).find((s) => s.slug === slug);
+    if (!sh) return null;
+    const stories = (this.db.shelf_items ?? [])
+      .filter((it) => it.shelf_id === sh.id)
+      .sort((a, b) => a.position - b.position)
+      .map((it) => this.db.stories.find((s) => s.id === it.story_id))
+      .filter((s): s is Story => !!s && this.isPublicStory(s))
+      .map((s) => this.withAuthor(s));
+    this.attachCounts(stories);
+    return { id: sh.id, name: sh.name, slug: sh.slug ?? slugify(sh.name), tagline: sh.tagline ?? null, layout: sh.layout, position: sh.position, stories };
+  }
+
+  async createShelf(name: string, layout: ShelfLayout, tagline?: string | null): Promise<CuratedShelf> {
     await this.requireShelfModerator();
     const clean = name.trim();
     if (!clean || clean.length > 80) throw new AppError("generic", "Invalid shelf name");
     const position = Math.max(0, ...(this.db.shelves ?? []).map((s) => s.position)) + 1;
-    const shelf = { id: uuid(), name: clean, layout, position, created_at: new Date().toISOString() };
+    const taken = new Set((this.db.shelves ?? []).map((s) => s.slug));
+    let slug = slugify(clean);
+    for (let n = 2; taken.has(slug); n++) slug = `${slugify(clean)}-${n}`;
+    const shelf = { id: uuid(), name: clean, slug, tagline: tagline?.trim() || null, layout, position, created_at: new Date().toISOString() };
     (this.db.shelves ??= []).push(shelf);
     this.persist();
     return { ...shelf, stories: [] };
   }
 
-  async updateShelf(id: string, patch: { name?: string; layout?: ShelfLayout; position?: number }): Promise<void> {
+  async updateShelf(id: string, patch: { name?: string; tagline?: string | null; layout?: ShelfLayout; position?: number }): Promise<void> {
     await this.requireShelfModerator();
     const sh = (this.db.shelves ?? []).find((s) => s.id === id);
     if (!sh) throw new AppError("notFound", "Shelf not found");
@@ -745,6 +761,7 @@ export class DemoProvider implements DataProvider {
       if (!clean || clean.length > 80) throw new AppError("generic", "Invalid shelf name");
       sh.name = clean;
     }
+    if (patch.tagline !== undefined) sh.tagline = patch.tagline?.trim() || null;
     if (patch.layout !== undefined) sh.layout = patch.layout;
     if (patch.position !== undefined) {
       if (!Number.isInteger(patch.position) || patch.position < 1) throw new AppError("generic", "Invalid shelf position");

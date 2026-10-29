@@ -103,6 +103,7 @@ const router = createBrowserRouter([
       { path: "/licence", element: <LegalPage slug="licence" /> },
       { path: "/keepsakes-policy", element: <LegalPage slug="keepsakes" /> },
       { path: "/keepsakes", lazy: () => import("./pages/keepsakes-shelf").then((m) => ({ Component: m.KeepsakesShelfPage })) },
+      { path: "/shelves/:slug", lazy: () => import("./pages/shelf").then((m) => ({ Component: m.ShelfPage })) },
       { path: "/k/:slug", lazy: () => import("./pages/public-keepsake").then((m) => ({ Component: m.PublicKeepsakePage })) },
       { path: "*", element: <NotFound /> },
     ],

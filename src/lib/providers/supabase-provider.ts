@@ -526,51 +526,67 @@ export class SupabaseProvider implements DataProvider {
     if (error) throw toAppError(error);
   }
 
+  private async shelfWithStories(sh: { id: string; name: string; slug: string; tagline: string | null; layout: ShelfLayout; position: number }): Promise<CuratedShelf> {
+    const { data: items, error: itemsError } = await this.sb
+      .from("shelf_items")
+      .select(`position, story:stories(${STORY_JOIN})`)
+      .eq("shelf_id", sh.id)
+      .order("position", { ascending: true });
+    if (itemsError) throw toAppError(itemsError);
+    const stories = (items ?? [])
+      .map((it: any) => mapStory(it.story))
+      .filter((s) => s && (s.status === "ongoing" || s.status === "complete"));
+    await this.attachCounts(stories);
+    return { ...sh, stories };
+  }
+
   async listCuratedShelves(): Promise<CuratedShelf[]> {
     const { data: shelves, error } = await this.sb
       .from("shelves")
-      .select("id, name, layout, position")
+      .select("id, name, slug, tagline, layout, position")
       .order("position", { ascending: true });
     if (error) throw toAppError(error);
     const out: CuratedShelf[] = [];
     // One items query per shelf: shelf counts are moderator-curated (single
     // digits), and the nested-select alternative cannot order items cleanly.
-    for (const sh of shelves ?? []) {
-      const { data: items, error: itemsError } = await this.sb
-        .from("shelf_items")
-        .select(`position, story:stories(${STORY_JOIN})`)
-        .eq("shelf_id", sh.id)
-        .order("position", { ascending: true });
-      if (itemsError) throw toAppError(itemsError);
-      const stories = (items ?? [])
-        .map((it: any) => mapStory(it.story))
-        .filter((s) => s && (s.status === "ongoing" || s.status === "complete"));
-      await this.attachCounts(stories);
-      out.push({ id: sh.id, name: sh.name, layout: sh.layout, position: sh.position, stories });
-    }
+    for (const sh of shelves ?? []) out.push(await this.shelfWithStories(sh));
     return out;
   }
 
-  async createShelf(name: string, layout: ShelfLayout): Promise<CuratedShelf> {
-    const { data: shelves, error: posError } = await this.sb
-      .from("shelves")
-      .select("position")
-      .order("position", { ascending: false })
-      .limit(1);
-    if (posError) throw toAppError(posError);
-    const position = (shelves?.[0]?.position ?? 0) + 1;
+  async getShelfBySlug(slug: string): Promise<CuratedShelf | null> {
     const { data, error } = await this.sb
       .from("shelves")
-      .insert({ name: name.trim(), layout, position })
-      .select("id, name, layout, position")
+      .select("id, name, slug, tagline, layout, position")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (error) throw toAppError(error);
+    if (!data) return null;
+    return this.shelfWithStories(data);
+  }
+
+  async createShelf(name: string, layout: ShelfLayout, tagline?: string | null): Promise<CuratedShelf> {
+    const { data: shelves, error: posError } = await this.sb
+      .from("shelves")
+      .select("position, slug")
+      .order("position", { ascending: false });
+    if (posError) throw toAppError(posError);
+    const position = (shelves?.[0]?.position ?? 0) + 1;
+    const taken = new Set((shelves ?? []).map((s) => s.slug));
+    let slug = slugify(name);
+    for (let n = 2; taken.has(slug); n++) slug = `${slugify(name)}-${n}`;
+    const { data, error } = await this.sb
+      .from("shelves")
+      .insert({ name: name.trim(), slug, tagline: tagline?.trim() || null, layout, position })
+      .select("id, name, slug, tagline, layout, position")
       .single();
     if (error) throw toAppError(error);
     return { ...data, stories: [] };
   }
 
-  async updateShelf(id: string, patch: { name?: string; layout?: ShelfLayout; position?: number }): Promise<void> {
+  async updateShelf(id: string, patch: { name?: string; tagline?: string | null; layout?: ShelfLayout; position?: number }): Promise<void> {
     const clean: Record<string, unknown> = {};
     if (patch.name !== undefined) clean.name = patch.name.trim();
+    if (patch.tagline !== undefined) clean.tagline = patch.tagline?.trim() || null;
     if (patch.layout !== undefined) clean.layout = patch.layout;
     if (patch.position !== undefined) clean.position = patch.position;
     if (!Object.keys(clean).length) return;

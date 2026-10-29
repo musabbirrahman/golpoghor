@@ -421,6 +421,7 @@ function FeaturedTab() {
 function ShelfEditor({ shelf, shelves, publicStories, refresh }: { shelf: CuratedShelf; shelves: CuratedShelf[]; publicStories: Story[]; refresh: () => void }) {
   const { t, dp } = useApp();
   const [name, setName] = useState(shelf.name);
+  const [tagline, setTagline] = useState(shelf.tagline ?? "");
   const [layout, setLayout] = useState<ShelfLayout>(shelf.layout);
   const [selected, setSelected] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -443,7 +444,7 @@ function ShelfEditor({ shelf, shelves, publicStories, refresh }: { shelf: Curate
   }
 
   async function save() {
-    await act("save", () => dp.updateShelf(shelf.id, { name, layout }));
+    await act("save", () => dp.updateShelf(shelf.id, { name, tagline, layout }));
   }
 
   async function moveShelf(dir: -1 | 1) {
@@ -501,6 +502,19 @@ function ShelfEditor({ shelf, shelves, publicStories, refresh }: { shelf: Curate
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
+        <input
+          aria-label={t("moderation", "shelfTagline")}
+          className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
+          value={tagline}
+          onChange={(e) => setTagline(e.target.value)}
+          placeholder={t("moderation", "shelfTaglinePlaceholder")}
+          maxLength={160}
+        />
+        {shelf.slug ? (
+          <Link to={`/shelves/${shelf.slug}`} className="shrink-0 text-sm font-medium text-river hover:underline">
+            {t("home", "viewAll")} →
+          </Link>
+        ) : null}
         <select
           aria-label={t("moderation", "shelfLayout")}
           className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
@@ -570,6 +584,7 @@ function ShelvesTab() {
   const { t, dp } = useApp();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
+  const [tagline, setTagline] = useState("");
   const [layout, setLayout] = useState<ShelfLayout>("horizontal");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -591,8 +606,9 @@ function ShelvesTab() {
     setBusy(true);
     setError(null);
     try {
-      await dp.createShelf(name, layout);
+      await dp.createShelf(name, layout, tagline);
       setName("");
+      setTagline("");
       setLayout("horizontal");
       refresh();
     } catch (e: any) {
@@ -612,6 +628,14 @@ function ShelvesTab() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("moderation", "shelfNamePlaceholder")}
+          />
+          <input
+            aria-label={t("moderation", "shelfTagline")}
+            className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
+            value={tagline}
+            onChange={(e) => setTagline(e.target.value)}
+            placeholder={t("moderation", "shelfTaglinePlaceholder")}
+            maxLength={160}
           />
           <select
             aria-label={t("moderation", "shelfLayout")}
