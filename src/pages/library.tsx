@@ -49,6 +49,20 @@ export function LibraryPage() {
     queryFn: () => dp.getFollowing(session!.user.id),
     enabled: !!session,
   });
+  // Story counts for the followed rows, via the existing story list:
+  // limit 1 still returns the author's full public total.
+  const countsQuery = useQuery({
+    queryKey: ["followingCounts", (followingQuery.data ?? []).map((p) => p.id).join(",")],
+    queryFn: async () => {
+      const entries = await Promise.all(
+        (followingQuery.data ?? []).map(
+          async (p) => [p.id, (await dp.listStories({ authorId: p.id, limit: 1 })).total] as const,
+        ),
+      );
+      return Object.fromEntries(entries) as Record<string, number>;
+    },
+    enabled: (followingQuery.data?.length ?? 0) > 0,
+  });
 
   return (
     <RequireAuth>
@@ -112,11 +126,16 @@ export function LibraryPage() {
           {followingQuery.isLoading ? <Spinner /> : followingQuery.data?.length ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {followingQuery.data.map((p) => (
-                <Link key={p.id} to={`/authors/${p.username}`} className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-card hover:shadow-lift">
-                  <Avatar name={p.display_name} src={dp.avatarUrl(p.avatar_path)} />
+                <Link key={p.id} to={`/authors/${p.username}`} className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-card hover:shadow-lift">
+                  <Avatar name={p.display_name} src={dp.avatarUrl(p.avatar_path)} size="lg" />
                   <div className="min-w-0">
                     <p className="truncate font-medium">{p.display_name}</p>
-                    <p className="truncate text-sm text-ink-faint">@{p.username}</p>
+                    <p className="truncate text-sm text-ink-faint">
+                      @{p.username}
+                      {countsQuery.data?.[p.id] !== undefined && (
+                        <> · {countsQuery.data[p.id]} {countsQuery.data[p.id] === 1 ? t("library", "storySingular") : t("library", "storiesPlural")}</>
+                      )}
+                    </p>
                   </div>
                 </Link>
               ))}

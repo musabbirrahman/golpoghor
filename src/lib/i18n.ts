@@ -168,6 +168,8 @@ const dict = {
       bn: "এখনো কোনো গল্প শেষ করেননি। শেষ করা গল্প এখানে জমা হবে।",
       en: "No finished stories yet. Stories you mark finished will live here.",
     },
+    storySingular: { bn: "টি গল্প", en: "story" },
+    storiesPlural: { bn: "টি গল্প", en: "stories" },
   },
   keepsakes: {
     title: { bn: "কিপসেক", en: "Keepsake" },
