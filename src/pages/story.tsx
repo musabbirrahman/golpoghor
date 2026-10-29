@@ -308,6 +308,10 @@ export function StoryPage() {
   // hide; scrolling back up brings them back. (Space above the
   // footer cannot fix this — the footer always ends at the very
   // bottom of the screen, so only hiding the bars clears it.)
+  // The measure also re-runs whenever the page height changes: on
+  // mount the story is still loading, so the page is short and the
+  // first measure wrongly says "near bottom" — without this, the bars
+  // stay hidden until the first scroll or resize.
   useEffect(() => {
     const update = () => {
       const doc = document.documentElement;
@@ -318,9 +322,12 @@ export function StoryPage() {
     update();
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
+    const ro = new ResizeObserver(update);
+    ro.observe(document.body);
     return () => {
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
+      ro.disconnect();
     };
   }, []);
 
