@@ -216,13 +216,12 @@ function ShelfViewAll({ to, label, accent }: { to: string; label: string; accent
   );
 }
 
-/* Horror shelf v2: the full-environment template, made to actually read
-   as horror — near-black panel, stronger candlelight + crimson glow,
-   big cobweb, bat silhouettes, mist at the base, crimson glow on the
-   name, and DARK cards (white cards on the dark panel broke the mood).
-   Rows sit in a 2-column grid on desktop so no card stretches the full
-   panel width; phones get dark compact cards in a scroll row. */
-function HorrorRow({ story, onHover, active }: { story: Story; onHover?: () => void; active?: boolean }) {
+/* Full-environment panel template (Horror first, Mystery second): a dark
+   panel whose background art changes with the active tag, rows with no
+   card background so the art shows through, bright text + shadow for
+   readability. Rows sit in a 2-column grid on desktop so no card
+   stretches the full panel width; phones get a swipe strip of pages. */
+function PanelRow({ story, onHover, active }: { story: Story; onHover?: () => void; active?: boolean }) {
   const { t } = useApp();
   return (
     <Link
@@ -259,16 +258,25 @@ const HORROR_ARTS: Record<string, string> = {
 };
 const HORROR_SUB_ORDER = ["psychological", "gothic"];
 
-function HorrorShelf({ stories }: { stories: Story[] }) {
+// Panel art registry: major tag + sub-category worlds. The tag ROW is data-driven:
+// the major tag always shows; a sub tag shows only when some story carries it.
+const MYSTERY_ARTS: Record<string, string> = {
+  all: "/mystery-panel-bg.jpg",
+  detective: "/mystery-panel-bg-detective.jpg",
+  supernatural: "/mystery-panel-bg-supernatural.jpg",
+};
+const MYSTERY_SUB_ORDER = ["detective", "supernatural"];
+
+function GenrePanel({ stories, genre, arts, subOrder, baseRgb }: { stories: Story[]; genre: string; arts: Record<string, string>; subOrder: string[]; baseRgb: string }) {
   const { t, locale } = useApp();
   const [activeTag, setActiveTag] = useState("all");
   const [hoverId, setHoverId] = useState<string | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => { trackRef.current?.scrollTo({ left: 0 }); }, [activeTag]);
   const subIds = [...new Set(stories.flatMap((st) => (st.subcategories ?? []).map((s) => s.toLowerCase())))];
-  const tagIds = ["all", ...HORROR_SUB_ORDER.filter((id) => subIds.includes(id))];
-  const tagLabel = (id: string) => id === "all" ? `#${genreLabel("হরর", locale)}` : `#${id.charAt(0).toUpperCase() + id.slice(1)}`;
-  const tagArt = (id: string) => HORROR_ARTS[id] ?? HORROR_ARTS.all;
+  const tagIds = ["all", ...subOrder.filter((id) => subIds.includes(id))];
+  const tagLabel = (id: string) => id === "all" ? `#${genreLabel(genre, locale)}` : `#${id.charAt(0).toUpperCase() + id.slice(1)}`;
+  const tagArt = (id: string) => arts[id] ?? arts.all;
   const handleStripScroll = () => {
     const el = trackRef.current;
     if (!el || el.scrollWidth <= el.clientWidth + 8) return;
@@ -288,13 +296,13 @@ function HorrorShelf({ stories }: { stories: Story[] }) {
   }).length;
   return (
     <section className="mt-12 border-t border-ink/10 pt-10">
-      <div className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/20 shadow-lift lg:max-w-6xl" style={{ backgroundColor: "#100D0B" }}>
+      <div className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/20 shadow-lift lg:max-w-6xl" style={{ backgroundColor: `rgb(${baseRgb})` }}>
         {tagIds.map((id) => (
           <div key={id} className="pointer-events-none absolute inset-0 transition-opacity duration-500" aria-hidden style={{ backgroundImage: "url(" + tagArt(id) + ")", backgroundSize: "cover", backgroundPosition: "center 20%", opacity: activeTag === id ? 1 : 0 }} />
         ))}
-        <div className="pointer-events-none absolute inset-0" aria-hidden style={{ background: "linear-gradient(to bottom, rgba(16,13,11,0.60) 0%, rgba(16,13,11,0.78) 50%, rgba(16,13,11,0.92) 100%)" }} />
+        <div className="pointer-events-none absolute inset-0" aria-hidden style={{ background: `linear-gradient(to bottom, rgba(${baseRgb},0.60) 0%, rgba(${baseRgb},0.78) 50%, rgba(${baseRgb},0.92) 100%)` }} />
         <div className="relative mx-auto w-full px-4 py-4 sm:px-6 sm:py-6 lg:max-w-6xl">
-          <h2 className="sr-only">{genreLabel("হরর", locale)}</h2>
+          <h2 className="sr-only">{genreLabel(genre, locale)}</h2>
           <div className="lg:flex lg:items-start lg:gap-8">
             {detail && (
               <div className="hidden lg:sticky lg:top-24 lg:block lg:w-[300px] lg:shrink-0 lg:self-start xl:w-[340px]">
@@ -339,12 +347,12 @@ function HorrorShelf({ stories }: { stories: Story[] }) {
                   <div ref={trackRef} onScroll={handleStripScroll} className="mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 lg:hidden">
                     {pages.map((page, pi) => (
                       <div key={pi} className="grid w-full shrink-0 snap-start grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
-                        {page.map((st) => <HorrorRow key={st.id} story={st} onHover={() => setHoverId(st.id)} active={detail?.id === st.id} />)}
+                        {page.map((st) => <PanelRow key={st.id} story={st} onHover={() => setHoverId(st.id)} active={detail?.id === st.id} />)}
                       </div>
                     ))}
                   </div>
                   <div className="mt-4 hidden gap-x-6 gap-y-4 lg:grid lg:grid-cols-2">
-                    {visible.map((st) => <HorrorRow key={st.id} story={st} onHover={() => setHoverId(st.id)} active={detail?.id === st.id} />)}
+                    {visible.map((st) => <PanelRow key={st.id} story={st} onHover={() => setHoverId(st.id)} active={detail?.id === st.id} />)}
                   </div>
                 </>
               )}
@@ -587,6 +595,7 @@ export function DiscoverPage() {
   }).slice(0, 8);
   const classics = shelfBase.filter((s) => s.language === "bn" && s.pd_verified).slice(0, 8);
   const horror = shelfBase.filter((s) => normalizeGenre(s.genre) === "হরর").slice(0, 8);
+  const mystery = shelfBase.filter((s) => normalizeGenre(s.genre) === "রহস্য").slice(0, 8);
   const shelvesLoading = featuredQuery.isLoading || shelfBaseQuery.isLoading || curatedQuery.isLoading;
 
   return (
@@ -663,13 +672,14 @@ export function DiscoverPage() {
               <ShelfRow stories={featured} />
             </section>
           )}
-          {horror.length > 0 && <HorrorShelf stories={horror} />}
+          {horror.length > 0 && <GenrePanel stories={horror} genre="হরর" arts={HORROR_ARTS} subOrder={HORROR_SUB_ORDER} baseRgb="16,13,11" />}
           {complete.length > 0 && (
             <section className="mt-12 border-t border-ink/10 pt-10">
               <ShelfHead icon={<CheckSealIcon />} name={t("discover", "shelfComplete")} tagline={t("discover", "tagComplete")} accent="#A85745" action={<ShelfViewAll to="/discover?status=complete" label={t("home", "viewAll")} accent="#A85745" />} />
               <ShelfRow stories={complete} />
             </section>
           )}
+          {mystery.length > 0 && <GenrePanel stories={mystery} genre="রহস্য" arts={MYSTERY_ARTS} subOrder={MYSTERY_SUB_ORDER} baseRgb="10,16,28" />}
           {ongoing.length > 0 && (
             <section className="mt-12 border-t border-ink/10 pt-10">
               <ShelfHead icon={<PenIcon />} name={t("story", "ongoing")} tagline={t("discover", "tagOngoing")} accent="#3A6EA5" action={<ShelfViewAll to="/discover?status=ongoing" label={t("home", "viewAll")} accent="#3A6EA5" />} />
