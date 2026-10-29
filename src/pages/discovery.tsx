@@ -436,7 +436,7 @@ function FilterDialog({ language, genre, selectedSubs, status, time, sort, genre
       document.body.style.overflow = prev;
     };
   }, [onClose]);
-  const clearAll = () => set({ language: "", genre: "", sub: "", status: "", time: "", new: "" });
+  const clearAll = () => set({ language: "", genre: "", sub: "", status: "", time: "", new: "", sort: "" });
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
       <button type="button" aria-label={t("discover", "close")} onClick={onClose} className="absolute inset-0 bg-black/50" />
@@ -616,8 +616,11 @@ export function DiscoverPage() {
 
   return (
     <Layout>
-      {/* Vault entrance */}
-      <section className="relative mt-6 overflow-hidden rounded-2xl bg-ink px-6 py-6 text-center text-paper sm:py-10">
+      {/* Vault entrance — hidden on phones (it ate ~170px before any
+          shelf); the title stays as a screen-reader-only heading so the
+          page keeps its outline. */}
+      <h1 className="sr-only sm:hidden">{t("discover", "title")}</h1>
+      <section className="relative mt-6 hidden overflow-hidden rounded-2xl bg-ink px-6 py-6 text-center text-paper sm:block sm:py-10">
         <div
           className="pointer-events-none absolute inset-0 opacity-20"
           aria-hidden
@@ -640,10 +643,10 @@ export function DiscoverPage() {
         >
           {t("discover", "filter")}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
         </button>
-        {activeFilterCount > 0 && (
+        {(activeFilterCount > 0 || sort !== "newest") && (
           <button
             type="button"
-            onClick={() => set({ language: "", genre: "", sub: "", status: "", time: "", new: "" })}
+            onClick={() => set({ language: "", genre: "", sub: "", status: "", time: "", new: "", sort: "" })}
             className="text-sm font-medium text-river hover:underline"
           >
             {t("discover", "clearFilters")}
