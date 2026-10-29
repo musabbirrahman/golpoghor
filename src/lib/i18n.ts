@@ -301,6 +301,8 @@ const dict = {
     },
     title: { bn: "শিরোনাম", en: "Title" },
     summary: { bn: "সারসংক্ষেপ", en: "Summary" },
+    details: { bn: "বিস্তারিত", en: "Details" },
+    categories: { bn: "বিভাগ", en: "Categories" },
     language: { bn: "ভাষা", en: "Language" },
     genre: { bn: "ধারা", en: "Genre" },
     tags: { bn: "ট্যাগ", en: "Tags" },

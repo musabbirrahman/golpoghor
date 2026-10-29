@@ -327,8 +327,13 @@ export function StoryFormPage() {
             <h1 className="font-serif text-3xl font-bold">{isNew ? t("write", "newStory") : t("write", "editStory")}</h1>
             {!isNew && story && <StatusBadge status={story.status} />}
           </div>
+          <div className="mt-2 h-0.5 w-10 bg-gold" />
 
           <form onSubmit={save} className="mt-6 flex flex-col gap-4 rounded-xl bg-white p-6 shadow-card">
+            <div>
+              <h2 className="font-serif text-xl font-bold">{t("write", "details")}</h2>
+              <div className="mt-2 h-0.5 w-10 bg-gold" />
+            </div>
             <div>
               <Label htmlFor="sf-title">{t("write", "title")}</Label>
               <Input id="sf-title" required value={title}
@@ -346,6 +351,10 @@ export function StoryFormPage() {
             <div>
               <Label htmlFor="sf-summary">{t("write", "summary")}</Label>
               <Textarea id="sf-summary" rows={4} value={summary} onChange={(e) => setSummary(e.target.value)} maxLength={2000} />
+            </div>
+            <div className="mt-4">
+              <h2 className="font-serif text-xl font-bold">{t("write", "categories")}</h2>
+              <div className="mt-2 h-0.5 w-10 bg-gold" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -374,7 +383,7 @@ export function StoryFormPage() {
                 const subs = SUBCATEGORIES.filter((s) => s.group === g.value);
                 if (subs.length === 0) return null;
                 return (
-                  <div key={g.value} className="mt-3">
+                  <div key={g.value} className="mt-2">
                     <p className="text-sm font-medium">{genreLabel(g.value, locale)}</p>
                     <div className="mt-1 flex flex-wrap gap-2">
                       {subs.map((s) => (
@@ -395,6 +404,10 @@ export function StoryFormPage() {
               <Input id="sf-notice" value={notice} onChange={(e) => setNotice(e.target.value)} maxLength={500} />
             </div>
 
+            <div className="mt-4">
+              <h2 className="font-serif text-xl font-bold">{t("write", "origin")}</h2>
+              <div className="mt-2 h-0.5 w-10 bg-gold" />
+            </div>
             <div>
               <Label htmlFor="sf-origin">{t("write", "origin")}</Label>
               <Select id="sf-origin" value={origin} onChange={(e) => setOrigin(e.target.value as typeof origin)}>
@@ -439,12 +452,15 @@ export function StoryFormPage() {
 
             {!isNew && (
               <div>
-                <Label>{t("write", "coverImage")}</Label>
-                <div className="flex items-center gap-4">
+                <div className="mt-4">
+                  <h2 className="font-serif text-xl font-bold">{t("write", "coverImage")}</h2>
+                  <div className="mt-2 h-0.5 w-10 bg-gold" />
+                </div>
+                <div className="mt-4 flex items-center gap-4">
                   {coverPreview ? (
-                    <img src={coverPreview} alt="" className="h-24 w-18 rounded-lg object-cover" style={{ width: 72 }} />
+                    <img src={coverPreview} alt="" className="h-32 w-24 rounded-lg object-cover" />
                   ) : (
-                    <div className="flex h-24 w-[72px] items-center justify-center rounded-lg bg-sage text-ink-faint">—</div>
+                    <div className="flex h-32 w-24 items-center justify-center rounded-lg bg-sage text-ink-faint">—</div>
                   )}
                   <label className="cursor-pointer rounded-lg bg-sage px-4 py-2 text-sm font-medium hover:bg-sage-dark">
                     {uploading ? t("common", "loading") : t("write", "coverImage")}
@@ -477,6 +493,7 @@ export function StoryFormPage() {
 
               <Card className="mt-6 p-6">
                 <h2 className="font-serif text-xl font-bold">{t("write", "publish")}</h2>
+                <div className="mt-2 h-0.5 w-10 bg-gold" />
                 <p className="mt-1 text-sm text-ink-faint">
                   {t("write", "storyStatus")}: <StatusBadge status={story.status} />
                 </p>
@@ -720,6 +737,7 @@ function LicenceCard({ storyId }: { storyId: string }) {
   return (
     <Card className="mt-6 p-6">
       <h2 className="font-serif text-xl font-bold">{t("keepsakes", "licenceTitle")}</h2>
+      <div className="mt-2 h-0.5 w-10 bg-gold" />
       <p className="mt-1 text-sm text-ink-soft">
         {covered ? t("keepsakes", "licenceCovered") : t("keepsakes", "licenceNotCovered")}
       </p>
@@ -774,6 +792,7 @@ function ChapterListCard({ storyId }: { storyId: string }) {
         <h2 className="font-serif text-xl font-bold">{t("write", "chapters")} ({chapters.length})</h2>
         <ButtonLink to={`/write/stories/${storyId}/chapters/new`} size="sm">+ {t("write", "newChapter")}</ButtonLink>
       </div>
+      <div className="mt-2 h-0.5 w-10 bg-gold" />
       <div className="mt-4">
         {chaptersQuery.isLoading ? <Spinner /> : chapters.length ? (
           <ol className="divide-y divide-ink/10">
