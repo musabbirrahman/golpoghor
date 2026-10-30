@@ -101,7 +101,7 @@ export function HomePage() {
       <Shelf title={t("home", "featured")} action={<Link to="/discover?sort=featured" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
         {featured.isLoading ? <Spinner /> : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-6">
-            {(featured.data ?? []).map((s) => <StoryCard key={s.id} story={s} compact />)}
+            {(featured.data ?? []).map((s, i) => <StoryCard key={s.id} story={s} compact eager={i === 0} />)}
           </div>
         )}
       </Shelf>

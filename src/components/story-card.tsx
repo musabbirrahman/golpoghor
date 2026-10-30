@@ -27,7 +27,7 @@ export function storyPath(s: Story): string {
   return `/stories/${s.author?.username ?? "unknown"}/${s.slug}`;
 }
 
-export function Cover({ story, className = "", thumb = false, small = false }: { story: Story; className?: string; thumb?: boolean; small?: boolean }) {
+export function Cover({ story, className = "", thumb = false, small = false, eager = false }: { story: Story; className?: string; thumb?: boolean; small?: boolean; eager?: boolean }) {
   const { dp, isModerator } = useApp();
   const [url, setUrl] = useState<string | null>(null);
   const [showingOriginal, setShowingOriginal] = useState(false);
@@ -136,7 +136,8 @@ export function Cover({ story, className = "", thumb = false, small = false }: {
     <img
       src={url}
       alt=""
-      loading="lazy"
+      loading={eager ? "eager" : "lazy"}
+      fetchPriority={eager ? "high" : undefined}
       className={`object-cover ${className}`}
       onError={async () => {
         // Perf: a card-size thumbnail that fails to load self-heals
@@ -230,7 +231,7 @@ export function Cover({ story, className = "", thumb = false, small = false }: {
   );
 }
 
-export function StoryCard({ story, compact = false }: { story: Story; compact?: boolean }) {
+export function StoryCard({ story, compact = false, eager = false }: { story: Story; compact?: boolean; eager?: boolean }) {
   const { t, locale } = useApp();
   // Shared estimate from the story's real published word count (see utils).
   const minutes = readingMinutes(story.word_count ?? 0, story.language);
@@ -240,7 +241,7 @@ export function StoryCard({ story, compact = false }: { story: Story; compact?: 
       className="group flex h-full w-full min-w-0 flex-col overflow-hidden rounded-xl bg-white shadow-card transition-shadow hover:shadow-lift"
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-river-soft">
-        <Cover story={story} className="h-full w-full transition-transform duration-300 group-hover:scale-[1.03]" thumb small />
+        <Cover story={story} className="h-full w-full transition-transform duration-300 group-hover:scale-[1.03]" thumb small eager={eager} />
         <div className="absolute left-2 top-2 flex gap-1.5">
           <LanguageBadge language={story.language} />
         </div>
