@@ -44,6 +44,9 @@ const profiles = await get("profiles?select=username,updated_at&order=username")
 // profile used to be indexed, including empty ones.
 const authorNames = new Set(publicStories.map((s) => s.author.username));
 const publicProfiles = profiles.filter((p) => authorNames.has(p.username));
+// Curated shelves have no visibility column: every row is a public page
+// (/shelves/:slug serves any row), so every row gets a URL.
+const shelves = await get("shelves?select=slug&order=position.asc");
 
 const urls = [
   { loc: `${BASE}/`, priority: "1.0" },
@@ -72,6 +75,12 @@ for (const p of publicProfiles) {
     priority: "0.6",
   });
 }
+for (const sh of shelves) {
+  urls.push({
+    loc: `${BASE}/shelves/${seg(sh.slug)}`,
+    priority: "0.6",
+  });
+}
 
 const xml =
   `<?xml version="1.0" encoding="UTF-8"?>\n` +
@@ -88,5 +97,5 @@ const xml =
 
 writeFileSync(new URL("../public/sitemap.xml", import.meta.url), xml);
 console.log(
-  `sitemap.xml written: ${urls.length} URLs (${publicStories.length} stories, ${publicProfiles.length} authors)`
+  `sitemap.xml written: ${urls.length} URLs (${publicStories.length} stories, ${publicProfiles.length} authors, ${shelves.length} shelves)`
 );
