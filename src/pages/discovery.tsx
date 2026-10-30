@@ -64,8 +64,17 @@ export function HomePage() {
   const en = useQuery({ queryKey: ["stories", { language: "en", limit: 8 }], queryFn: () => dp.listStories({ language: "en", limit: 8 }) });
   // Mixed-language wall below the language-split shelves: newest first
   // across both languages, capped so the homepage never grows forever.
+  // The 12 shown rotate by day — the window starts at (day number %
+  // catalogue size) and wraps — so older stories surface over time
+  // instead of the same newest 12 sitting there until a new story
+  // arrives. Stable within a day: no reshuffling on reload.
   // View all opens Discover with no filters, i.e. every story on the site.
-  const more = useQuery({ queryKey: ["stories", { limit: 12 }], queryFn: () => dp.listStories({ limit: 12 }) });
+  const more = useQuery({ queryKey: ["stories", { more: true, limit: 100 }], queryFn: () => dp.listStories({ limit: 100 }) });
+  const moreList = more.data?.stories ?? [];
+  const moreStart = moreList.length > 12 ? Math.floor(Date.now() / 86400000) % moreList.length : 0;
+  const moreRotated = moreList.length > 12
+    ? Array.from({ length: 12 }, (_, i) => moreList[(moreStart + i) % moreList.length])
+    : moreList;
   const keepsakes = useQuery({ queryKey: ["public-keepsakes"], queryFn: () => dp.listPublicKeepsakes(8) });
 
   return (
@@ -141,9 +150,9 @@ export function HomePage() {
       </Shelf>
 
       <Shelf title={t("home", "moreStories")} action={<Link to="/discover" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
-        {more.isLoading ? <Spinner /> : more.data?.stories.length ? (
+        {more.isLoading ? <Spinner /> : moreRotated.length ? (
           <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
-            {more.data.stories.map((s) => (
+            {moreRotated.map((s) => (
               <div key={s.id} className="flex w-36 shrink-0 sm:w-auto"><StoryCard story={s} compact /></div>
             ))}
           </div>
