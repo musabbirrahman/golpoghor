@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
-import { usePageMeta } from "../lib/page-meta";
+import { usePageMeta, useJsonLd } from "../lib/page-meta";
 
 /**
  * V4-06 legal & trust pages. The texts are drafted from how the platform
@@ -17,6 +17,7 @@ interface LegalSection {
 interface LegalDoc {
   title: LText;
   sections: LegalSection[];
+  faq?: { q: LText; a: LText }[];
 }
 
 const EMAIL = "golponeer.app@gmail.com";
@@ -228,6 +229,36 @@ const DOCS: Record<string, LegalDoc> = {
         ],
       },
     ],
+    faq: [
+      {
+        q: { bn: "গল্পনীড় কী?", en: "What is GolpoNeer?" },
+        a: {
+          bn: "গল্পনীড় (golponeer.com) গল্প পড়া ও প্রকাশের একটি ওয়েবসাইট — বিশেষভাবে বাংলা গল্পের জন্য, সাথে ইংরেজি গল্পও আছে।",
+          en: "GolpoNeer (golponeer.com) is a website for reading and publishing stories, made specially for Bangla stories, with English stories too.",
+        },
+      },
+      {
+        q: { bn: "কী ধরনের গল্প পড়া যায়?", en: "What kind of stories can I read?" },
+        a: {
+          bn: "ছোটগল্প, উপন্যাস, রোমান্স, রহস্য, থ্রিলার, হরর, ইতিহাস, ফ্যান্টাসি, কবিতা ও সমকালীন গল্প — সাথে রবীন্দ্রনাথ ঠাকুরসহ পাবলিক ডোমেইন ক্লাসিক।",
+          en: "Short stories, novels, romance, mystery, thriller, horror, history, fantasy, poetry, and contemporary stories — plus public-domain classics including Tagore.",
+        },
+      },
+      {
+        q: { bn: "যে কেউ কি লিখে প্রকাশ করতে পারে?", en: "Can anyone write and publish?" },
+        a: {
+          bn: "হ্যাঁ। যে কেউ বিনামূল্যে অ্যাকাউন্ট খুলে গল্পনীড়ে নিজের গল্প প্রকাশ করতে পারে।",
+          en: "Yes. Anyone can create a free account and publish their own stories on GolpoNeer.",
+        },
+      },
+      {
+        q: { bn: "পড়তে কি অ্যাকাউন্ট লাগে?", en: "Do I need an account to read?" },
+        a: {
+          bn: "না। গল্পনীড়ে গল্প পড়া সবার জন্য বিনামূল্যে উন্মুক্ত; অ্যাকাউন্ট শুধু প্রকাশ, সংরক্ষণ, অনুসরণ বা মন্তব্যের জন্য লাগে।",
+          en: "No. Reading stories on GolpoNeer is free and open to everyone; an account is only needed if you want to publish, save stories, follow authors, or comment.",
+        },
+      },
+    ],
   },
 
   contact: {
@@ -412,6 +443,19 @@ export function LegalPage({ slug }: { slug: keyof typeof DOCS }) {
     title: `${doc.title[locale]} | GolpoNeer`,
     path: slug === "keepsakes" ? "/keepsakes-policy" : `/${slug}`,
   });
+  useJsonLd(
+    doc.faq
+      ? JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: doc.faq.map((f) => ({
+            "@type": "Question",
+            name: f.q[locale],
+            acceptedAnswer: { "@type": "Answer", text: f.a[locale] },
+          })),
+        })
+      : null,
+  );
   const others = Object.keys(DOCS).filter((k) => k !== slug) as (keyof typeof DOCS)[];
   return (
     <Layout>
@@ -432,6 +476,19 @@ export function LegalPage({ slug }: { slug: keyof typeof DOCS }) {
               ))}
             </section>
           ))}
+          {doc.faq && (
+            <section>
+              <h2 className="font-serif text-lg font-bold">
+                {locale === "bn" ? "সাধারণ প্রশ্ন" : "Common questions"}
+              </h2>
+              {doc.faq.map((f) => (
+                <div key={f.q.en} className="mt-4">
+                  <h3 className="font-bold">{f.q[locale]}</h3>
+                  <p className="mt-1 leading-relaxed text-ink-soft">{f.a[locale]}</p>
+                </div>
+              ))}
+            </section>
+          )}
         </div>
         <nav className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm text-river" aria-label="Legal">
           {others.map((k) => (
