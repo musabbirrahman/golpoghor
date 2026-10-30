@@ -493,13 +493,13 @@ function ShelfEditor({ shelf, shelves, publicStories, refresh }: { shelf: Curate
       <div className="flex flex-wrap items-center gap-2">
         <input
           aria-label={t("moderation", "shelfName")}
-          className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
+          className="min-w-[200px] flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <input
           aria-label={t("moderation", "shelfTagline")}
-          className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
+          className="min-w-[200px] flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
           value={tagline}
           onChange={(e) => setTagline(e.target.value)}
           placeholder={t("moderation", "shelfTaglinePlaceholder")}
@@ -614,14 +614,14 @@ function ShelvesTab() {
         <div className="flex flex-wrap items-center gap-2">
           <input
             aria-label={t("moderation", "shelfName")}
-            className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
+            className="min-w-[200px] flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("moderation", "shelfNamePlaceholder")}
           />
           <input
             aria-label={t("moderation", "shelfTagline")}
-            className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
+            className="min-w-[200px] flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
             value={tagline}
             onChange={(e) => setTagline(e.target.value)}
             placeholder={t("moderation", "shelfTaglinePlaceholder")}
