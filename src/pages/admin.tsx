@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
-import { Badge, Button, ButtonLink, Card, EmptyState, Input, Label, Modal, Spinner, Textarea } from "../components/ui";
+import { Badge, Button, ButtonLink, Card, Dropdown, EmptyState, Input, Label, Modal, Spinner, Textarea } from "../components/ui";
 import { AppError, formatDate, timeAgo } from "../lib/utils";
 import type { Appeal, CuratedShelf, Report, ReportTarget, ShelfLayout, Story } from "../lib/types";
 import { storyPath } from "../components/story-card";
@@ -371,17 +371,12 @@ function FeaturedTab() {
     <div className="flex flex-col gap-4">
       <Card className="p-5">
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            aria-label={t("moderation", "featureStory")}
-            className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
+          <Dropdown
+            ariaLabel={t("moderation", "featureStory")}
             value={selected}
-            onChange={(e) => setSelected(e.target.value)}
-          >
-            <option value="">{t("moderation", "chooseStory")}</option>
-            {candidates.map((s) => (
-              <option key={s.id} value={s.id}>{s.title}</option>
-            ))}
-          </select>
+            options={[{ value: "", label: t("moderation", "chooseStory") }, ...candidates.map((s) => ({ value: s.id, label: s.title }))]}
+            onChange={setSelected}
+          />
           <Button size="sm" disabled={!selected || busy !== null} onClick={feature}>
             {t("moderation", "featureStory")}
           </Button>
@@ -515,15 +510,15 @@ function ShelfEditor({ shelf, shelves, publicStories, refresh }: { shelf: Curate
             {t("home", "viewAll")} →
           </Link>
         ) : null}
-        <select
-          aria-label={t("moderation", "shelfLayout")}
-          className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
+        <Dropdown
+          ariaLabel={t("moderation", "shelfLayout")}
           value={layout}
-          onChange={(e) => setLayout(e.target.value as ShelfLayout)}
-        >
-          <option value="horizontal">{t("moderation", "layoutHorizontal")}</option>
-          <option value="vertical">{t("moderation", "layoutVertical")}</option>
-        </select>
+          options={[
+            { value: "horizontal", label: t("moderation", "layoutHorizontal") },
+            { value: "vertical", label: t("moderation", "layoutVertical") },
+          ]}
+          onChange={(v) => setLayout(v as ShelfLayout)}
+        />
         <Button size="sm" disabled={busy !== null || !name.trim()} onClick={save}>
           {t("moderation", "saveShelf")}
         </Button>
@@ -539,17 +534,12 @@ function ShelfEditor({ shelf, shelves, publicStories, refresh }: { shelf: Curate
       </div>
       {error ? <p className="mt-2 text-sm text-clay">{t("errors", error)}</p> : null}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <select
-          aria-label={t("moderation", "addStoryToShelf")}
-          className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
+        <Dropdown
+          ariaLabel={t("moderation", "addStoryToShelf")}
           value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-        >
-          <option value="">{t("moderation", "chooseStory")}</option>
-          {candidates.map((s) => (
-            <option key={s.id} value={s.id}>{s.title}</option>
-          ))}
-        </select>
+          options={[{ value: "", label: t("moderation", "chooseStory") }, ...candidates.map((s) => ({ value: s.id, label: s.title }))]}
+          onChange={setSelected}
+        />
         <Button size="sm" disabled={!selected || busy !== null} onClick={addItem}>
           {t("moderation", "addStoryToShelf")}
         </Button>
@@ -637,15 +627,15 @@ function ShelvesTab() {
             placeholder={t("moderation", "shelfTaglinePlaceholder")}
             maxLength={160}
           />
-          <select
-            aria-label={t("moderation", "shelfLayout")}
-            className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm focus:border-river focus:outline-none"
+          <Dropdown
+            ariaLabel={t("moderation", "shelfLayout")}
             value={layout}
-            onChange={(e) => setLayout(e.target.value as ShelfLayout)}
-          >
-            <option value="horizontal">{t("moderation", "layoutHorizontal")}</option>
-            <option value="vertical">{t("moderation", "layoutVertical")}</option>
-          </select>
+            options={[
+              { value: "horizontal", label: t("moderation", "layoutHorizontal") },
+              { value: "vertical", label: t("moderation", "layoutVertical") },
+            ]}
+            onChange={(v) => setLayout(v as ShelfLayout)}
+          />
           <Button size="sm" disabled={!name.trim() || busy} onClick={create}>
             {t("moderation", "createShelf")}
           </Button>
@@ -758,6 +748,7 @@ export function AdminPage() {
     <RequireModerator>
       <Layout>
         <h1 className="mt-6 font-serif text-3xl font-bold">{t("moderation", "title")}</h1>
+        <div className="mt-2 h-0.5 w-10 bg-gold" />
 
         <div className="mt-4 flex flex-wrap gap-2" role="tablist">
           <button role="tab" aria-selected={tab === "queue"} className={tabBtn(tab === "queue")} onClick={() => setTab("queue")}>
