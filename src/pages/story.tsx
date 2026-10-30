@@ -128,12 +128,54 @@ export function StoryPage() {
   const [contentsExpanded, setContentsExpanded] = useState(false);
   const [contentsJumpVisible, setContentsJumpVisible] = useState(false);
   const [nearPageBottom, setNearPageBottom] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const storyQuery = useQuery({
     queryKey: ["story", username, slug],
     queryFn: () => dp.getStoryBySlug(username, slug),
   });
   const story = storyQuery.data;
+
+  // Share: the phone's native sheet where available, otherwise copy
+  // the story link and confirm it. A dismissed sheet (AbortError)
+  // is silence, not a failure — no fallback, no message.
+  const handleShare = async () => {
+    if (!story) return;
+    const url = window.location.href;
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      try {
+        await navigator.share({ title: story.title, url });
+        return;
+      } catch (e) {
+        if ((e as Error)?.name === "AbortError") return;
+      }
+    }
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(url);
+      copied = true;
+    } catch {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        copied = document.execCommand("copy");
+        ta.remove();
+      } catch {
+        copied = false;
+      }
+    }
+    if (copied) setLinkCopied(true);
+  };
+
+  useEffect(() => {
+    if (!linkCopied) return;
+    const id = window.setTimeout(() => setLinkCopied(false), 2000);
+    return () => window.clearTimeout(id);
+  }, [linkCopied]);
 
   const storyAuthorName =
     story?.author?.display_name ?? story?.author?.username;
@@ -599,6 +641,11 @@ export function StoryPage() {
 
   return (
     <Layout>
+      {linkCopied && (
+        <div className="fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-full bg-river px-4 py-2 text-sm font-medium text-white shadow-lift">
+          {t("common", "linkCopied")}
+        </div>
+      )}
       <nav aria-label="Breadcrumb" className="mt-6 hidden items-center gap-1.5 text-sm text-ink-faint lg:flex">
         {/* Back + share pills ride the breadcrumb row at lg–xl only
             (iPad Pro sizes: touch tablets get the phone affordances).
@@ -623,6 +670,7 @@ export function StoryPage() {
         <span className="min-w-0 truncate font-semibold text-ink">{story.title}</span>
         <button
           type="button"
+          onClick={handleShare}
           aria-label={t("common", "share")}
           title={t("common", "share")}
           className="ml-auto hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-white/85 text-ink shadow-sm lg:flex xl:hidden"
@@ -649,6 +697,7 @@ export function StoryPage() {
           </button>
           <button
             type="button"
+            onClick={handleShare}
             aria-label={t("common", "share")}
             title={t("common", "share")}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-ink/10 bg-white/85 text-ink shadow-sm"

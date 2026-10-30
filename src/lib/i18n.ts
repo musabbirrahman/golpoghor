@@ -716,6 +716,7 @@ const dict = {
     close: { bn: "বন্ধ করুন", en: "Close" },
     back: { bn: "ফিরে যান", en: "Back" },
     share: { bn: "শেয়ার করুন", en: "Share" },
+    linkCopied: { bn: "লিংক কপি হয়েছে", en: "Link copied" },
     skipToContent: { bn: "মূল কন্টেন্টে যান", en: "Skip to main content" },
     loading: { bn: "লোড হচ্ছে…", en: "Loading…" },
     retry: { bn: "পুনরায় চেষ্টা", en: "Retry" },
