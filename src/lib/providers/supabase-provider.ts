@@ -2220,6 +2220,7 @@ export class SupabaseProvider implements DataProvider {
   private clearCoverUrlMemory(): void {
     this.coverUrlCache.clear();
     this.coverThumbUrlCache.clear();
+    this.coverThumbSmallUrlCache.clear();
     this.authEpoch++;
   }
 
