@@ -12,6 +12,7 @@ import { KeepsakeStripSkeleton, PanelSkeleton, ShelfHeadSkeleton, StoryCardSkele
 import { Cover, StoryCard, StoryRow, storyPath } from "../components/story-card";
 import { ShelfHead, ShelfIcon, ShelfRow, VerticalShelfList, shelfAccentHex } from "../components/shelf-blocks";
 import { CARD_TEMPLATES } from "../lib/keepsake-card";
+import { getBakedFeatured } from "../lib/baked-featured";
 import type { Story, StoryLanguage } from "../lib/types";
 
 const PAGE_SIZE = 24;
@@ -60,7 +61,11 @@ function Shelf({ title, action, children }: { title: string; action?: React.Reac
 
 export function HomePage() {
   const { t, dp } = useApp();
-  const featured = useQuery({ queryKey: ["stories", { featured: true, limit: 4 }], queryFn: () => dp.listFeaturedStories(4) });
+  // Bake-home: on a baked build the Featured grid paints from the inlined
+  // first-paint data instead of waiting for the fetch; staleTime 0 keeps
+  // freshness identical to before (live data refetches in the background
+  // on mount). Without baked data this behaves exactly as it always did.
+  const featured = useQuery({ queryKey: ["stories", { featured: true, limit: 4 }], queryFn: () => dp.listFeaturedStories(4), initialData: getBakedFeatured(), staleTime: 0 });
   const bn = useQuery({ queryKey: ["stories", { language: "bn", limit: 8 }], queryFn: () => dp.listStories({ language: "bn", limit: 8 }) });
   const en = useQuery({ queryKey: ["stories", { language: "en", limit: 8 }], queryFn: () => dp.listStories({ language: "en", limit: 8 }) });
   // Mixed-language wall below the language-split shelves: newest first
