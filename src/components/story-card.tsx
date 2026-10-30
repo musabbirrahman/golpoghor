@@ -149,7 +149,7 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
   return (
     <img
       src={url}
-      alt=""
+      alt={story.title}
       loading={eager ? "eager" : "lazy"}
       fetchPriority={eager ? "high" : undefined}
       className={`object-cover ${className}`}
