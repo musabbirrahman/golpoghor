@@ -145,6 +145,10 @@ export function thumbPath(coverPath: string): string | null {
   if (slash <= 0) return null;
   const file = coverPath.slice(slash + 1);
   if (!file || file.startsWith("thumb-")) return null;
+  // Security: legitimate cover paths are always <author-uuid>/<safe
+  // filename> (see uploadCover). Reject anything else so a crafted
+  // cover_path can never smuggle characters into a built URL.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[A-Za-z0-9._-]+$/i.test(coverPath)) return null;
   return `${coverPath.slice(0, slash)}/thumb-${file}`;
 }
 
@@ -157,6 +161,8 @@ export function thumbSmPath(coverPath: string): string | null {
   if (slash <= 0) return null;
   const file = coverPath.slice(slash + 1);
   if (!file || file.startsWith("thumb-")) return null;
+  // Security: same strict path guard as thumbPath (see above).
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[A-Za-z0-9._-]+$/i.test(coverPath)) return null;
   return `${coverPath.slice(0, slash)}/thumb-sm-${file}`;
 }
 

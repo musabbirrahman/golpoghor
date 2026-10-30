@@ -764,6 +764,7 @@ export class SupabaseProvider implements DataProvider {
   }
 
   async updateStory(id: string, patch: Partial<StoryInput & { status: Story["status"]; cover_path: string | null }>): Promise<Story> {
+    const before = await this.getStory(id);
     const body: Record<string, unknown> = {};
     if (patch.title !== undefined) body.title = patch.title.trim();
     if (patch.slug !== undefined) body.slug = slugify(patch.slug || patch.title || "");
@@ -793,7 +794,19 @@ export class SupabaseProvider implements DataProvider {
     if (patch.cover_path !== undefined) body.cover_path = patch.cover_path;
     const { data, error } = await this.sb.from("stories").update(body).eq("id", id).select(STORY_JOIN).single();
     if (error) throw toAppError(error);
-    return mapStory(data);
+    const updated = mapStory(data);
+    // Argon follow-up: a story leaving public status, or getting a new
+    // cover, must not leave its old public thumbnails behind (moderator
+    // hide and delete already clean up; author edits did not). Only
+    // clean up when leaving public or when the cover actually changed —
+    // never when status stays public and the cover is unchanged.
+    const wasPublic = before?.status === "ongoing" || before?.status === "complete";
+    const isPublic = updated.status === "ongoing" || updated.status === "complete";
+    const coverChanged = patch.cover_path !== undefined && patch.cover_path !== (before?.cover_path ?? null);
+    if (before?.cover_path && ((wasPublic && !isPublic) || coverChanged)) {
+      this.removePublicThumb(before.cover_path).catch((e) => console.warn("cover-thumbs cleanup failed:", e));
+    }
+    return updated;
   }
 
   /**
@@ -1826,7 +1839,17 @@ export class SupabaseProvider implements DataProvider {
     if (status === "hidden" && before?.author_id) {
       await this.tryNotify(() => this.notifyContentAuthor("content_hidden", "story", id, before.author_id));
     }
-    if (status !== "hidden") return true;
+    if (status !== "hidden") {
+      // Restore: recreate the public thumbnails now (moderator session),
+      // so guests get the CDN copy immediately instead of the signed
+      // fallback. Best-effort: the next owner/moderator view backfills
+      // anyway if this fails.
+      if (before?.cover_path) {
+        this.ensureCoverThumbnail({ id, author_id: before.author_id, cover_path: before.cover_path, status }, { force: true, moderator: true }).catch(() => {});
+        this.ensureCoverThumbnailSmall({ id, author_id: before.author_id, cover_path: before.cover_path, status }, { force: true, moderator: true }).catch(() => {});
+      }
+      return true;
+    }
     // DB update first, then best-effort public-thumb cleanup (Argon Q2).
     // A restore re-creates the thumb via backfill on next owner view.
     return this.removePublicThumb(before?.cover_path ?? null);
@@ -2402,6 +2425,9 @@ export class SupabaseProvider implements DataProvider {
       return "refused";
     }
     if (!story.cover_path) return "refused";
+    // Security: a story's cover must live in its own author's folder.
+    // The DB insert policy enforces the same rule; this refuses early.
+    if (!story.cover_path.startsWith(`${story.author_id}/`)) return "refused";
     const isPublic = story.status === "ongoing" || story.status === "complete";
     // Owner, or a moderator backfilling a public story (Argon Q3/Q5).
     // The DB insert policy enforces both rules regardless of the flag.
@@ -2431,7 +2457,7 @@ export class SupabaseProvider implements DataProvider {
       const { error } = await this.sb.storage
         .from(bucket)
         .upload(tp, thumb, isPublic
-          ? { contentType: "image/jpeg", upsert: false, cacheControl: "31536000" }
+          ? { contentType: "image/jpeg", upsert: false, cacheControl: "86400" }
           : { contentType: "image/jpeg", upsert: false });
       if (error) {
         // Another session may have created it first: that is success,
@@ -2472,6 +2498,9 @@ export class SupabaseProvider implements DataProvider {
       return "refused";
     }
     if (!story.cover_path) return "refused";
+    // Security: a story's cover must live in its own author's folder
+    // (same rule as ensureCoverThumbnail; the DB policy enforces it).
+    if (!story.cover_path.startsWith(`${story.author_id}/`)) return "refused";
     const isPublic = story.status === "ongoing" || story.status === "complete";
     if (story.author_id !== me && !(opts?.moderator === true && isPublic)) return "refused";
     const tp = thumbSmPath(story.cover_path);
@@ -2498,7 +2527,7 @@ export class SupabaseProvider implements DataProvider {
       const { error } = await this.sb.storage
         .from(bucket)
         .upload(tp, thumb, isPublic
-          ? { contentType: "image/jpeg", upsert: false, cacheControl: "31536000" }
+          ? { contentType: "image/jpeg", upsert: false, cacheControl: "86400" }
           : { contentType: "image/jpeg", upsert: false });
       if (error) {
         if (/already exists|duplicate/i.test(error.message ?? "")) {

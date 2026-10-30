@@ -899,9 +899,9 @@ let appealId;
       const out = normalizeExcerpt("word ".repeat(300));
       return out.length <= 1000 && !out.endsWith(" ") && out.split(" ").every((w) => w === "word");
     })());
-  check("studio: six templates with distinct palettes",
-    Object.keys(CARD_TEMPLATES).length === 6 &&
-    new Set(Object.values(CARD_TEMPLATES).map((p) => p.bg)).size === 6);
+  check("studio: ten templates with distinct palettes",
+    Object.keys(CARD_TEMPLATES).length === 10 &&
+    new Set(Object.values(CARD_TEMPLATES).map((p) => p.bg)).size === 10);
   check("studio: attribution from story metadata, absent author is empty",
     keepsakeAttribution({ title: "T", author: { display_name: "A" } }).author === "A" &&
     keepsakeAttribution({ title: "T", author: null }).author === "");
@@ -1239,7 +1239,7 @@ let appealId;
 // Phase 1A: cover thumbnails (demo parity of the guard state machine)
 {
   const { thumbPath } = utils;
-  check("thumb: derives thumb- name", thumbPath("uid123/1699999-abc.jpeg") === "uid123/thumb-1699999-abc.jpeg");
+  check("thumb: derives thumb- name", thumbPath("11111111-1111-4111-8111-111111111111/1699999-abc.jpeg") === "11111111-1111-4111-8111-111111111111/thumb-1699999-abc.jpeg");
   check("thumb: data: URL has no thumb", thumbPath("data:image/png;base64,AAA") === null);
   check("thumb: path without folder has no thumb", thumbPath("cover.jpeg") === null);
   check("thumb: existing thumb is not re-derived", thumbPath("uid123/thumb-1699999-abc.jpeg") === null);
@@ -1355,7 +1355,7 @@ let appealId;
 // small generation for the same cover.
 {
   const { thumbSmPath } = utils;
-  check("sm: derives thumb-sm- name", thumbSmPath("uid123/1699999-abc.jpeg") === "uid123/thumb-sm-1699999-abc.jpeg");
+  check("sm: derives thumb-sm- name", thumbSmPath("11111111-1111-4111-8111-111111111111/1699999-abc.jpeg") === "11111111-1111-4111-8111-111111111111/thumb-sm-1699999-abc.jpeg");
   check("sm: data: URL has no small thumb", thumbSmPath("data:image/png;base64,AAA") === null);
   check("sm: existing thumb is not re-derived", thumbSmPath("uid123/thumb-1699999-abc.jpeg") === null);
   check("sm: existing small thumb is not re-derived", thumbSmPath("uid123/thumb-sm-1699999-abc.jpeg") === null);

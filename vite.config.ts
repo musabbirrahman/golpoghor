@@ -21,7 +21,7 @@ import { defineConfig, type Plugin } from 'vite'
 // then behaves exactly as before. Reads only the public Supabase URL and
 // publishable anon key (the same values the browser bundle already ships);
 // no secrets, no new service, no runtime cost.
-const STORY_SELECT = '*,author:profiles!stories_author_id_fkey(*)'
+const STORY_SELECT = 'id,author_id,title,slug,summary,language,genre,tags,status,content_notice,cover_path,original_author,published_at,created_at,updated_at,author:profiles!stories_author_id_fkey(id,username,display_name,avatar_path)'
 
 function thumbSmPath(coverPath: string): string | null {
   // Mirrors src/lib/utils.ts thumbSmPath (same guards).
@@ -30,6 +30,10 @@ function thumbSmPath(coverPath: string): string | null {
   if (slash <= 0) return null
   const file = coverPath.slice(slash + 1)
   if (!file || file.startsWith('thumb-')) return null
+  // Security: legitimate cover paths are always <author-uuid>/<safe
+  // filename> (see uploadCover). Reject anything else so a crafted
+  // cover_path can never smuggle characters into a built URL.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[A-Za-z0-9._-]+$/i.test(coverPath)) return null
   return `${coverPath.slice(0, slash)}/thumb-sm-${file}`
 }
 
@@ -47,7 +51,7 @@ async function fetchBaked(base: string, key: string): Promise<{ stories: any[]; 
   }
   // Mirrors SupabaseProvider.listFeaturedStories(4): picks in position
   // order, then newest public stories fill any remaining slots.
-  const picked = await get(params('featured_position=not.is.null&order=featured_position.asc&order=published_at.desc.nullslast'))
+  const picked = await get(params('featured_position=not.is.null&order=featured_position.asc,published_at.desc.nullslast'))
   const stories = [...picked]
   if (stories.length < 4) {
     const newest = await get(params('order=published_at.desc.nullslast'))
