@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { CARD_TEMPLATES, keepsakeAttribution } from "../lib/keepsake-card";
-import { Button, EmptyState, Spinner } from "../components/ui";
+import { Button, EmptyState } from "../components/ui";
+import { KeepsakeCardSkeleton } from "../components/skeleton";
 import { Layout } from "../components/layout";
 import { StandaloneKeepsake } from "../components/standalone-keepsake";
 
@@ -22,30 +23,12 @@ export function KeepsakesShelfPage() {
     queryFn: () => dp.listPublicKeepsakes(),
   });
 
-  if (isLoading) return <Layout><Spinner /></Layout>;
+  // The header never depends on the query, so it renders immediately
+  // and only the card list below it waits — previously the whole page
+  // (header included) was a spinner, then everything popped in, and
+  // on a slow connection the page showed a blank area instead.
   const rows = [...(data ?? [])].sort((a, b) =>
     (b.published_at ?? "").localeCompare(a.published_at ?? ""));
-  if (rows.length === 0) {
-    return (
-      <Layout>
-        <div className="mx-auto max-w-2xl">
-          <h1 className="font-serif text-3xl font-bold sm:text-4xl">{t("keepsakes", "shelfTitle")}</h1>
-          <div className="mt-2 h-0.5 w-10 bg-gold" />
-          <p className="mt-2 text-sm text-ink-soft">{t("keepsakes", "shelfSubtitle")}</p>
-          <div className="mt-4">
-            <Button variant="secondary" onClick={() => setMakerOpen(true)}>
-              {t("keepsakes", "makeOwn")}
-            </Button>
-          </div>
-          <div className="mt-6">
-            <EmptyState title={t("keepsakes", "shelfEmpty")} />
-          </div>
-        </div>
-        <StandaloneKeepsake open={makerOpen} onClose={() => setMakerOpen(false)} />
-      </Layout>
-    );
-  }
-
   return (
     <Layout>
     <div className="mx-auto max-w-2xl">
@@ -57,6 +40,15 @@ export function KeepsakesShelfPage() {
           {t("keepsakes", "makeOwn")}
         </Button>
       </div>
+      {isLoading ? (
+        <div className="mt-6 flex flex-col gap-4">
+          {[0, 1, 2].map((i) => <KeepsakeCardSkeleton key={i} />)}
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState title={t("keepsakes", "shelfEmpty")} />
+        </div>
+      ) : (
       <div className="mt-6 flex flex-col gap-4">
         {rows.map((k) => {
           const attr = keepsakeAttribution(
@@ -109,6 +101,7 @@ export function KeepsakesShelfPage() {
           );
         })}
       </div>
+      )}
     </div>
     <StandaloneKeepsake open={makerOpen} onClose={() => setMakerOpen(false)} />
     </Layout>

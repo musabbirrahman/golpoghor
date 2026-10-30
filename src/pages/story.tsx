@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
 import { Avatar, Badge, Button, ButtonLink, EmptyState, Spinner, StatusBadge, LanguageBadge } from "../components/ui";
+import { StoryHeroSkeleton } from "../components/skeleton";
 import { Cover } from "../components/story-card";
 import { ReportDialog } from "../components/report-dialog";
 import { formatDate, readingMinutes, timeAgo } from "../lib/utils";
@@ -516,7 +517,7 @@ export function StoryPage() {
     document.addEventListener("pointerdown", hide);
     return () => document.removeEventListener("pointerdown", hide);
   }, [statusBarVisible, statusDismissKey]);
-  if (storyQuery.isLoading) return <Layout><Spinner /></Layout>;
+  if (storyQuery.isLoading) return <Layout><StoryHeroSkeleton /></Layout>;
   if (!story) {
     if (storyRedirectPending || slugRedirectPending) return <Layout><Spinner /></Layout>;
     return (

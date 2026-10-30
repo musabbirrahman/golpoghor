@@ -8,6 +8,7 @@ import { SUBCATEGORIES, subLabel } from "../lib/subcategories";
 import { readingMinutes, timeAgo } from "../lib/utils";
 import { Layout } from "../components/layout";
 import { Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
+import { KeepsakeStripSkeleton, StoryCardSkeleton } from "../components/skeleton";
 import { Cover, StoryCard, StoryRow, storyPath } from "../components/story-card";
 import { ShelfHead, ShelfIcon, ShelfRow, VerticalShelfList, shelfAccentHex } from "../components/shelf-blocks";
 import { CARD_TEMPLATES } from "../lib/keepsake-card";
@@ -99,16 +100,28 @@ export function HomePage() {
       </section>
 
       <Shelf title={t("home", "featured")} action={<Link to="/discover?sort=featured" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
-        {featured.isLoading ? <Spinner /> : (
+        {featured.isLoading ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-6">
+            {[0, 1, 2, 3].map((i) => <StoryCardSkeleton key={i} />)}
+          </div>
+        ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-6">
             {(featured.data ?? []).map((s, i) => <StoryCard key={s.id} story={s} compact eager={i === 0} />)}
           </div>
         )}
       </Shelf>
 
-      {/* Public keepsakes strip — hidden entirely until something is
-          public, so it never shows an empty box on the home page. */}
-      {!!keepsakes.data?.length && (
+      {/* Public keepsakes strip — hidden entirely once loaded with
+          nothing public, so it never shows an empty box on the home
+          page. While loading, the title + skeleton strip hold the
+          section's place instead of a blank gap. */}
+      {keepsakes.isLoading ? (
+        <Shelf title={t("keepsakes", "shelfTitle")} action={<Link to="/keepsakes" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
+          <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
+            {[0, 1, 2, 3].map((i) => <KeepsakeStripSkeleton key={i} />)}
+          </div>
+        </Shelf>
+      ) : !!keepsakes.data?.length && (
         <Shelf title={t("keepsakes", "shelfTitle")} action={<Link to="/keepsakes" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
           <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
             {keepsakes.data.slice(0, 8).map((k) => {
@@ -130,7 +143,11 @@ export function HomePage() {
       )}
 
       <Shelf title={t("home", "recentBn")} action={<Link to="/discover?language=bn" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
-        {bn.isLoading ? <Spinner /> : bn.data?.stories.length ? (
+        {bn.isLoading ? (
+          <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
+            {[0, 1, 2, 3].map((i) => <div key={i} className="flex w-36 shrink-0 sm:w-auto"><StoryCardSkeleton /></div>)}
+          </div>
+        ) : bn.data?.stories.length ? (
           <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
             {bn.data.stories.map((s) => (
               <div key={s.id} className="flex w-36 shrink-0 sm:w-auto"><StoryCard story={s} compact /></div>
@@ -140,7 +157,11 @@ export function HomePage() {
       </Shelf>
 
       <Shelf title={t("home", "recentEn")} action={<Link to="/discover?language=en" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
-        {en.isLoading ? <Spinner /> : en.data?.stories.length ? (
+        {en.isLoading ? (
+          <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
+            {[0, 1, 2, 3].map((i) => <div key={i} className="flex w-36 shrink-0 sm:w-auto"><StoryCardSkeleton /></div>)}
+          </div>
+        ) : en.data?.stories.length ? (
           <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
             {en.data.stories.map((s) => (
               <div key={s.id} className="flex w-36 shrink-0 sm:w-auto"><StoryCard story={s} compact /></div>
@@ -150,7 +171,11 @@ export function HomePage() {
       </Shelf>
 
       <Shelf title={t("home", "moreStories")} action={<Link to="/discover" className="text-sm font-medium text-river hover:underline">{t("home", "viewAll")}</Link>}>
-        {more.isLoading ? <Spinner /> : moreRotated.length ? (
+        {more.isLoading ? (
+          <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
+            {[0, 1, 2, 3].map((i) => <div key={i} className="flex w-36 shrink-0 sm:w-auto"><StoryCardSkeleton /></div>)}
+          </div>
+        ) : moreRotated.length ? (
           <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
             {moreRotated.map((s) => (
               <div key={s.id} className="flex w-36 shrink-0 sm:w-auto"><StoryCard story={s} compact /></div>
