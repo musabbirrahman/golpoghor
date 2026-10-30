@@ -1528,7 +1528,7 @@ export class DemoProvider implements DataProvider {
         ? story.title
         : input.makerTitle?.trim()
           ? input.makerTitle.trim().slice(0, 200)
-          : "Untitled",
+          : "",
       source_author_name: author?.display_name ?? "",
       source_original_author: story?.original_author ?? null,
       source_original_title: story?.original_title ?? null,

@@ -259,7 +259,7 @@ export interface DataProvider {
     excerpt: string;
     template?: KeepsakeTemplate;
     echo?: string | null;
-    /** Maker title for a story-less save; blank becomes "Untitled". */
+    /** Maker title for a story-less save; blank stores empty (no title shown). */
     makerTitle?: string | null;
   }): Promise<Keepsake>;
   listMyKeepsakes(): Promise<Keepsake[]>;

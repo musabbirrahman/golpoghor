@@ -1394,7 +1394,7 @@ export class SupabaseProvider implements DataProvider {
             source_title:
               input.makerTitle?.trim() && input.makerTitle.trim().length > 0
                 ? input.makerTitle.trim().slice(0, 200)
-                : "Untitled",
+                : "",
             source_author_name: await this.profileDisplayName(),
             source_original_author: null,
             source_original_title: null,

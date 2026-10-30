@@ -216,7 +216,7 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
                       )}
                       <div className="mt-5 pt-3" style={{ borderTop: `1px solid ${tpl.rule}` }}>
                         <p className="break-words text-sm" style={{ color: tpl.faint }}>
-                          {attr.title} · {attr.author}
+                          {attr.title ? `${attr.title} · ${attr.author}` : attr.author}
                         </p>
                         <p className="mt-1 text-xs" style={{ color: tpl.faint }}>
                           {visibilityLabel(k)} · {templateLabel(k)}
@@ -270,7 +270,7 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
                   )}
                   <div className="mt-5 pt-3" style={{ borderTop: `1px solid ${tpl.rule}` }}>
                     <p className="break-words text-sm" style={{ color: tpl.faint }}>
-                      {attr.title} · {attr.author}
+                      {attr.title ? `${attr.title} · ${attr.author}` : attr.author}
                     </p>
                     <p className="mt-1 text-sm" style={{ color: tpl.faint }}>
                       {visibilityLabel(k)} · {templateLabel(k)}

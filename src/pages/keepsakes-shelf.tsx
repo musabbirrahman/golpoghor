@@ -97,7 +97,7 @@ export function KeepsakesShelfPage() {
               )}
               <div className="mt-5 pt-3" style={{ borderTop: `1px solid ${tpl.rule}` }}>
                 <p className="break-words text-sm" style={{ color: tpl.faint }}>
-                  {attr.title} · {attr.author}
+                  {attr.title ? `${attr.title} · ${attr.author}` : attr.author}
                 </p>
                 {/* Small keeper line, in the footer — the card grows a
                     line for it instead of the quote/echo area shrinking. */}

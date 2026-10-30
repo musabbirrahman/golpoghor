@@ -317,7 +317,13 @@ export function keepsakeAttribution(
     bits.push(locale === "bn" ? `অনুবাদ: ${story.translator_name.trim()}` : `Translated by ${story.translator_name.trim()}`);
   if (story.adapter_name?.trim())
     bits.push(locale === "bn" ? `রূপান্তর: ${story.adapter_name.trim()}` : `Adapted by ${story.adapter_name.trim()}`);
-  return { title: story.title, author: bits.length ? `${base} · ${bits.join(" · ")}` : base };
+  // A keepsake with no title shows no title at all — never the
+  // "Untitled" placeholder. That covers blank maker titles (stored
+  // as an empty string) and older rows saved with the "Untitled"
+  // fallback: the canvas draws an empty title as nothing, and the
+  // card lines below join the author on its own.
+  const title = story.title.trim() === "" || story.title.trim() === "Untitled" ? "" : story.title;
+  return { title, author: bits.length ? `${base} · ${bits.join(" · ")}` : base };
 }
 
 /** Trigger a browser download of the canvas as a PNG. The anchor must be

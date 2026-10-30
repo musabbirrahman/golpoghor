@@ -874,8 +874,8 @@ let appealId;
   check("keepsake: projection restores it when the source returns",
     (await dp.listPublicKeepsakes()).some((p) => p.id === own.id));
   const maker = await dp.createKeepsake({ storyId: null, excerpt: "Maker line", makerTitle: null });
-  check("keepsake: maker save stores null story and Untitled fallback",
-    maker.story_id === null && maker.source_title === "Untitled");
+  check("keepsake: maker save stores null story and empty title",
+    maker.story_id === null && maker.source_title === "");
   check("keepsake: maker save appears in My Keepsakes",
     (await dp.listMyKeepsakes()).some((k) => k.id === maker.id));
   check("keepsake: maker save never appears in public projection",
