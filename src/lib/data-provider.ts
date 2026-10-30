@@ -253,11 +253,14 @@ export interface DataProvider {
 
   // --------------------------------------------------------- keepsakes (V4-27a)
   createKeepsake(input: {
-    storyId: string;
+    /** NULL for standalone maker keepsakes (no source story). */
+    storyId: string | null;
     chapterId?: string | null;
     excerpt: string;
     template?: KeepsakeTemplate;
     echo?: string | null;
+    /** Maker title for a story-less save; blank becomes "Untitled". */
+    makerTitle?: string | null;
   }): Promise<Keepsake>;
   listMyKeepsakes(): Promise<Keepsake[]>;
   getKeepsake(id: string): Promise<Keepsake | null>;

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useApp } from "../lib/app-context";
+import { AppError } from "../lib/utils";
 import { Button, Input, Modal, Textarea } from "./ui";
 import { KEEPSAKE_EXCERPT_MAX, KEEPSAKE_TEMPLATES } from "../lib/data-provider";
 import type { KeepsakeTemplate } from "../lib/types";
@@ -22,9 +24,10 @@ const TEMPLATE_I18N: Record<KeepsakeTemplate, string> = {
 /**
  * Standalone keepsake maker, opened from the public shelf. No story,
  * no text selection: the reader writes their own words, picks a
- * design, and downloads the card. Download-only by design — a
- * story-less keepsake has no source to save under, so it never
- * enters the library or the shelf.
+ * design, and downloads the card. Signed-in readers can also save
+ * it to My Keepsakes — private forever, never published, since a
+ * story-less keepsake has no source to publish from. Signed-out
+ * readers stay download-only: there is no owner to save under.
  */
 export function StandaloneKeepsake({
   open,
@@ -33,12 +36,15 @@ export function StandaloneKeepsake({
   open: boolean;
   onClose: () => void;
 }) {
-  const { t, profile } = useApp();
+  const { t, dp, session, profile } = useApp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [words, setWords] = useState("");
   const [title, setTitle] = useState("");
   const [template, setTemplate] = useState<KeepsakeTemplate>("classic-paper");
   const [trimmed, setTrimmed] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Fresh state every time the maker opens.
   useEffect(() => {
@@ -47,6 +53,9 @@ export function StandaloneKeepsake({
     setTitle("");
     setTemplate("classic-paper");
     setTrimmed(false);
+    setSaved(false);
+    setSaveBusy(false);
+    setSaveError(null);
   }, [open ]);
 
   // Preview = the export-resolution canvas itself, shown scaled.
@@ -75,6 +84,26 @@ export function StandaloneKeepsake({
   const download = () => {
     if (!canvasRef.current) return;
     downloadKeepsakePNG(canvasRef.current, "golponeer-my-keepsake.png");
+  };
+
+  const save = async () => {
+    const excerpt = normalizeExcerpt(words);
+    if (!excerpt.trim() || saveBusy || saved) return;
+    setSaveBusy(true);
+    setSaveError(null);
+    try {
+      await dp.createKeepsake({
+        storyId: null,
+        excerpt,
+        template,
+        makerTitle: title.trim() ? title.trim() : null,
+      });
+      setSaved(true);
+    } catch (e) {
+      setSaveError(e instanceof AppError ? t("errors", e.code) : t("errors", "generic"));
+    } finally {
+      setSaveBusy(false);
+    }
   };
 
   return (
@@ -137,13 +166,33 @@ export function StandaloneKeepsake({
           aria-label={t("keepsakes", "makeOwnTitle")}
         />
 
-        <p className="mt-3 text-sm text-ink-soft">{t("keepsakes", "ownDownloadNote")}</p>
+        {!session && (
+          <p className="mt-3 text-sm text-ink-soft">{t("keepsakes", "ownDownloadNote")}</p>
+        )}
 
         <div className="mt-4 flex flex-wrap gap-2">
           <Button onClick={download} disabled={!words.trim()}>
             {t("keepsakes", "download")}
           </Button>
+          {session && (
+            <Button
+              variant="secondary"
+              onClick={save}
+              disabled={!words.trim() || saveBusy || saved}
+            >
+              {saved ? t("keepsakes", "savedOwn") : t("keepsakes", "saveOwn")}
+            </Button>
+          )}
         </div>
+        {saveError && <p className="mt-3 text-sm text-clay">{saveError}</p>}
+        {saved && (
+          <p className="mt-3 text-sm text-ink-soft">
+            {t("keepsakes", "savedOwnNote")}{" "}
+            <Link to="/library/keepsakes" className="font-medium text-river hover:underline">
+              {t("keepsakes", "viewMyKeepsakes")}
+            </Link>
+          </p>
+        )}
       </div>
     </Modal>
   );

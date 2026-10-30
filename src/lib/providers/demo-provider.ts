@@ -473,7 +473,7 @@ export class DemoProvider implements DataProvider {
     this.db.profiles = this.db.profiles.filter((p) => p.id !== uid);
     // Mirror the Postgres cascades: the deleted user's keepsakes (own
     // cards + cards from their stories) and licences go with the account.
-    this.db.keepsakes = this.db.keepsakes.filter((k) => k.owner_id !== uid && !myStoryIds.has(k.story_id));
+    this.db.keepsakes = this.db.keepsakes.filter((k) => k.owner_id !== uid && !(k.story_id !== null && myStoryIds.has(k.story_id)));
     this.db.licences = this.db.licences.filter((l) => l.author_id !== uid && !myStoryIds.has(l.story_id));
     this.db.users = this.db.users.filter((u) => u.id !== uid);
     // Phase 1A: demo thumbnails are keyed by original cover path, so
@@ -1485,16 +1485,17 @@ export class DemoProvider implements DataProvider {
   }
 
   async createKeepsake(input: {
-    storyId: string;
+    storyId: string | null;
     chapterId?: string | null;
     excerpt: string;
     template?: KeepsakeTemplate;
     echo?: string | null;
+    makerTitle?: string | null;
   }): Promise<Keepsake> {
     const me = await this.requireUid();
-    const story = this.db.stories.find((s) => s.id === input.storyId);
-    if (!story) throw new AppError("notFound", "Story not found");
-    if (!this.keepsakeSourceReadable(story, me))
+    const story = input.storyId === null ? null : this.db.stories.find((s) => s.id === input.storyId);
+    if (input.storyId !== null && !story) throw new AppError("notFound", "Story not found");
+    if (story && !this.keepsakeSourceReadable(story, me))
       throw new AppError("keepsakeSourceNotReadable", "The source story is not readable by you");
     if (input.chapterId) {
       const ch = this.db.chapters.find((c) => c.id === input.chapterId);
@@ -1508,11 +1509,13 @@ export class DemoProvider implements DataProvider {
     if (!KEEPSAKE_TEMPLATES.includes(template))
       throw new AppError("invalidInput", "Unknown keepsake template");
     const now = new Date().toISOString();
-    const author = this.db.profiles.find((p) => p.id === story.author_id);
+    const author = story
+      ? this.db.profiles.find((p) => p.id === story.author_id)
+      : this.db.profiles.find((p) => p.id === me);
     const k: Keepsake = {
       id: uuid(),
       owner_id: me,
-      story_id: story.id,
+      story_id: story?.id ?? null,
       chapter_id: input.chapterId ?? null,
       excerpt,
       template,
@@ -1521,13 +1524,17 @@ export class DemoProvider implements DataProvider {
       visibility: "private",
       status: "active",
       slug: null,
-      source_title: story.title,
+      source_title: story
+        ? story.title
+        : input.makerTitle?.trim()
+          ? input.makerTitle.trim().slice(0, 200)
+          : "Untitled",
       source_author_name: author?.display_name ?? "",
-      source_original_author: story.original_author ?? null,
-      source_original_title: story.original_title ?? null,
-      source_translator_name: story.translator_name ?? null,
-      source_adapter_name: story.adapter_name ?? null,
-      source_edition: story.edition_source ?? null,
+      source_original_author: story?.original_author ?? null,
+      source_original_title: story?.original_title ?? null,
+      source_translator_name: story?.translator_name ?? null,
+      source_adapter_name: story?.adapter_name ?? null,
+      source_edition: story?.edition_source ?? null,
       published_at: null,
       eligibility_basis: null,
       created_at: now,
@@ -1595,6 +1602,8 @@ export class DemoProvider implements DataProvider {
     const k = this.db.keepsakes.find((x) => x.id === id);
     if (!k) throw new AppError("notFound", "Keepsake not found");
     if (k.owner_id !== me) throw new AppError("notAuthor", "Only the owner can publish a keepsake");
+    if (k.story_id === null)
+      throw new AppError("keepsakeNotEligible", "A standalone keepsake has no source story and cannot be published.");
     const story = this.db.stories.find((s) => s.id === k.story_id);
     if (!story || !this.isPublicStory(story))
       throw new AppError("invalidInput", "The source story is not public");

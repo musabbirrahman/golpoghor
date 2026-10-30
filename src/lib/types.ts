@@ -232,7 +232,8 @@ export type KeepsakeTemplate =
 export interface Keepsake {
   id: string;
   owner_id: string;
-  story_id: string;
+  /** NULL for standalone maker keepsakes (no source story). */
+  story_id: string | null;
   chapter_id: string | null;
   excerpt: string;
   template: KeepsakeTemplate;

@@ -873,6 +873,15 @@ let appealId;
   await dp.updateStory(st.id, { status: "ongoing" });
   check("keepsake: projection restores it when the source returns",
     (await dp.listPublicKeepsakes()).some((p) => p.id === own.id));
+  const maker = await dp.createKeepsake({ storyId: null, excerpt: "Maker line", makerTitle: null });
+  check("keepsake: maker save stores null story and Untitled fallback",
+    maker.story_id === null && maker.source_title === "Untitled");
+  check("keepsake: maker save appears in My Keepsakes",
+    (await dp.listMyKeepsakes()).some((k) => k.id === maker.id));
+  check("keepsake: maker save never appears in public projection",
+    !(await dp.listPublicKeepsakes()).some((p) => p.id === maker.id));
+  check("keepsake: maker save cannot publish",
+    (await code(() => dp.publishKeepsake(maker.id))) === "keepsakeNotEligible");
   await dp.deleteKeepsake(own.id);
   check("keepsake: delete removes it everywhere",
     !(await dp.listMyKeepsakes()).some((x) => x.id === own.id) &&

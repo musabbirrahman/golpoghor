@@ -1327,6 +1327,17 @@ export class SupabaseProvider implements DataProvider {
   }
 
   // --------------------------------------------------------- keepsakes (V4-27a)
+  /** Display name of the signed-in user, for maker-keepsake snapshots. */
+  private async profileDisplayName(): Promise<string> {
+    const me = await this.uid();
+    const { data } = await this.sb
+      .from("profiles")
+      .select("display_name")
+      .eq("id", me)
+      .maybeSingle();
+    return (data as { display_name?: string | null } | null)?.display_name ?? "";
+  }
+
   private async snapshotFor(storyId: string): Promise<{
     source_title: string;
     source_author_name: string;
@@ -1354,11 +1365,12 @@ export class SupabaseProvider implements DataProvider {
   }
 
   async createKeepsake(input: {
-    storyId: string;
+    storyId: string | null;
     chapterId?: string | null;
     excerpt: string;
     template?: KeepsakeTemplate;
     echo?: string | null;
+    makerTitle?: string | null;
   }): Promise<Keepsake> {
     const me = await this.uid();
     const excerpt = input.excerpt.trim();
@@ -1376,7 +1388,21 @@ export class SupabaseProvider implements DataProvider {
       if (!ch || ch.story_id !== input.storyId)
         throw new AppError("invalidInput", "Chapter does not belong to this story");
     }
-    const snap = await this.snapshotFor(input.storyId);
+    const snap =
+      input.storyId === null
+        ? {
+            source_title:
+              input.makerTitle?.trim() && input.makerTitle.trim().length > 0
+                ? input.makerTitle.trim().slice(0, 200)
+                : "Untitled",
+            source_author_name: await this.profileDisplayName(),
+            source_original_author: null,
+            source_original_title: null,
+            source_translator_name: null,
+            source_adapter_name: null,
+            source_edition: null,
+          }
+        : await this.snapshotFor(input.storyId);
     const { data, error } = await this.sb
       .from("keepsakes")
       .insert({

@@ -249,6 +249,13 @@ const dict = {
       bn: "এই কিপসেক শুধু ডাউনলোড করা যাবে — এটি লাইব্রেরিতে সংরক্ষণ বা শেলফে প্রকাশ করা যাবে না।",
       en: "This keepsake is download-only — it isn't saved to your library or published to the shelf.",
     },
+    saveOwn: { bn: "সংরক্ষণ করুন", en: "Save" },
+    savedOwn: { bn: "সংরক্ষিত", en: "Saved" },
+    savedOwnNote: {
+      bn: "আমার কিপসেকে সংরক্ষিত হয়েছে — এটি ব্যক্তিগত থাকবে, শেলফে প্রকাশিত হবে না।",
+      en: "Saved to My Keepsakes — private, never published to the shelf.",
+    },
+    viewMyKeepsakes: { bn: "আমার কিপসেক দেখুন", en: "View My Keepsakes" },
     shelfSubtitle: {
       bn: "পাঠকদের প্রকাশ্যে শেয়ার করা প্রিয় লাইনগুলো — কার্ড দেখতে যেকোনো একটিতে চাপ দিন।",
       en: "Lines readers chose to share publicly — tap any card to see it.",

@@ -172,7 +172,10 @@ export function KeepsakeViewer({
           )}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          {keepsake.visibility !== "public" && (
+          {/* Standalone maker keepsakes have no story and can never
+              publish; the server refuses them too, but the button
+              must not be offered. */}
+          {keepsake.visibility !== "public" && keepsake.story_id !== null && (
             <Button size="sm" variant="ghost" onClick={() => onPublish(keepsake)} disabled={busy}>
               {t("keepsakes", "publish")}
             </Button>
