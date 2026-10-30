@@ -382,6 +382,29 @@ const DOCS: Record<string, LegalDoc> = {
   },
 };
 
+/** Contact page only: the email and Facebook addresses render as links.
+ *  Other pages keep them as plain text — their mentions are references,
+ *  not calls to write or visit. */
+function linkifyContact(text: string) {
+  const parts = text.split(new RegExp(`(${EMAIL.replace(".", "\\.")}|facebook\\.com/golponeerapp)`, "g"));
+  if (parts.length === 1) return text;
+  return parts.map((part, i) => {
+    if (part === EMAIL)
+      return (
+        <a key={i} href={`mailto:${EMAIL}`} className="font-medium text-river hover:underline">
+          {part}
+        </a>
+      );
+    if (part === "facebook.com/golponeerapp")
+      return (
+        <a key={i} href="https://facebook.com/golponeerapp" target="_blank" rel="noreferrer" className="font-medium text-river hover:underline">
+          {part}
+        </a>
+      );
+    return part;
+  });
+}
+
 export function LegalPage({ slug }: { slug: keyof typeof DOCS }) {
   const { t, locale } = useApp();
   const doc = DOCS[slug];
@@ -394,7 +417,8 @@ export function LegalPage({ slug }: { slug: keyof typeof DOCS }) {
     <Layout>
       <div className="mx-auto mt-6 max-w-3xl">
         <h1 className="font-serif text-3xl font-bold">{doc.title[locale]}</h1>
-        <p className="mt-1 text-xs text-ink-faint">
+        <div className="mt-2 h-0.5 w-10 bg-gold" aria-hidden />
+        <p className="mt-2 text-xs text-ink-faint">
           {locale === "bn" ? "হালনাগাদ: অক্টোবর ২০২৬" : "Updated: October 2026"}
         </p>
         <div className="mt-6 flex flex-col gap-7 rounded-xl bg-white p-6 shadow-card sm:p-8">
@@ -403,7 +427,7 @@ export function LegalPage({ slug }: { slug: keyof typeof DOCS }) {
               <h2 className="font-serif text-lg font-bold">{s.h[locale]}</h2>
               {s.paras.map((para) => (
                 <p key={para.en.slice(0, 24)} className="mt-2 leading-relaxed text-ink-soft">
-                  {para[locale]}
+                  {slug === "contact" ? linkifyContact(para[locale]) : para[locale]}
                 </p>
               ))}
             </section>

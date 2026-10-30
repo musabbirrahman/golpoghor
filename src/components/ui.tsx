@@ -91,6 +91,7 @@ export function Dropdown({
   ariaLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [focusAt, setFocusAt] = useState<"first" | "last" | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!open) return;
@@ -109,6 +110,15 @@ export function Dropdown({
       document.removeEventListener("keydown", onKey);
     };
   }, [open ]);
+  // Keyboard-open lands focus on an option: down opens at the first,
+  // up at the last. Click-open leaves focus alone, as before.
+  useEffect(() => {
+    if (!open || !focusAt) return;
+    const opts = ref.current?.querySelectorAll<HTMLElement>('[role="option"]');
+    const el = focusAt === "first" ? opts?.[0] : opts?.[opts.length - 1];
+    el?.focus();
+    setFocusAt(null);
+  }, [open, focusAt]);
   const current = options.find((o) => o.value === value);
   return (
     <div ref={ref} className="relative">
@@ -119,6 +129,17 @@ export function Dropdown({
         aria-expanded={open}
         aria-label={ariaLabel}
         onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setFocusAt("first");
+            setOpen(true);
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setFocusAt("last");
+            setOpen(true);
+          }
+        }}
         className="flex w-full items-center justify-between gap-2 rounded-lg border border-ink/15 bg-white px-3 py-2 text-left text-ink focus:border-river focus:outline-none focus:ring-1 focus:ring-river focus-visible:rounded-lg"
       >
         <span className="min-w-0 flex-1 truncate">{current?.label ?? value}</span>
@@ -140,7 +161,21 @@ export function Dropdown({
                   setOpen(false);
                   if (!selected) onChange(o.value);
                 }}
-                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${selected ? "bg-sage font-semibold text-river" : "hover:bg-sage"}`}
+                onKeyDown={(e) => {
+                  const opts = Array.from(ref.current?.querySelectorAll<HTMLElement>('[role="option"]') ?? []);
+                  const idx = opts.indexOf(e.currentTarget as HTMLElement);
+                  if (e.key === "ArrowDown" && opts.length) {
+                    e.preventDefault();
+                    opts[(idx + 1) % opts.length]?.focus();
+                  } else if (e.key === "ArrowUp" && opts.length) {
+                    e.preventDefault();
+                    opts[(idx - 1 + opts.length) % opts.length]?.focus();
+                  } else if (e.key === "Escape") {
+                    setOpen(false);
+                    ref.current?.querySelector("button")?.focus();
+                  }
+                }}
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm focus:bg-sage focus:outline-none ${selected ? "bg-sage font-semibold text-river" : "hover:bg-sage"}`}
               >
                 <span className="min-w-0 flex-1 truncate">{o.label}</span>
                 {selected && <span className="shrink-0">✓</span>}

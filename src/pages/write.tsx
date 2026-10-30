@@ -319,6 +319,12 @@ export function StoryFormPage() {
     );
   }
 
+  // The picked genre's own sub-categories, named under the picker: the
+  // static hint says any group is allowed, but only the genre's own
+  // subs put the story in that genre's panel — writers kept missing
+  // that. Genres with no subs (Thriller) show no line.
+  const genreSubs = SUBCATEGORIES.filter((s) => s.group === genre);
+
   return (
     <RequireAuthor>
       <Layout>
@@ -387,6 +393,11 @@ export function StoryFormPage() {
             <div>
               <Label>{t("write", "subcategories")}</Label>
               <p className="mt-1 text-sm text-ink/70">{t("write", "subcategoriesHint")}</p>
+              {genreSubs.length > 0 && (
+                <p className="mt-1 text-sm text-river">
+                  {t("write", "genreSubs")}: {genreSubs.map((s) => s.label).join(", ")}
+                </p>
+              )}
               {GENRES.map((g) => {
                 const subs = SUBCATEGORIES.filter((s) => s.group === g.value);
                 if (subs.length === 0) return null;

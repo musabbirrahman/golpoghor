@@ -735,7 +735,7 @@ export class DemoProvider implements DataProvider {
         .filter((s): s is Story => !!s && this.isPublicStory(s))
         .map((s) => this.withAuthor(s));
       this.attachCounts(stories);
-      return { id: sh.id, name: sh.name, slug: sh.slug ?? slugify(sh.name), tagline: sh.tagline ?? null, layout: sh.layout, position: sh.position, stories };
+      return { id: sh.id, name: sh.name, slug: sh.slug ?? slugify(sh.name), tagline: sh.tagline ?? null, layout: sh.layout, position: sh.position, accent: (sh as any).accent ?? "gold", stories };
     });
   }
 
@@ -749,10 +749,10 @@ export class DemoProvider implements DataProvider {
       .filter((s): s is Story => !!s && this.isPublicStory(s))
       .map((s) => this.withAuthor(s));
     this.attachCounts(stories);
-    return { id: sh.id, name: sh.name, slug: sh.slug ?? slugify(sh.name), tagline: sh.tagline ?? null, layout: sh.layout, position: sh.position, stories };
+    return { id: sh.id, name: sh.name, slug: sh.slug ?? slugify(sh.name), tagline: sh.tagline ?? null, layout: sh.layout, position: sh.position, accent: (sh as any).accent ?? "gold", stories };
   }
 
-  async createShelf(name: string, layout: ShelfLayout, tagline?: string | null): Promise<CuratedShelf> {
+  async createShelf(name: string, layout: ShelfLayout, tagline?: string | null, accent?: string): Promise<CuratedShelf> {
     await this.requireShelfModerator();
     const clean = name.trim();
     if (!clean || clean.length > 80) throw new AppError("generic", "Invalid shelf name");
@@ -760,13 +760,13 @@ export class DemoProvider implements DataProvider {
     const taken = new Set((this.db.shelves ?? []).map((s) => s.slug));
     let slug = slugify(clean);
     for (let n = 2; taken.has(slug); n++) slug = `${slugify(clean)}-${n}`;
-    const shelf = { id: uuid(), name: clean, slug, tagline: tagline?.trim() || null, layout, position, created_at: new Date().toISOString() };
+    const shelf = { id: uuid(), name: clean, slug, tagline: tagline?.trim() || null, layout, position, accent: accent ?? "gold", created_at: new Date().toISOString() };
     (this.db.shelves ??= []).push(shelf);
     this.persist();
     return { ...shelf, stories: [] };
   }
 
-  async updateShelf(id: string, patch: { name?: string; tagline?: string | null; layout?: ShelfLayout; position?: number }): Promise<void> {
+  async updateShelf(id: string, patch: { name?: string; tagline?: string | null; layout?: ShelfLayout; position?: number; accent?: string }): Promise<void> {
     await this.requireShelfModerator();
     const sh = (this.db.shelves ?? []).find((s) => s.id === id);
     if (!sh) throw new AppError("notFound", "Shelf not found");
@@ -777,6 +777,7 @@ export class DemoProvider implements DataProvider {
     }
     if (patch.tagline !== undefined) sh.tagline = patch.tagline?.trim() || null;
     if (patch.layout !== undefined) sh.layout = patch.layout;
+    if (patch.accent !== undefined) (sh as any).accent = patch.accent;
     if (patch.position !== undefined) {
       if (!Number.isInteger(patch.position) || patch.position < 1) throw new AppError("generic", "Invalid shelf position");
       sh.position = patch.position;

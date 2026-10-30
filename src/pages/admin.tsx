@@ -7,6 +7,7 @@ import { Badge, Button, ButtonLink, Card, Dropdown, EmptyState, Input, Label, Mo
 import { AppError, formatDate, timeAgo } from "../lib/utils";
 import type { Appeal, CuratedShelf, Report, ReportTarget, ShelfLayout, Story } from "../lib/types";
 import { storyPath } from "../components/story-card";
+import { SHELF_ACCENTS } from "../components/shelf-blocks";
 
 function RequireModerator({ children }: { children: React.ReactNode }) {
   const { t, session, sessionLoading, isModerator } = useApp();
@@ -413,11 +414,33 @@ function FeaturedTab() {
   );
 }
 
+/** Accent swatches for a shelf: gold is the default look shelves already had. */
+function AccentPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useApp();
+  return (
+    <div className="flex shrink-0 items-center gap-2" role="group" aria-label={t("moderation", "shelfAccent")}>
+      {SHELF_ACCENTS.map((a) => (
+        <button
+          key={a.key}
+          type="button"
+          title={a.key}
+          aria-label={a.key}
+          aria-pressed={value === a.key}
+          onClick={() => onChange(a.key)}
+          className={`h-7 w-7 rounded-full ${value === a.key ? "ring-2 ring-ink ring-offset-2" : "border border-ink/15"}`}
+          style={{ backgroundColor: a.hex }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function ShelfEditor({ shelf, shelves, publicStories, refresh }: { shelf: CuratedShelf; shelves: CuratedShelf[]; publicStories: Story[]; refresh: () => void }) {
   const { t, dp } = useApp();
   const [name, setName] = useState(shelf.name);
   const [tagline, setTagline] = useState(shelf.tagline ?? "");
   const [layout, setLayout] = useState<ShelfLayout>(shelf.layout);
+  const [accent, setAccent] = useState(shelf.accent ?? "gold");
   const [selected, setSelected] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -439,7 +462,7 @@ function ShelfEditor({ shelf, shelves, publicStories, refresh }: { shelf: Curate
   }
 
   async function save() {
-    await act("save", () => dp.updateShelf(shelf.id, { name, tagline, layout }));
+    await act("save", () => dp.updateShelf(shelf.id, { name, tagline, layout, accent }));
   }
 
   async function moveShelf(dir: -1 | 1) {
@@ -519,6 +542,7 @@ function ShelfEditor({ shelf, shelves, publicStories, refresh }: { shelf: Curate
           ]}
           onChange={(v) => setLayout(v as ShelfLayout)}
         />
+        <AccentPicker value={accent} onChange={setAccent} />
         <Button size="sm" disabled={busy !== null || !name.trim()} onClick={save}>
           {t("moderation", "saveShelf")}
         </Button>
@@ -576,6 +600,7 @@ function ShelvesTab() {
   const [name, setName] = useState("");
   const [tagline, setTagline] = useState("");
   const [layout, setLayout] = useState<ShelfLayout>("horizontal");
+  const [accent, setAccent] = useState("gold");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -596,10 +621,11 @@ function ShelvesTab() {
     setBusy(true);
     setError(null);
     try {
-      await dp.createShelf(name, layout, tagline);
+      await dp.createShelf(name, layout, tagline, accent);
       setName("");
       setTagline("");
       setLayout("horizontal");
+      setAccent("gold");
       refresh();
     } catch (e: any) {
       setError(e?.code ?? "generic");
@@ -636,6 +662,7 @@ function ShelvesTab() {
             ]}
             onChange={(v) => setLayout(v as ShelfLayout)}
           />
+          <AccentPicker value={accent} onChange={setAccent} />
           <Button size="sm" disabled={!name.trim() || busy} onClick={create}>
             {t("moderation", "createShelf")}
           </Button>

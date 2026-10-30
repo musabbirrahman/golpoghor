@@ -9,7 +9,7 @@ import { readingMinutes, timeAgo } from "../lib/utils";
 import { Layout } from "../components/layout";
 import { Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
 import { Cover, StoryCard, StoryRow, storyPath } from "../components/story-card";
-import { ShelfHead, ShelfIcon, ShelfRow, VerticalShelfList } from "../components/shelf-blocks";
+import { ShelfHead, ShelfIcon, ShelfRow, VerticalShelfList, shelfAccentHex } from "../components/shelf-blocks";
 import { CARD_TEMPLATES } from "../lib/keepsake-card";
 import type { Story, StoryLanguage } from "../lib/types";
 
@@ -742,7 +742,7 @@ export function DiscoverPage() {
               the rule shelves. Empty shelves never render. */}
           {curated.filter((s) => s.stories.length > 0).map((shelf) => (
             <section key={shelf.id} className="mt-12 border-t border-ink/10 pt-10">
-              <ShelfHead icon={<ShelfIcon />} name={shelf.name} tagline={shelf.tagline ?? undefined} accent="#C28A42" action={<Link to={`/shelves/${shelf.slug}`} className="shrink-0 text-sm font-medium text-gold hover:underline">{t("home", "viewAll")}</Link>} />
+              <ShelfHead icon={<ShelfIcon />} name={shelf.name} tagline={shelf.tagline ?? undefined} accent={shelfAccentHex(shelf.accent)} action={<Link to={`/shelves/${shelf.slug}`} className="shrink-0 text-sm font-medium text-gold hover:underline">{t("home", "viewAll")}</Link>} />
               {shelf.layout === "vertical" ? (
                 <VerticalShelfList stories={shelf.stories} />
               ) : (

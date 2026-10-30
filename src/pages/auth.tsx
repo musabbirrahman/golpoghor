@@ -8,7 +8,8 @@ import { Button, Card, FieldError, Input, Label } from "../components/ui";
 function AuthCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Card className="p-6 sm:p-8">
-      <h1 className="mb-6 text-center font-serif text-2xl font-bold">{title}</h1>
+      <h1 className="mb-2 text-center font-serif text-2xl font-bold">{title}</h1>
+      <div className="mx-auto mb-6 h-0.5 w-10 bg-gold" aria-hidden />
       {children}
     </Card>
   );

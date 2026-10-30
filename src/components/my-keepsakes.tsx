@@ -11,17 +11,18 @@ import { KeepsakeViewer } from "./keepsake-viewer";
 /**
  * My Keepsakes, shared by the Library page and /library/keepsakes.
  *
- * With a limit (Library): homepage-strip cards — template palette,
- * 120-char excerpt, echo lines when an echo exists, no Show
- * more/less; tapping a card opens the full-card viewer.
- *
- * Without a limit (View all): public-shelf cards — centered stacked
- * list, 240-char excerpt, source line, 3-line echo teaser; tapping
- * a card opens the same full-card viewer. Actions live in the
- * viewer only, so both lists stay as clean as the homepage strip
- * and the shelf. The viewer shows the rendered card (which already
- * carries passage + attribution) followed by the echo itself — no
- * duplicated text below — plus an opt-in "include echo" download.
+ * Both lists follow the redesigned public-shelf card: the quote and
+ * the echo ARE the card, then one quiet footer under a hairline —
+ * source line, plus the owner's own visibility · template line (the
+ * public card's keeper line is omitted here: the keeper is you).
+ * Tapping a card opens the full-card viewer, not the public page;
+ * the public-page link stays as a row for published keepsakes.
+ * The Library strip keeps its 120-char trim; the full list uses 240.
+ * Actions live in the viewer only, so both lists stay as clean as
+ * the homepage strip and the shelf. The viewer shows the rendered
+ * card (which already carries passage + attribution) followed by
+ * the echo itself — no duplicated text below — plus an opt-in
+ * "include echo" download.
  */
 export function MyKeepsakesSection({ limit }: { limit?: number }) {
   const { t, dp, session, locale } = useApp();
@@ -181,6 +182,16 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
             <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible">
               {data.slice(0, limit).map((k) => {
                 const tpl = CARD_TEMPLATES[k.template];
+                const attr = keepsakeAttribution(
+                  {
+                    title: k.source_title,
+                    author: { display_name: k.source_author_name },
+                    original_author: k.source_original_author,
+                    translator_name: k.source_translator_name,
+                    adapter_name: k.source_adapter_name,
+                  },
+                  locale
+                );
                 const excerpt = k.excerpt.length > 120 ? k.excerpt.slice(0, 120).trimEnd() + "…" : k.excerpt;
                 return (
                   <div
@@ -189,23 +200,28 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
                     className="w-64 shrink-0 cursor-pointer sm:w-auto"
                   >
                     <div
-                      className="h-full min-w-0 rounded-xl p-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg"
+                      className="h-full min-w-0 rounded-xl p-5 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg sm:p-6"
                       style={{ backgroundColor: tpl.bg, color: tpl.ink }}
                     >
-                      <p className="whitespace-pre-line break-words font-serif text-base leading-relaxed">
+                      <p className="whitespace-pre-line break-words font-serif text-lg leading-relaxed sm:text-xl">
                         “{excerpt}”
                       </p>
                       {k.echo && (
                         <p
-                          className="mt-2 line-clamp-3 whitespace-pre-line break-words border-l-2 pl-3 font-serif text-base italic leading-relaxed"
+                          className="mt-4 whitespace-pre-line break-words border-l-2 pl-3 font-serif text-base italic leading-relaxed"
                           style={{ borderColor: tpl.accent, color: tpl.faint }}
                         >
                           {k.echo}
                         </p>
                       )}
-                      <p className="mt-3 truncate text-xs" style={{ color: tpl.faint }}>
-                        {templateLabel(k)} · {visibilityLabel(k)}
-                      </p>
+                      <div className="mt-5 pt-3" style={{ borderTop: `1px solid ${tpl.rule}` }}>
+                        <p className="break-words text-sm" style={{ color: tpl.faint }}>
+                          {attr.title} · {attr.author}
+                        </p>
+                        <p className="mt-1 text-xs" style={{ color: tpl.faint }}>
+                          {visibilityLabel(k)} · {templateLabel(k)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 );
@@ -238,27 +254,27 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
                 <div
                   key={k.id}
                   {...openCard(k)}
-                  className="min-w-0 cursor-pointer rounded-xl p-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg sm:p-5"
+                  className="min-w-0 cursor-pointer rounded-xl p-5 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg sm:p-6"
                   style={{ backgroundColor: tpl.bg, color: tpl.ink }}
                 >
-                  <p className="whitespace-pre-line break-words font-serif text-base leading-relaxed sm:text-lg">
+                  <p className="whitespace-pre-line break-words font-serif text-lg leading-relaxed sm:text-xl">
                     “{excerpt}”
                   </p>
-                  <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${tpl.rule}` }}>
+                  {k.echo && (
+                    <p
+                      className="mt-4 whitespace-pre-line break-words border-l-2 pl-3 font-serif text-base italic leading-relaxed"
+                      style={{ borderColor: tpl.accent, color: tpl.faint }}
+                    >
+                      {k.echo}
+                    </p>
+                  )}
+                  <div className="mt-5 pt-3" style={{ borderTop: `1px solid ${tpl.rule}` }}>
                     <p className="break-words text-sm" style={{ color: tpl.faint }}>
                       {attr.title} · {attr.author}
                     </p>
                     <p className="mt-1 text-sm" style={{ color: tpl.faint }}>
                       {visibilityLabel(k)} · {templateLabel(k)}
                     </p>
-                    {k.echo && (
-                      <p
-                        className="mt-2 line-clamp-3 whitespace-pre-line break-words border-l-2 pl-3 font-serif text-base italic leading-relaxed"
-                        style={{ borderColor: tpl.accent, color: tpl.faint }}
-                      >
-                        {k.echo}
-                      </p>
-                    )}
                     {k.slug && (
                       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                         <Link

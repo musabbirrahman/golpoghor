@@ -167,9 +167,9 @@ export interface DataProvider {
   /** Public: one shelf by its URL slug, or null. */
   getShelfBySlug(slug: string): Promise<CuratedShelf | null>;
   /** Moderator only (RLS gates writes): create a shelf; position is appended, slug derived from the name. */
-  createShelf(name: string, layout: ShelfLayout, tagline?: string | null): Promise<CuratedShelf>;
+  createShelf(name: string, layout: ShelfLayout, tagline?: string | null, accent?: string): Promise<CuratedShelf>;
   /** Moderator only: rename, retagline, relayout, or reposition a shelf (slug never changes). */
-  updateShelf(id: string, patch: { name?: string; tagline?: string | null; layout?: ShelfLayout; position?: number }): Promise<void>;
+  updateShelf(id: string, patch: { name?: string; tagline?: string | null; layout?: ShelfLayout; position?: number; accent?: string }): Promise<void>;
   /** Moderator only: delete a shelf (items cascade) and renumber the rest. */
   deleteShelf(id: string): Promise<void>;
   /** Moderator only: append a story to a shelf (ignored when already present). */

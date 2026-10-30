@@ -10,6 +10,22 @@ import type { Story } from "../lib/types";
 /** Shared shelf building blocks: used by Discover and by shelf pages, so a
  *  shelf renders identically in both places. (Moved out of discovery.tsx
  *  when shelf pages landed; no visual change.) */
+
+/** Curated-shelf accent palette: keys are what the database stores, hexes
+ *  are what renders. Gold is the default — the look shelves already had —
+ *  so rows predating the accent column render unchanged. */
+export const SHELF_ACCENTS = [
+  { key: "gold", hex: "#C28A42" },
+  { key: "river", hex: "#285C4B" },
+  { key: "clay", hex: "#A85745" },
+  { key: "blue", hex: "#3A6EA5" },
+  { key: "purple", hex: "#6D5BD0" },
+] as const;
+
+export function shelfAccentHex(accent?: string | null): string {
+  return SHELF_ACCENTS.find((a) => a.key === accent)?.hex ?? "#C28A42";
+}
+
 export function ShelfIcon() {
   return (
     <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

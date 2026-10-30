@@ -538,7 +538,7 @@ export class SupabaseProvider implements DataProvider {
     if (error) throw toAppError(error);
   }
 
-  private async shelfWithStories(sh: { id: string; name: string; slug: string; tagline: string | null; layout: ShelfLayout; position: number }): Promise<CuratedShelf> {
+  private async shelfWithStories(sh: { id: string; name: string; slug: string; tagline: string | null; layout: ShelfLayout; position: number; accent: string }): Promise<CuratedShelf> {
     const { data: items, error: itemsError } = await this.sb
       .from("shelf_items")
       .select(`position, story:stories(${STORY_JOIN})`)
@@ -555,7 +555,7 @@ export class SupabaseProvider implements DataProvider {
   async listCuratedShelves(): Promise<CuratedShelf[]> {
     const { data: shelves, error } = await this.sb
       .from("shelves")
-      .select("id, name, slug, tagline, layout, position")
+      .select("id, name, slug, tagline, layout, position, accent")
       .order("position", { ascending: true });
     if (error) throw toAppError(error);
     const out: CuratedShelf[] = [];
@@ -568,7 +568,7 @@ export class SupabaseProvider implements DataProvider {
   async getShelfBySlug(slug: string): Promise<CuratedShelf | null> {
     const { data, error } = await this.sb
       .from("shelves")
-      .select("id, name, slug, tagline, layout, position")
+      .select("id, name, slug, tagline, layout, position, accent")
       .eq("slug", slug)
       .maybeSingle();
     if (error) throw toAppError(error);
@@ -576,7 +576,7 @@ export class SupabaseProvider implements DataProvider {
     return this.shelfWithStories(data);
   }
 
-  async createShelf(name: string, layout: ShelfLayout, tagline?: string | null): Promise<CuratedShelf> {
+  async createShelf(name: string, layout: ShelfLayout, tagline?: string | null, accent?: string): Promise<CuratedShelf> {
     const { data: shelves, error: posError } = await this.sb
       .from("shelves")
       .select("position, slug")
@@ -588,19 +588,20 @@ export class SupabaseProvider implements DataProvider {
     for (let n = 2; taken.has(slug); n++) slug = `${slugify(name)}-${n}`;
     const { data, error } = await this.sb
       .from("shelves")
-      .insert({ name: name.trim(), slug, tagline: tagline?.trim() || null, layout, position })
-      .select("id, name, slug, tagline, layout, position")
+      .insert({ name: name.trim(), slug, tagline: tagline?.trim() || null, layout, position, accent: accent ?? "gold" })
+      .select("id, name, slug, tagline, layout, position, accent")
       .single();
     if (error) throw toAppError(error);
     return { ...data, stories: [] };
   }
 
-  async updateShelf(id: string, patch: { name?: string; tagline?: string | null; layout?: ShelfLayout; position?: number }): Promise<void> {
+  async updateShelf(id: string, patch: { name?: string; tagline?: string | null; layout?: ShelfLayout; position?: number; accent?: string }): Promise<void> {
     const clean: Record<string, unknown> = {};
     if (patch.name !== undefined) clean.name = patch.name.trim();
     if (patch.tagline !== undefined) clean.tagline = patch.tagline?.trim() || null;
     if (patch.layout !== undefined) clean.layout = patch.layout;
     if (patch.position !== undefined) clean.position = patch.position;
+    if (patch.accent !== undefined) clean.accent = patch.accent;
     if (!Object.keys(clean).length) return;
     const { error } = await this.sb.from("shelves").update(clean).eq("id", id);
     if (error) throw toAppError(error);

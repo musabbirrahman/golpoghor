@@ -108,6 +108,14 @@ function SearchBox({ mobile = false, inputRef, onClose, onSubmitDone }: { mobile
             if (show) setShow(false);
             else onClose?.();
           }
+          // ArrowDown enters the suggestion list at its first visible row.
+          if (e.key === "ArrowDown" && show) {
+            const row = formRef.current?.querySelector<HTMLElement>("[data-suggest-row]");
+            if (row && row.offsetParent !== null) {
+              e.preventDefault();
+              row.focus();
+            }
+          }
         }}
         onChange={(e) => {
           setQ(e.target.value);

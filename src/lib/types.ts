@@ -119,6 +119,8 @@ export interface CuratedShelf {
   tagline: string | null;
   layout: ShelfLayout;
   position: number;
+  /** Accent key from the shelf palette (gold default); icon + rule color. */
+  accent: string;
   stories: Story[];
 }
 
