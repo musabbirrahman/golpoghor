@@ -256,14 +256,22 @@ export function StoryFormPage() {
 
   const statusMutation = useMutation({
     mutationFn: async (status: "ongoing" | "complete" | "draft") => {
-      await dp.updateStory(id!, { status });
+      return dp.updateStory(id!, { status });
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ["story", "edit", id] });
       queryClient.invalidateQueries({ queryKey: ["myStories"] });
       // Visibility changed: public shelves + discover must refresh.
       queryClient.invalidateQueries({ queryKey: ["stories"] });
       setConfirmAction(null);
+      // Scale Phase 3: a story published now gets its public thumbnail
+      // immediately, so its first readers already get the CDN copy
+      // instead of every early view paying origin egress. Best-effort:
+      // the update already succeeded, and the next owner/moderator
+      // view backfills anyway if this fails.
+      if (updated && (updated.status === "ongoing" || updated.status === "complete") && updated.cover_path) {
+        dp.ensureCoverThumbnail(updated).catch(() => {});
+      }
     },
     onError: (err) => setError(errText(err)),
   });
