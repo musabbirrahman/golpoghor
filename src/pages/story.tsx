@@ -202,7 +202,7 @@ export function StoryPage() {
   });
 
   const moreByAuthorQuery = useQuery({
-    queryKey: ["stories", { authorId: story?.author_id }, "more"],
+    queryKey: ["stories", { authorId: story?.author_id }, "more", story?.id],
     queryFn: async () => {
       const res = await dp.listStories({ authorId: story!.author_id, limit: 4 });
       return res.stories.filter((s) => s.id !== story!.id).slice(0, 3);
