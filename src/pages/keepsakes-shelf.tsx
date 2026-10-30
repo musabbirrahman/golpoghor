@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
+import { usePageMeta } from "../lib/page-meta";
 import { CARD_TEMPLATES, keepsakeAttribution } from "../lib/keepsake-card";
 import { Button, EmptyState } from "../components/ui";
 import { KeepsakeCardSkeleton } from "../components/skeleton";
@@ -15,6 +16,8 @@ import { StandaloneKeepsake } from "../components/standalone-keepsake";
  * Cards are text previews; the full rendered card lives on the /k/ page.
  */
 export function KeepsakesShelfPage() {
+  // Canonical only: /keepsakes as its own canonical (it inherited home's).
+  usePageMeta({ title: null, path: "/keepsakes" });
   const { t, dp, locale } = useApp();
   const navigate = useNavigate();
   const [makerOpen, setMakerOpen] = useState(false);

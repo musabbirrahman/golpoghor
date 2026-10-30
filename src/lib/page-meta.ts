@@ -6,8 +6,8 @@ import { useEffect } from "react";
  * The app is a client-side SPA, so every route otherwise serves the static
  * shell title/description. This hook sets document.title, the meta
  * description, and a canonical link while a page is mounted, and restores
- * the shell values on unmount — so pages without the hook (home, Discover,
- * app surfaces) keep showing the site title.
+ * the shell values on unmount — so pages without the hook (home and app
+ * surfaces) keep showing the site title.
  *
  * Safety: title is assigned as plain text and description/canonical go
  * through setAttribute, so story/author text can never inject markup.
