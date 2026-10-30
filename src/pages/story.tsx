@@ -197,37 +197,68 @@ export function StoryPage() {
     !!story &&
     (story.origin_type ?? "original") !== "original" &&
     !!story.original_author;
+  // Book schema + BreadcrumbList in one @graph (useJsonLd keeps a single
+  // page script, so the breadcrumb joins the Book object rather than
+  // replacing it). The trail mirrors the visible breadcrumb exactly:
+  // Home → genre → this story.
   useJsonLd(
     story
       ? JSON.stringify({
           "@context": "https://schema.org",
-          "@type": "Book",
-          name: story.title,
-          author: isClassic
-            ? { "@type": "Person", name: story.original_author }
-            : {
-                "@type": "Person",
-                name: storyAuthorName,
-                url: `https://golponeer.com/authors/${story.author?.username}`,
+          "@graph": [
+            {
+              "@type": "Book",
+              name: story.title,
+              author: isClassic
+                ? { "@type": "Person", name: story.original_author }
+                : {
+                    "@type": "Person",
+                    name: storyAuthorName,
+                    url: `https://golponeer.com/authors/${story.author?.username}`,
+                  },
+              ...(story.translator_name
+                ? {
+                    translator: {
+                      "@type": "Person",
+                      name: story.translator_name,
+                    },
+                  }
+                : {}),
+              inLanguage: story.language,
+              url: `https://golponeer.com/stories/${story.author?.username ?? username}/${story.slug}`,
+              description: story.summary || undefined,
+              genre: story.genre || undefined,
+              datePublished: story.published_at || undefined,
+              publisher: {
+                "@type": "Organization",
+                name: "GolpoNeer",
+                url: "https://golponeer.com/",
               },
-          ...(story.translator_name
-            ? {
-                translator: {
-                  "@type": "Person",
-                  name: story.translator_name,
+            },
+            {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                {
+                  "@type": "ListItem",
+                  position: 1,
+                  name: t("nav", "home"),
+                  item: "https://golponeer.com/",
                 },
-              }
-            : {}),
-          inLanguage: story.language,
-          url: `https://golponeer.com/stories/${story.author?.username ?? username}/${story.slug}`,
-          description: story.summary || undefined,
-          genre: story.genre || undefined,
-          datePublished: story.published_at || undefined,
-          publisher: {
-            "@type": "Organization",
-            name: "GolpoNeer",
-            url: "https://golponeer.com/",
-          },
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: genreLabel(story.genre, locale),
+                  item: `https://golponeer.com/discover?genre=${encodeURIComponent(story.genre)}`,
+                },
+                {
+                  "@type": "ListItem",
+                  position: 3,
+                  name: story.title,
+                  item: `https://golponeer.com/stories/${story.author?.username ?? username}/${story.slug}`,
+                },
+              ],
+            },
+          ],
         })
       : null
   );
