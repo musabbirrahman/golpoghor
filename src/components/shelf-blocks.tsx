@@ -85,7 +85,7 @@ export function VerticalShelfList({ stories }: { stories: Story[] }) {
         const rest = tagItems.length - shown.length;
         return (
           <Link key={s.id} to={storyPath(s)} className="flex gap-4 py-4 first:pt-0 last:pb-0 sm:gap-5 sm:py-5">
-            <Cover story={s} className="aspect-[3/4] w-24 shrink-0 rounded-lg sm:w-28" thumb />
+            <Cover story={s} className="aspect-[3/4] w-24 shrink-0 rounded-lg sm:w-28" thumb small />
             <div className="min-w-0 flex-1">
               {shown.length > 0 && (
                 <p className="flex flex-wrap gap-1.5 text-xs font-medium text-gold">

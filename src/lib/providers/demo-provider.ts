@@ -2343,6 +2343,22 @@ export class DemoProvider implements DataProvider {
     return this.thumbStore.get(path) ?? null;
   }
 
+  // Perf (demo parity): card-size thumbnails are recorded separately
+  // from the 640px ones, so a 640px done never suppresses the small.
+  private thumbSmStore = new Map<string, string>();
+  private thumbSmDone = new Set<string>();
+  private thumbSmFailed = new Map<string, number>();
+
+  async coverThumbSmallUrl(path: string | null): Promise<string | null> {
+    if (!path) return null;
+    return this.thumbSmStore.get(path) ?? null;
+  }
+
+  coverThumbSmallPublicUrl(path: string | null): string | null {
+    if (!path) return null;
+    return this.thumbSmStore.get(path) ?? null;
+  }
+
   async invalidateCoverUrl(_path: string | null): Promise<void> {
     // Phase 1B (demo parity): demo URLs are never signed and never
     // expire, so there is nothing to evict.
@@ -2378,6 +2394,36 @@ export class DemoProvider implements DataProvider {
     }
     this.thumbStore.set(story.cover_path, story.cover_path);
     this.thumbDone.add(story.cover_path);
+    return "created";
+  }
+
+  async ensureCoverThumbnailSmall(story: {
+    id: string;
+    author_id: string;
+    cover_path: string | null;
+    status?: StoryStatus;
+  }, opts?: { force?: boolean; moderator?: boolean }): Promise<"created" | "already" | "refused" | "failed"> {
+    const s = this.sessionSync();
+    if (!s || !story.cover_path) return "refused";
+    const isPublic = story.status === "ongoing" || story.status === "complete";
+    let isMod = false;
+    try {
+      this.requireModerator(s.user.id);
+      isMod = true;
+    } catch {
+      /* not a moderator */
+    }
+    if (story.author_id !== s.user.id && !(opts?.moderator === true && isMod && isPublic)) return "refused";
+    if (story.cover_path.startsWith("demo:")) return "refused";
+    if (!opts?.force && this.thumbSmDone.has(story.cover_path)) return "already";
+    const last = this.thumbSmFailed.get(story.cover_path);
+    if (!opts?.force && last && Date.now() - last < 7 * 24 * 3600 * 1000) return "failed";
+    if (!story.cover_path.startsWith("data:")) {
+      this.thumbSmFailed.set(story.cover_path, Date.now());
+      return "failed";
+    }
+    this.thumbSmStore.set(story.cover_path, story.cover_path);
+    this.thumbSmDone.add(story.cover_path);
     return "created";
   }
 }

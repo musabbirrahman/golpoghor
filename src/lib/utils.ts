@@ -148,6 +148,18 @@ export function thumbPath(coverPath: string): string | null {
   return `${coverPath.slice(0, slash)}/thumb-${file}`;
 }
 
+/** Perf: card-size (440px) derivation. Same guards as thumbPath
+ * ("thumb-sm-" starts with "thumb-", so already-derived paths are
+ * rejected by the same check). */
+export function thumbSmPath(coverPath: string): string | null {
+  if (coverPath.startsWith("data:") || coverPath.startsWith("demo:")) return null;
+  const slash = coverPath.indexOf("/");
+  if (slash <= 0) return null;
+  const file = coverPath.slice(slash + 1);
+  if (!file || file.startsWith("thumb-")) return null;
+  return `${coverPath.slice(0, slash)}/thumb-sm-${file}`;
+}
+
 export class AppError extends Error {
   code: string;
   constructor(code: string, message: string) {

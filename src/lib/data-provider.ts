@@ -340,6 +340,12 @@ export interface DataProvider {
    * Only meaningful for public stories — drafts/hidden stories must
    * keep using the signed `coverThumbUrl`. Null when no thumb path. */
   coverThumbPublicUrl(path: string | null): string | null;
+  /** Perf: card-size (440px) signed thumbnail URL for a cover path
+   * (`thumb-sm-` derivation); null when no small thumbnail exists. */
+  coverThumbSmallUrl(path: string | null): Promise<string | null>;
+  /** Perf: card-size (440px) public CDN URL for a cover's small
+   * thumbnail (sync). Only meaningful for public stories. */
+  coverThumbSmallPublicUrl(path: string | null): string | null;
   /**
    * Phase 1B: drop cached (memory + persisted) cover URLs for a path
    * and its thumbnail, forcing a fresh sign on next use. Used when a
@@ -358,6 +364,19 @@ export interface DataProvider {
    * failed sets (used when a public URL 404s, e.g. after hide→restore).
    */
   ensureCoverThumbnail(story: {
+    id: string;
+    author_id: string;
+    cover_path: string | null;
+    status?: StoryStatus;
+  }, opts?: { force?: boolean; moderator?: boolean }): Promise<"created" | "already" | "refused" | "failed">;
+  /**
+   * Perf: card-size (440px) backfill — mirrors ensureCoverThumbnail
+   * with its own done/failed sets, so a cover already done for 640px
+   * still generates its small thumbnail (Argon checklist). Same
+   * guards: owner, or moderator for public stories; same bucket
+   * selection by status; same force semantics.
+   */
+  ensureCoverThumbnailSmall(story: {
     id: string;
     author_id: string;
     cover_path: string | null;

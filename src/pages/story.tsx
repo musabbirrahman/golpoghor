@@ -1038,7 +1038,7 @@ export function StoryPage() {
                   to={`/stories/${s.author?.username ?? username}/${s.slug}`}
                   className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-card transition-shadow hover:shadow-lift"
                 >
-                  <Cover story={s} thumb className="aspect-[3/4] w-14 shrink-0 rounded-lg" />
+                  <Cover story={s} thumb small className="aspect-[3/4] w-14 shrink-0 rounded-lg" />
                   <span className="min-w-0">
                     <span className="block font-semibold leading-snug clamp-2">{s.title}</span>
                     <span className="mt-1 block text-xs text-ink-faint">
@@ -1313,7 +1313,7 @@ export function AuthorPage() {
             return (
               <Link key={s.id} to={`/stories/${profile.username}/${s.slug}`} className="block h-full">
                 <div className="flex h-full gap-3 rounded-xl bg-white p-3 shadow-card hover:shadow-lift">
-                  <Cover story={s} className="aspect-[3/4] w-24 shrink-0 rounded-lg sm:w-28" thumb />
+                  <Cover story={s} className="aspect-[3/4] w-24 shrink-0 rounded-lg sm:w-28" thumb small />
                   <div className="flex min-w-0 flex-1 flex-col">
                     <div className="flex flex-wrap gap-1.5">
                       <StatusBadge status={s.status} />

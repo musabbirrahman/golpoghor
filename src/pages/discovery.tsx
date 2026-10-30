@@ -239,7 +239,7 @@ function PanelRow({ story, onHover, active }: { story: Story; onHover?: () => vo
       onFocus={onHover}
       className={`group flex h-full min-w-0 gap-3 p-2.5 sm:p-3${active ? " lg:rounded-xl lg:ring-1 lg:ring-inset lg:ring-gold/70" : ""}`}
     >
-      <Cover story={story} className="h-24 w-16 shrink-0 rounded-lg sm:h-28 sm:w-20" thumb />
+      <Cover story={story} className="h-24 w-16 shrink-0 rounded-lg sm:h-28 sm:w-20" thumb small />
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
         {story.status === "ongoing" && (
           <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "#F0A35A", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>
@@ -357,7 +357,7 @@ function GenrePanel({ stories, genre, arts, subOrder, baseRgb }: { stories: Stor
               <div className="hidden lg:sticky lg:top-24 lg:block lg:w-[300px] lg:shrink-0 lg:self-start xl:w-[340px]">
                 <div className="rounded-2xl border border-white/10 bg-black/35 p-5 backdrop-blur-sm">
                   <div className="flex gap-4">
-                    <Cover story={detail} className="h-44 w-32 shrink-0 rounded-lg" thumb />
+                    <Cover story={detail} className="h-44 w-32 shrink-0 rounded-lg" thumb small />
                     <p className="min-w-0 flex-1 text-sm leading-relaxed" style={{ color: "#EDE6DA", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>{detail.summary}</p>
                   </div>
                   <h3 className="mt-4 font-serif text-xl font-bold leading-snug text-white" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>{detail.title}</h3>

@@ -59,7 +59,7 @@ export function WriteDashboard() {
               {storiesQuery.data.stories.map((s) => (
                 <Link key={s.id} to={`/write/stories/${s.id}`} className="block min-w-0">
                   <Card className="flex h-full gap-4 p-4 transition-shadow hover:shadow-lift">
-                    <Cover story={s} className="h-32 w-24 shrink-0 rounded-lg" thumb />
+                    <Cover story={s} className="h-32 w-24 shrink-0 rounded-lg" thumb small />
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <StatusBadge status={s.status} />
@@ -266,11 +266,13 @@ export function StoryFormPage() {
       setConfirmAction(null);
       // Scale Phase 3: a story published now gets its public thumbnail
       // immediately, so its first readers already get the CDN copy
-      // instead of every early view paying origin egress. Best-effort:
-      // the update already succeeded, and the next owner/moderator
-      // view backfills anyway if this fails.
+      // instead of every early view paying origin egress. Perf: the
+      // card-size thumbnail too, so cards are fast from minute one.
+      // Best-effort: the update already succeeded, and the next
+      // owner/moderator view backfills anyway if this fails.
       if (updated && (updated.status === "ongoing" || updated.status === "complete") && updated.cover_path) {
         dp.ensureCoverThumbnail(updated).catch(() => {});
+        dp.ensureCoverThumbnailSmall(updated).catch(() => {});
       }
     },
     onError: (err) => setError(errText(err)),

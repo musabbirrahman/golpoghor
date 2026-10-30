@@ -1350,6 +1350,52 @@ let appealId;
   await dp.signOut();
 }
 
+// Perf: card-size (440px) thumbnails — derivation, moderator backfill,
+// and the Argon checklist: a 640px done-set must never suppress the
+// small generation for the same cover.
+{
+  const { thumbSmPath } = utils;
+  check("sm: derives thumb-sm- name", thumbSmPath("uid123/1699999-abc.jpeg") === "uid123/thumb-sm-1699999-abc.jpeg");
+  check("sm: data: URL has no small thumb", thumbSmPath("data:image/png;base64,AAA") === null);
+  check("sm: existing thumb is not re-derived", thumbSmPath("uid123/thumb-1699999-abc.jpeg") === null);
+  check("sm: existing small thumb is not re-derived", thumbSmPath("uid123/thumb-sm-1699999-abc.jpeg") === null);
+  await dp.signUp({ email: "thumbsm@example.com", password: "secret12", username: "thumb_sm", displayName: "Thumb Sm" });
+  const story = await dp.createStory({ title: "Thumb Sm Story", summary: "x", language: "en", genre: "Mystery", tags: [] });
+  const dataCover = "data:image/png;base64,THUMBSM-UNIQUE-20261030";
+  await dp.updateStory(story.id, { cover_path: dataCover });
+  const authorId = (await dp.getSession()).user.id;
+  await dp.signOut();
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  const pub = { id: story.id, author_id: authorId, cover_path: dataCover, status: "ongoing" };
+  check("sm: non-owner without moderator flag is refused",
+    (await dp.ensureCoverThumbnailSmall(pub)) === "refused");
+  check("sm: moderator backfills a public story",
+    (await dp.ensureCoverThumbnailSmall(pub, { moderator: true })) === "created");
+  check("sm: second backfill without force is already",
+    (await dp.ensureCoverThumbnailSmall(pub, { moderator: true })) === "already");
+  check("sm: force re-runs after done",
+    (await dp.ensureCoverThumbnailSmall(pub, { moderator: true, force: true })) === "created");
+  check("sm: small public URL returns the recorded thumb",
+    dp.coverThumbSmallPublicUrl(dataCover) === dataCover);
+  check("sm: small URL helpers null-guard",
+    dp.coverThumbSmallPublicUrl(null) === null && (await dp.coverThumbSmallUrl(null)) === null);
+  check("sm: moderateStory returns cleanup status",
+    (await dp.moderateStory(story.id, "hidden")) === true);
+  await dp.signOut();
+  await dp.signIn("thumbsm@example.com", "secret12");
+  // A cover never backfilled before: 640px first, then small must
+  // still create (separate done-sets — the Argon checklist item).
+  const freshCover = "data:image/png;base64,THUMBSM-FRESH-20261030";
+  check("sm: 640px done does not suppress small generation",
+    (await dp.ensureCoverThumbnail({ id: story.id, author_id: authorId, cover_path: freshCover, status: "ongoing" })) === "created" &&
+    (await dp.ensureCoverThumbnailSmall({ id: story.id, author_id: authorId, cover_path: freshCover, status: "ongoing" })) === "created");
+  check("sm: small signed URL readable after backfill",
+    (await dp.coverThumbSmallUrl(dataCover)) === dataCover);
+  check("sm: deleteStory returns cleanup status",
+    (await dp.deleteStory(story.id)) === true);
+  await dp.signOut();
+}
+
 console.log("");
 for (const [st, name] of results) console.log(`${st}  ${name}`);
 const fails = results.filter((r) => r[0] === "FAIL").length;

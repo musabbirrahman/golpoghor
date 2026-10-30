@@ -43,7 +43,7 @@ function ContinueCard({ story, progress }: { story: Story; progress: ReadingProg
   }
   return (
     <Link to={storyPath(story)} className="flex h-full gap-4 rounded-xl bg-white p-4 shadow-card hover:shadow-lift">
-      <Cover story={story} className="aspect-[3/4] w-20 shrink-0 rounded-lg" thumb />
+      <Cover story={story} className="aspect-[3/4] w-20 shrink-0 rounded-lg" thumb small />
       <div className="min-w-0 flex-1">
         <p className="clamp-2 font-serif text-lg font-semibold leading-snug">{story.title}</p>
         <p className="mt-0.5 truncate text-sm text-ink-faint">{story.original_author ?? story.author?.display_name}</p>

@@ -73,7 +73,7 @@ export function SearchSuggestions({ query, onPick }: { query: string; onPick: ()
           <p className={sectionLabel}>{t("discover", "suggestionsStories")}</p>
           {stories.map((s) => (
             <Link key={s.id} to={storyPath(s)} onClick={onPick} data-suggest-row onKeyDown={onRowKeyDown} className="flex items-center gap-3 px-4 py-2 hover:bg-sage focus:bg-sage focus:outline-none">
-              <Cover story={s} className="aspect-[3/4] w-9 shrink-0 rounded" thumb />
+              <Cover story={s} className="aspect-[3/4] w-9 shrink-0 rounded" thumb small />
               <span className="min-w-0">
                 <span className="clamp-2 block text-sm font-medium leading-snug">{s.title}</span>
                 <span className="block truncate text-xs text-ink-soft">{s.author?.display_name}</span>
