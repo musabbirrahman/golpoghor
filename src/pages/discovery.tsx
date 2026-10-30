@@ -7,8 +7,8 @@ import { GENRES, genreLabel, normalizeGenre } from "../lib/genres";
 import { SUBCATEGORIES, subLabel } from "../lib/subcategories";
 import { readingMinutes, timeAgo } from "../lib/utils";
 import { Layout } from "../components/layout";
-import { Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
-import { KeepsakeStripSkeleton, StoryCardSkeleton } from "../components/skeleton";
+import { Button, ButtonLink, EmptyState } from "../components/ui";
+import { KeepsakeStripSkeleton, PanelSkeleton, ShelfHeadSkeleton, StoryCardSkeleton, StoryRowSkeleton } from "../components/skeleton";
 import { Cover, StoryCard, StoryRow, storyPath } from "../components/story-card";
 import { ShelfHead, ShelfIcon, ShelfRow, VerticalShelfList, shelfAccentHex } from "../components/shelf-blocks";
 import { CARD_TEMPLATES } from "../lib/keepsake-card";
@@ -732,7 +732,27 @@ export function DiscoverPage() {
           Complete, Ongoing, and Quick gained View all; Classics still
           has none (no classics filter exists). Shelves hide entirely
           while any filter is active (Phase 2 rework). */}
-      {!hasActiveFilter && sort !== "featured" && (shelvesLoading ? <div className="mt-10"><Spinner /></div> : (
+      {!hasActiveFilter && sort !== "featured" && (shelvesLoading ? (
+        <>
+          {/* Skeleton stack in the real shelf order — New, Featured,
+              then one panel. Deeper shelves land below the fold as
+              their data arrives, so the stack stops here rather than
+              rendering sections that may vanish on load. */}
+          <section className="mt-8 border-t border-ink/10 pt-6 sm:mt-12 sm:pt-10">
+            <ShelfHeadSkeleton />
+            <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible lg:gap-6">
+              {[0, 1, 2, 3].map((i) => <div key={i} className="flex w-36 shrink-0 sm:w-auto"><StoryCardSkeleton /></div>)}
+            </div>
+          </section>
+          <section className="mt-12 border-t border-ink/10 pt-10">
+            <ShelfHeadSkeleton />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-6">
+              {[0, 1, 2, 3].map((i) => <StoryCardSkeleton key={i} />)}
+            </div>
+          </section>
+          <PanelSkeleton />
+        </>
+      ) : (
         <>
           {newest.length > 0 && (
             <section className="mt-8 border-t border-ink/10 pt-6 sm:mt-12 sm:pt-10">
@@ -812,7 +832,11 @@ export function DiscoverPage() {
       )}
 
       <div className="mt-6">
-        {isLoading ? <Spinner /> : stories.length ? (
+        {isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2, 3, 4, 5].map((i) => <StoryRowSkeleton key={i} />)}
+          </div>
+        ) : stories.length ? (
           <>
             <p className="mb-4 text-sm text-ink-faint">
               {total} {t("discover", "resultsFor")}{q ? ` “${q}”` : ""}
@@ -846,7 +870,11 @@ export function SearchPage() {
       <div className="mt-6">
         {!q.trim() ? (
           <EmptyState title={t("discover", "searchPlaceholder")} />
-        ) : isLoading ? <Spinner /> : stories.length ? (
+        ) : isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2, 3, 4, 5].map((i) => <StoryRowSkeleton key={i} />)}
+          </div>
+        ) : stories.length ? (
           <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {stories.map((s) => <StoryRow key={s.id} story={s} />)}

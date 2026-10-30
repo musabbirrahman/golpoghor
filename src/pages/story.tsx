@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
 import { Avatar, Badge, Button, ButtonLink, EmptyState, Spinner, StatusBadge, LanguageBadge } from "../components/ui";
-import { StoryHeroSkeleton } from "../components/skeleton";
+import { AuthorHeroSkeleton, AuthorStoryCardSkeleton, ChapterRowSkeleton, MoreByAuthorSkeleton, StoryHeroSkeleton } from "../components/skeleton";
 import { Cover } from "../components/story-card";
 import { ReportDialog } from "../components/report-dialog";
 import { formatDate, readingMinutes, timeAgo } from "../lib/utils";
@@ -954,7 +954,11 @@ export function StoryPage() {
                 </div>
               </div>
             )}
-            {chaptersQuery.isLoading ? <Spinner /> : chapters.length ? (
+            {chaptersQuery.isLoading ? (
+              <ol className="mt-4 divide-y divide-ink/10 rounded-xl bg-white shadow-card">
+                {[0, 1, 2, 3, 4].map((i) => <ChapterRowSkeleton key={i} />)}
+              </ol>
+            ) : chapters.length ? (
               <>
               <ol className="mt-4 divide-y divide-ink/10 rounded-xl bg-white shadow-card">
                 {(contentsExpanded ? chapters : chapters.slice(0, CONTENTS_PAGE_SIZE)).map((c, i) => (
@@ -1028,7 +1032,9 @@ export function StoryPage() {
           </section>
         </div>
 
-        {moreByAuthor.length > 0 && (
+        {moreByAuthorQuery.isLoading ? (
+          <MoreByAuthorSkeleton />
+        ) : moreByAuthor.length > 0 && (
           <aside>
             <h2 className="font-serif text-2xl font-bold">{t("story", "moreByAuthor")}</h2>
             <div className="mt-2 h-0.5 w-10 bg-gold" aria-hidden />
@@ -1232,7 +1238,7 @@ export function AuthorPage() {
     !profileQuery.isLoading && !profile,
     (next) => `/authors/${next}`
   );
-  if (profileQuery.isLoading) return <Layout><Spinner /></Layout>;
+  if (profileQuery.isLoading) return <Layout><AuthorHeroSkeleton /></Layout>;
   if (!profile) {
     if (profileRedirectPending) return <Layout><Spinner /></Layout>;
     return (
@@ -1306,7 +1312,11 @@ export function AuthorPage() {
           overlap made the tab row 1px taller than its box and drew a
           miniature vertical scrollbar on desktop. */}
       <div className="h-px bg-ink/10" aria-hidden />
-      {storiesQuery.isLoading ? <Spinner /> : visibleStories.length ? (
+      {storiesQuery.isLoading ? (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2, 3, 4, 5].map((i) => <AuthorStoryCardSkeleton key={i} />)}
+        </div>
+      ) : visibleStories.length ? (
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleStories.map((s) => {
             const minutes = readingMinutes(s.word_count ?? 0, s.language);
