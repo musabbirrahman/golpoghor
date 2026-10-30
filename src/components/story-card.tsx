@@ -30,6 +30,11 @@ export function storyPath(s: Story): string {
 export function Cover({ story, className = "", thumb = false, small = false, eager = false }: { story: Story; className?: string; thumb?: boolean; small?: boolean; eager?: boolean }) {
   const { dp, isModerator } = useApp();
   const [url, setUrl] = useState<string | null>(null);
+  // True once resolution has definitively ended with no cover: the
+  // mount chain found nothing, or every onError fallback failed.
+  // While false and url is null, the cover is still resolving — the
+  // render below shows a transparent box, never the letter.
+  const [exhausted, setExhausted] = useState(false);
   const [showingOriginal, setShowingOriginal] = useState(false);
   const [phase, setPhase] = useState<"small-public" | "small-signed" | "public" | "signed" | "original">("original");
   const backfillFired = useRef(false);
@@ -68,6 +73,7 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
     retriedPublic.current = false;
     retriedSmall.current = false;
     setShowingOriginal(false);
+    setExhausted(false);
     if (!story.cover_path) {
       setUrl(null);
       return;
@@ -112,6 +118,7 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
       setShowingOriginal(r.showingOriginal);
       setPhase(r.phase);
       setUrl(r.u);
+      if (!r.u) setExhausted(true);
       // Best-effort backfill, fire-and-forget: the provider refuses
       // non-owners and signed-out viewers before any network use, and
       // records attempts so a cover is not retried on every render.
@@ -126,11 +133,18 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
     return () => { cancelled = true; };
   }, [dp, story.cover_path, story.author_id, story.id, story.status, thumb, small]);
   if (!url) {
-    return (
-      <div className={`flex items-center justify-center bg-river-soft font-serif text-5xl text-river ${className}`} aria-hidden>
-        {story.language === "bn" ? "গ" : "G"}
-      </div>
-    );
+    // While a cover is still resolving, render a transparent box of the
+    // same size — never the letter. The letter is the default cover and
+    // shows only when the story has no cover at all, or every source
+    // for it has definitively failed.
+    if (!story.cover_path || exhausted) {
+      return (
+        <div className={`flex items-center justify-center bg-river-soft font-serif text-5xl text-river ${className}`} aria-hidden>
+          {story.language === "bn" ? "গ" : "G"}
+        </div>
+      );
+    }
+    return <div className={className} aria-hidden />;
   }
   return (
     <img
@@ -161,6 +175,7 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
           setPhase(r.phase);
           setShowingOriginal(r.showingOriginal);
           setUrl(r.u);
+          if (!r.u) setExhausted(true);
           return;
         }
         // Scale Phase 2: a public thumbnail that fails to load
@@ -182,6 +197,7 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
           setPhase("original");
           setShowingOriginal(true);
           setUrl(orig);
+          if (!orig) setExhausted(true);
           return;
         }
         // Phase 1B: a persisted signed URL can expire or lose its
@@ -209,6 +225,7 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
           setShowingOriginal(true);
           const orig = await dp.coverUrl(story.cover_path).catch(() => null);
           setUrl(orig);
+          if (!orig) setExhausted(true);
           if (!backfillFired.current) {
             backfillFired.current = true;
             dp.ensureCoverThumbnail(story).catch(() => {});
@@ -226,6 +243,7 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
           }
         }
         setUrl(null);
+        setExhausted(true);
       }}
     />
   );
