@@ -246,8 +246,18 @@ export function StoryPage() {
   const moreByAuthorQuery = useQuery({
     queryKey: ["stories", { authorId: story?.author_id }, "more", story?.id],
     queryFn: async () => {
-      const res = await dp.listStories({ authorId: story!.author_id, limit: 4 });
-      return res.stories.filter((s) => s.id !== story!.id).slice(0, 3);
+      // Rotation, not newest-only: up to 100 of the author's stories
+      // come back newest-first, and this page shows the 4 after the
+      // current story, wrapping to the top — so every story page
+      // shows a different set and the older half of a catalogue is
+      // not stuck behind the newest few. A draft preview is not in
+      // the public list, so a missing current story starts at the top.
+      const res = await dp.listStories({ authorId: story!.author_id, limit: 100 });
+      const others = res.stories.filter((s) => s.id !== story!.id);
+      if (others.length === 0) return [];
+      const at = res.stories.findIndex((s) => s.id === story!.id);
+      const start = at < 0 ? 0 : at;
+      return Array.from({ length: Math.min(4, others.length) }, (_, i) => others[(start + i) % others.length]);
     },
     enabled: !!story,
   });
