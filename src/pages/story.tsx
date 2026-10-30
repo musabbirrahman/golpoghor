@@ -716,13 +716,13 @@ export function StoryPage() {
           </button>
         </div>
         <div className="relative flex justify-center px-4 pb-6 pt-2">
-          <Cover story={story} className="aspect-[3/4] w-48 rounded-xl shadow-lift sm:w-56" />
+          <Cover story={story} thumb className="aspect-[3/4] w-48 rounded-xl shadow-lift sm:w-56" />
         </div>
       </div>
 
       <section className="mt-4 rounded-2xl bg-white p-5 shadow-card sm:p-8 max-lg:rounded-none max-lg:bg-transparent max-lg:p-0 max-lg:shadow-none">
         <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
-          <Cover story={story} className="mx-auto hidden aspect-[3/4] w-48 rounded-xl shadow-lift sm:w-56 lg:mx-0 lg:block lg:w-full" />
+          <Cover story={story} thumb className="mx-auto hidden aspect-[3/4] w-48 rounded-xl shadow-lift sm:w-56 lg:mx-0 lg:block lg:w-full" />
 
         <div className="min-w-0">
           {/* Badges sit above the title on desktop (the mockup's order) but
