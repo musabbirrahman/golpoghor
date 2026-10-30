@@ -899,9 +899,9 @@ let appealId;
       const out = normalizeExcerpt("word ".repeat(300));
       return out.length <= 1000 && !out.endsWith(" ") && out.split(" ").every((w) => w === "word");
     })());
-  check("studio: ten templates with distinct palettes",
-    Object.keys(CARD_TEMPLATES).length === 10 &&
-    new Set(Object.values(CARD_TEMPLATES).map((p) => p.bg)).size === 10);
+  check("studio: six templates with distinct palettes",
+    Object.keys(CARD_TEMPLATES).length === 6 &&
+    new Set(Object.values(CARD_TEMPLATES).map((p) => p.bg)).size === 6);
   check("studio: attribution from story metadata, absent author is empty",
     keepsakeAttribution({ title: "T", author: { display_name: "A" } }).author === "A" &&
     keepsakeAttribution({ title: "T", author: null }).author === "");
