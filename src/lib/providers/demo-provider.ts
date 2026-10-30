@@ -34,6 +34,7 @@ import type {
   Session,
   ShelfLayout,
   Story,
+  StoryStatus,
   CuratedShelf,
   KeepsakeLicence,
 } from "../types";
@@ -965,7 +966,7 @@ export class DemoProvider implements DataProvider {
     return this.withAuthor({ ...s });
   }
 
-  async deleteStory(id: string): Promise<void> {
+  async deleteStory(id: string): Promise<boolean> {
     const me = await this.requireUid();
     const i = this.db.stories.findIndex((x) => x.id === id);
     if (i < 0) throw new AppError("notFound", "Story not found");
@@ -977,6 +978,7 @@ export class DemoProvider implements DataProvider {
     this.db.likes = this.db.likes.filter((l) => l.story_id !== id);
     this.db.progress = this.db.progress.filter((p) => p.story_id !== id);
     this.persist();
+    return true;
   }
 
   async listGenres(): Promise<string[]> {
@@ -1945,7 +1947,7 @@ export class DemoProvider implements DataProvider {
     this.pushNotification(authorId, kind, { targetType, targetLabel: t?.label ?? targetType, ...extra }, t?.url ?? null);
   }
 
-  async moderateStory(id: string, status: "hidden" | "ongoing" | "complete"): Promise<void> {
+  async moderateStory(id: string, status: "hidden" | "ongoing" | "complete"): Promise<boolean> {
     const me = await this.requireUid();
     this.requireModerator(me);
     const s = this.db.stories.find((x) => x.id === id);
@@ -1960,6 +1962,7 @@ export class DemoProvider implements DataProvider {
     await this.logModerationEvent(status === "hidden" ? "hide_story" : "restore_story", "story", id, { from, to: status, by: me });
     if (status === "hidden") await this.notifyContentAuthor("content_hidden", "story", id, s.author_id);
     this.persist();
+    return true;
   }
 
   async moderateChapter(id: string, status: "hidden" | "published"): Promise<void> {
@@ -2333,6 +2336,13 @@ export class DemoProvider implements DataProvider {
     return this.thumbStore.get(path) ?? null;
   }
 
+  /** Scale Phase 2 (demo parity): the public thumbnail is the same
+   * recorded thumb bytes — demo URLs are never signed. */
+  coverThumbPublicUrl(path: string | null): string | null {
+    if (!path) return null;
+    return this.thumbStore.get(path) ?? null;
+  }
+
   async invalidateCoverUrl(_path: string | null): Promise<void> {
     // Phase 1B (demo parity): demo URLs are never signed and never
     // expire, so there is nothing to evict.
@@ -2342,14 +2352,24 @@ export class DemoProvider implements DataProvider {
     id: string;
     author_id: string;
     cover_path: string | null;
-  }): Promise<"created" | "already" | "refused" | "failed"> {
+    status?: StoryStatus;
+  }, opts?: { force?: boolean; moderator?: boolean }): Promise<"created" | "already" | "refused" | "failed"> {
     const s = this.sessionSync();
-    if (!s || !story.cover_path || story.author_id !== s.user.id) return "refused";
+    if (!s || !story.cover_path) return "refused";
+    const isPublic = story.status === "ongoing" || story.status === "complete";
+    let isMod = false;
+    try {
+      this.requireModerator(s.user.id);
+      isMod = true;
+    } catch {
+      /* not a moderator */
+    }
+    if (story.author_id !== s.user.id && !(opts?.moderator === true && isMod && isPublic)) return "refused";
     // Demo: generated demo: placeholders have no bytes to thumbnail.
     if (story.cover_path.startsWith("demo:")) return "refused";
-    if (this.thumbDone.has(story.cover_path)) return "already";
+    if (!opts?.force && this.thumbDone.has(story.cover_path)) return "already";
     const last = this.thumbFailed.get(story.cover_path);
-    if (last && Date.now() - last < 7 * 24 * 3600 * 1000) return "failed";
+    if (!opts?.force && last && Date.now() - last < 7 * 24 * 3600 * 1000) return "failed";
     // Demo: only data: covers can be "thumbnailed" (generated demo:
     // placeholders have no bytes to resize in the demo store).
     if (!story.cover_path.startsWith("data:")) {

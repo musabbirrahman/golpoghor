@@ -28,47 +28,60 @@ export function storyPath(s: Story): string {
 }
 
 export function Cover({ story, className = "", thumb = false }: { story: Story; className?: string; thumb?: boolean }) {
-  const { dp } = useApp();
+  const { dp, isModerator } = useApp();
   const [url, setUrl] = useState<string | null>(null);
   const [showingOriginal, setShowingOriginal] = useState(false);
+  const [phase, setPhase] = useState<"public" | "signed" | "original">("original");
   const backfillFired = useRef(false);
   const retriedThumb = useRef(false);
   const retriedOriginal = useRef(false);
+  const retriedPublic = useRef(false);
   useEffect(() => {
     let cancelled = false;
     backfillFired.current = false;
     retriedThumb.current = false;
     retriedOriginal.current = false;
+    retriedPublic.current = false;
     setShowingOriginal(false);
     if (!story.cover_path) {
       setUrl(null);
       return;
     }
     (async () => {
+      // Scale Phase 2: public stories use the public CDN thumbnail
+      // first; drafts/hidden stories keep the signed private thumbnail.
       // Thumbnail first in card mode; any miss falls back to the
       // original, which is also the pre-1A behavior.
       let u: string | null = null;
-      if (thumb) u = await dp.coverThumbUrl(story.cover_path).catch(() => null);
-      const usedThumb = !!u;
+      let usePublic = false;
+      if (thumb && (story.status === "ongoing" || story.status === "complete")) {
+        u = dp.coverThumbPublicUrl(story.cover_path);
+        usePublic = !!u;
+      }
+      if (!u && thumb) u = await dp.coverThumbUrl(story.cover_path).catch(() => null);
+      const usedSignedThumb = !!u && !usePublic;
       if (!u) u = await dp.coverUrl(story.cover_path).catch(() => null);
       if (cancelled) return;
       // Phase 1B fix (Argon finding 2): when the thumbnail was missing
       // at mount, the rendered URL is the original — record that, so
       // a later load error retries the original instead of being
       // misidentified as a thumbnail failure.
-      setShowingOriginal(thumb && !usedThumb && !!u);
+      setShowingOriginal(!!u && thumb && !usePublic && !usedSignedThumb);
+      setPhase(usePublic ? "public" : usedSignedThumb ? "signed" : "original");
       setUrl(u);
       // Best-effort backfill, fire-and-forget: the provider refuses
       // non-owners and signed-out viewers before any network use, and
       // records attempts so a cover is not retried on every render.
-      // Trigger only when the thumbnail itself was missing.
-      if (thumb && !usedThumb && !backfillFired.current) {
+      // Trigger only when the thumbnail itself was missing. A public
+      // thumbnail's missing-ness is NOT checked at mount — the image
+      // load is the check, and its onError self-heals (below).
+      if (thumb && !usePublic && !usedSignedThumb && !backfillFired.current) {
         backfillFired.current = true;
         dp.ensureCoverThumbnail(story).catch(() => {});
       }
     })();
     return () => { cancelled = true; };
-  }, [dp, story.cover_path, story.author_id, story.id, thumb]);
+  }, [dp, story.cover_path, story.author_id, story.id, story.status, thumb]);
   if (!url) {
     return (
       <div className={`flex items-center justify-center bg-river-soft font-serif text-5xl text-river ${className}`} aria-hidden>
@@ -83,6 +96,27 @@ export function Cover({ story, className = "", thumb = false }: { story: Story; 
       loading="lazy"
       className={`object-cover ${className}`}
       onError={async () => {
+        // Scale Phase 2: a public thumbnail that fails to load
+        // (missing, e.g. after hide→restore) self-heals — clear the
+        // public done-set and regenerate (owner/moderator sessions
+        // only; guests are refused silently), then fall to the signed
+        // thumbnail. At most once per mount.
+        if (phase === "public" && !retriedPublic.current) {
+          retriedPublic.current = true;
+          dp.ensureCoverThumbnail(story, { force: true, moderator: isModerator }).catch(() => {});
+          const signed = await dp.coverThumbUrl(story.cover_path).catch(() => null);
+          if (signed) {
+            setPhase("signed");
+            setShowingOriginal(false);
+            setUrl(signed);
+            return;
+          }
+          const orig = await dp.coverUrl(story.cover_path).catch(() => null);
+          setPhase("original");
+          setShowingOriginal(true);
+          setUrl(orig);
+          return;
+        }
         // Phase 1B: a persisted signed URL can expire or lose its
         // object. Each kind retries at most once (evict + fresh sign)
         // before the existing fallback/placeholder — never a loop.

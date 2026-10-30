@@ -183,7 +183,7 @@ export interface DataProvider {
   getStoryBySlug(authorUsername: string, slug: string): Promise<Story | null>;
   createStory(input: StoryInput): Promise<Story>;
   updateStory(id: string, patch: Partial<StoryInput & { status: StoryStatus; cover_path: string | null }>): Promise<Story>;
-  deleteStory(id: string): Promise<void>;
+  deleteStory(id: string): Promise<boolean>;
   listGenres(): Promise<string[]>;
   /** Phase 2: sub-category ids carried by at least one public story. */
   listSubcategoriesInUse(): Promise<string[]>;
@@ -293,7 +293,7 @@ export interface DataProvider {
   getAdminMetrics(): Promise<AdminMetrics>;
   listModerationEvents(targetType?: ReportTarget, targetId?: string): Promise<ModerationEvent[]>;
   logModerationEvent(action: string, targetType: ReportTarget, targetId: string, details: Record<string, unknown>): Promise<ModerationEvent>;
-  moderateStory(id: string, status: "hidden" | "ongoing" | "complete"): Promise<void>;
+  moderateStory(id: string, status: "hidden" | "ongoing" | "complete"): Promise<boolean>;
   moderateChapter(id: string, status: "hidden" | "published"): Promise<void>;
   moderateComment(id: string, status: "hidden" | "removed" | "visible"): Promise<void>;
   /** Restore hidden content to its pre-hide visibility; audited + notifies author. */
@@ -335,6 +335,11 @@ export interface DataProvider {
   coverSignedUrl(path: string | null): Promise<string | null>;
   /** Card-size thumbnail URL for a cover path (`thumb-` derivation); null when no thumbnail exists. */
   coverThumbUrl(path: string | null): Promise<string | null>;
+  /** Scale Phase 2: public CDN URL for a cover's thumbnail in the
+   * `cover-thumbs` bucket (sync: public buckets need no signing).
+   * Only meaningful for public stories — drafts/hidden stories must
+   * keep using the signed `coverThumbUrl`. Null when no thumb path. */
+  coverThumbPublicUrl(path: string | null): string | null;
   /**
    * Phase 1B: drop cached (memory + persisted) cover URLs for a path
    * and its thumbnail, forcing a fresh sign on next use. Used when a
@@ -345,12 +350,19 @@ export interface DataProvider {
    * Phase 1A backfill: create the story's thumbnail from its original
    * cover. Owner-session only; refuses anyone else before any network
    * use. "already" = done before, "failed" = failed (retryable after 7 days).
+   * Scale Phase 2: `status` selects the destination — public stories
+   * (ongoing/complete) write to the public `cover-thumbs` bucket, drafts
+   * keep the private bucket. `moderator` lets a moderator backfill a
+   * public story (Day-1 migration); the DB policy enforces both rules
+   * regardless of what the caller claims. `force` bypasses the done /
+   * failed sets (used when a public URL 404s, e.g. after hide→restore).
    */
   ensureCoverThumbnail(story: {
     id: string;
     author_id: string;
     cover_path: string | null;
-  }): Promise<"created" | "already" | "refused" | "failed">;
+    status?: StoryStatus;
+  }, opts?: { force?: boolean; moderator?: boolean }): Promise<"created" | "already" | "refused" | "failed">;
 
   // -------------------------------------------------------- moderation ux
   /** Human label + deep link + current status for a report/appeal target (moderators only). */

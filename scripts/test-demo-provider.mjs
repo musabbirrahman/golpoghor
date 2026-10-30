@@ -1320,6 +1320,36 @@ let appealId;
   check("urlcache: clear empties cache", countCachedUrls() === 0);
 }
 
+// Scale Phase 2: public thumbnails, moderator backfill, cleanup booleans
+{
+  await dp.signUp({ email: "thumbpub@example.com", password: "secret12", username: "thumb_pub", displayName: "Thumb Pub" });
+  const story = await dp.createStory({ title: "Thumb Pub Story", summary: "x", language: "en", genre: "Mystery", tags: [] });
+  const dataCover = "data:image/png;base64,THUMBPUB-UNIQUE-20261030";
+  await dp.updateStory(story.id, { cover_path: dataCover });
+  const authorId = (await dp.getSession()).user.id;
+  await dp.signOut();
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  check("phase2: non-owner without moderator flag is refused",
+    (await dp.ensureCoverThumbnail({ id: story.id, author_id: authorId, cover_path: dataCover, status: "ongoing" })) === "refused");
+  check("phase2: moderator backfills a public story",
+    (await dp.ensureCoverThumbnail({ id: story.id, author_id: authorId, cover_path: dataCover, status: "ongoing" }, { moderator: true })) === "created");
+  check("phase2: second backfill without force is already",
+    (await dp.ensureCoverThumbnail({ id: story.id, author_id: authorId, cover_path: dataCover, status: "ongoing" }, { moderator: true })) === "already");
+  check("phase2: force re-runs after done",
+    (await dp.ensureCoverThumbnail({ id: story.id, author_id: authorId, cover_path: dataCover, status: "ongoing" }, { moderator: true, force: true })) === "created");
+  check("phase2: public URL returns the recorded thumb",
+    dp.coverThumbPublicUrl(dataCover) === dataCover);
+  check("phase2: public URL helper null-guards",
+    dp.coverThumbPublicUrl(null) === null);
+  check("phase2: moderateStory returns cleanup status",
+    (await dp.moderateStory(story.id, "hidden")) === true);
+  await dp.signOut();
+  await dp.signIn("thumbpub@example.com", "secret12");
+  check("phase2: deleteStory returns cleanup status",
+    (await dp.deleteStory(story.id)) === true);
+  await dp.signOut();
+}
+
 console.log("");
 for (const [st, name] of results) console.log(`${st}  ${name}`);
 const fails = results.filter((r) => r[0] === "FAIL").length;

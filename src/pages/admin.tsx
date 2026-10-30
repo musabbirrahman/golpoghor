@@ -100,6 +100,7 @@ function ReportCard({ report }: { report: Report }) {
   const { t, locale, dp } = useApp();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
+  const [cleanupWarn, setCleanupWarn] = useState(false);
   const target = useTarget(report.target_type, report.target_id);
 
   const refresh = () => {
@@ -111,8 +112,9 @@ function ReportCard({ report }: { report: Report }) {
   async function act(label: string, fn: () => Promise<unknown>) {
     setBusy(label);
     try {
-      await fn();
+      const result = await fn();
       refresh();
+      return result;
     } finally {
       setBusy(null);
     }
@@ -154,7 +156,11 @@ function ReportCard({ report }: { report: Report }) {
           <>
             {report.target_type === "story" && !isHidden && (
               <Button size="sm" variant="danger" disabled={!!busy}
-                onClick={() => act("hide", () => dp.moderateStory(report.target_id, "hidden"))}>
+                onClick={async () => {
+                  setCleanupWarn(false);
+                  const ok = await act("hide", () => dp.moderateStory(report.target_id, "hidden"));
+                  if (ok === false) setCleanupWarn(true);
+                }}>
                 {t("moderation", "hideStory")}
               </Button>
             )}
@@ -190,6 +196,7 @@ function ReportCard({ report }: { report: Report }) {
           <RestoreButton targetType={report.target_type} targetId={report.target_id} onDone={refresh} />
         )}
         {busy && <span className="self-center text-xs text-ink-faint">{t("common", "loading")}</span>}
+        {cleanupWarn && <p className="w-full text-sm text-clay">{t("moderation", "thumbCleanupWarn")}</p>}
       </div>
     </Card>
   );

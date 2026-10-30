@@ -30,6 +30,7 @@ import type {
   Session,
   ShelfLayout,
   Story,
+  StoryStatus,
 } from "../types";
 import type {
   ChapterInput,
@@ -795,9 +796,29 @@ export class SupabaseProvider implements DataProvider {
     return mapStory(data);
   }
 
-  async deleteStory(id: string): Promise<void> {
+  /**
+   * Scale Phase 2: remove a story's public thumbnail, with one retry.
+   * Returns true when there is nothing to clean or removal succeeded,
+   * false when it still failed. Callers must never let this block the
+   * DB change it follows (Argon Q2).
+   */
+  private async removePublicThumb(coverPath: string | null): Promise<boolean> {
+    const tp = coverPath ? thumbPath(coverPath) : null;
+    if (!tp) return true;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const { error } = await this.sb.storage.from("cover-thumbs").remove([tp]);
+      if (!error) return true;
+    }
+    console.warn("cover-thumbs cleanup failed:", tp);
+    return false;
+  }
+
+  async deleteStory(id: string): Promise<boolean> {
+    const { data: row } = await this.sb.from("stories").select("cover_path").eq("id", id).maybeSingle();
     const { error } = await this.sb.from("stories").delete().eq("id", id);
     if (error) throw toAppError(error);
+    // DB delete first (Argon Q2): a storage failure must never block it.
+    return this.removePublicThumb((row as { cover_path?: string | null } | null)?.cover_path ?? null);
   }
 
   async listGenres(): Promise<string[]> {
@@ -1788,7 +1809,7 @@ export class SupabaseProvider implements DataProvider {
     return data as ModerationEvent;
   }
 
-  async moderateStory(id: string, status: "hidden" | "ongoing" | "complete"): Promise<void> {
+  async moderateStory(id: string, status: "hidden" | "ongoing" | "complete"): Promise<boolean> {
     const me = await this.uid();
     const before = await this.getStory(id);
     const enteringPublic =
@@ -1801,6 +1822,10 @@ export class SupabaseProvider implements DataProvider {
     if (status === "hidden" && before?.author_id) {
       await this.tryNotify(() => this.notifyContentAuthor("content_hidden", "story", id, before.author_id));
     }
+    if (status !== "hidden") return true;
+    // DB update first, then best-effort public-thumb cleanup (Argon Q2).
+    // A restore re-creates the thumb via backfill on next owner view.
+    return this.removePublicThumb(before?.cover_path ?? null);
   }
 
   async moderateChapter(id: string, status: "hidden" | "published"): Promise<void> {
@@ -2274,6 +2299,15 @@ export class SupabaseProvider implements DataProvider {
     return p;
   }
 
+  /** Scale Phase 2: public CDN URL for a cover's thumbnail (sync —
+   * public buckets need no signing). Only for public stories; drafts
+   * and hidden stories must keep the signed `coverThumbUrl`. */
+  coverThumbPublicUrl(path: string | null): string | null {
+    const tp = path ? thumbPath(path) : null;
+    if (!tp) return null;
+    return this.sb.storage.from("cover-thumbs").getPublicUrl(tp).data.publicUrl;
+  }
+
   /**
    * Phase 1B: drop cached (memory + persisted) cover URLs for a path
    * and its thumbnail, forcing a fresh sign on next use. Used by
@@ -2307,21 +2341,30 @@ export class SupabaseProvider implements DataProvider {
     id: string;
     author_id: string;
     cover_path: string | null;
-  }): Promise<"created" | "already" | "refused" | "failed"> {
+    status?: StoryStatus;
+  }, opts?: { force?: boolean; moderator?: boolean }): Promise<"created" | "already" | "refused" | "failed"> {
     let me: string;
     try {
       me = await this.uid();
     } catch {
       return "refused";
     }
-    if (!story.cover_path || story.author_id !== me) return "refused";
+    if (!story.cover_path) return "refused";
+    const isPublic = story.status === "ongoing" || story.status === "complete";
+    // Owner, or a moderator backfilling a public story (Argon Q3/Q5).
+    // The DB insert policy enforces both rules regardless of the flag.
+    if (story.author_id !== me && !(opts?.moderator === true && isPublic)) return "refused";
     const tp = thumbPath(story.cover_path);
     if (!tp) return "refused";
-    const done = new Set<string>(readJson<string[]>(THUMB_DONE_KEY, []));
-    if (done.has(story.cover_path)) return "already";
-    const failed = readJson<Record<string, number>>(THUMB_FAILED_KEY, {});
+    // Scale Phase 2: public stories track their public copy separately —
+    // the old done-set must never suppress public migration (Argon Q5).
+    const doneKey = isPublic ? THUMB_DONE_PUBLIC_KEY : THUMB_DONE_KEY;
+    const failedKey = isPublic ? THUMB_FAILED_PUBLIC_KEY : THUMB_FAILED_KEY;
+    const done = new Set<string>(readJson<string[]>(doneKey, []));
+    if (!opts?.force && done.has(story.cover_path)) return "already";
+    const failed = readJson<Record<string, number>>(failedKey, {});
     const last = failed[story.cover_path];
-    if (last && Date.now() - last < THUMB_RETRY_AFTER_MS) return "failed";
+    if (!opts?.force && last && Date.now() - last < THUMB_RETRY_AFTER_MS) return "failed";
     try {
       const url = await this.coverSignedUrl(story.cover_path);
       if (!url) throw new Error("original not signable");
@@ -2332,25 +2375,28 @@ export class SupabaseProvider implements DataProvider {
         new File([blob], "cover", { type: blob.type || "image/jpeg" })
       );
       if (!thumb) throw new Error("thumbnail generation failed");
+      const bucket = isPublic ? "cover-thumbs" : "covers";
       const { error } = await this.sb.storage
-        .from("covers")
-        .upload(tp, thumb, { contentType: "image/jpeg", upsert: false });
+        .from(bucket)
+        .upload(tp, thumb, isPublic
+          ? { contentType: "image/jpeg", upsert: false, cacheControl: "31536000" }
+          : { contentType: "image/jpeg", upsert: false });
       if (error) {
         // Another session may have created it first: that is success,
         // not a failure, and must not be retried.
         if (/already exists|duplicate/i.test(error.message ?? "")) {
           done.add(story.cover_path);
-          writeJson(THUMB_DONE_KEY, [...done]);
+          writeJson(doneKey, [...done]);
           return "already";
         }
         throw error;
       }
       done.add(story.cover_path);
-      writeJson(THUMB_DONE_KEY, [...done]);
+      writeJson(doneKey, [...done]);
       return "created";
     } catch {
       failed[story.cover_path] = Date.now();
-      writeJson(THUMB_FAILED_KEY, failed);
+      writeJson(failedKey, failed);
       return "failed";
     }
   }
@@ -2400,6 +2446,12 @@ const THUMB_DONE_KEY = "golponeer-thumb-done-v1";
 const THUMB_FAILED_KEY = "golponeer-thumb-failed-v1";
 /** Failed covers become retryable after this long (transient errors). */
 const THUMB_RETRY_AFTER_MS = 7 * 24 * 3600 * 1000;
+/** Scale Phase 2: done/failed sets for PUBLIC-bucket thumbnails. Kept
+ * separate from the private-bucket sets on purpose (Argon Q5): the old
+ * done-set must never suppress public migration, and a hide→restore
+ * must be able to re-trigger backfill for the public copy. */
+const THUMB_DONE_PUBLIC_KEY = "golponeer-thumb-done-public-v1";
+const THUMB_FAILED_PUBLIC_KEY = "golponeer-thumb-failed-public-v1";
 
 function readJson<T>(key: string, fallback: T): T {
   try {

@@ -495,6 +495,7 @@ const dict = {
     resolved: { bn: "সমাধানকৃত", en: "Resolved" },
     dismissed: { bn: "খারিজ", en: "Dismissed" },
     hideStory: { bn: "গল্প লুকান", en: "Hide story" },
+    thumbCleanupWarn: { bn: "কভার থাম্বনেইল মোছা যায়নি — সরাসরি লিংকে ছবিটি এখনও দেখা যেতে পারে।", en: "Cover thumbnail cleanup failed — the image may still be reachable by its direct link." },
     unhideStory: { bn: "গল্প ফিরিয়ে আনুন", en: "Restore story" },
     hideChapter: { bn: "অধ্যায় লুকান", en: "Hide chapter" },
     hideComment: { bn: "মন্তব্য লুকান", en: "Hide comment" },
