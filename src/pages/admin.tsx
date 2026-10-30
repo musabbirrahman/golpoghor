@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
 import { Badge, Button, ButtonLink, Card, Dropdown, EmptyState, Input, Label, Modal, Spinner, Textarea } from "../components/ui";
+import { AuditListSkeleton, FeaturedListSkeleton, MetricCardSkeleton, ReportCardSkeleton, ShelfEditorSkeleton } from "../components/skeleton";
 import { AppError, formatDate, timeAgo } from "../lib/utils";
 import type { Appeal, CuratedShelf, Report, ReportTarget, ShelfLayout, Story } from "../lib/types";
 import { storyPath } from "../components/story-card";
@@ -392,7 +393,7 @@ function FeaturedTab() {
         {error ? <p className="mt-2 text-sm text-clay">{t("errors", error)}</p> : null}
       </Card>
       {featuredQuery.isLoading ? (
-        <Spinner />
+        <FeaturedListSkeleton />
       ) : featured.length ? (
         <Card className="divide-y divide-ink/10">
           {featured.map((s, i) => (
@@ -677,7 +678,10 @@ function ShelvesTab() {
         {error ? <p className="mt-2 text-sm text-clay">{t("errors", error)}</p> : null}
       </Card>
       {shelvesQuery.isLoading ? (
-        <Spinner />
+        <>
+          <ShelfEditorSkeleton />
+          <ShelfEditorSkeleton />
+        </>
       ) : shelves.length ? (
         shelves.map((s) => <ShelfEditor key={s.id} shelf={s} shelves={shelves} publicStories={publicStories} refresh={refresh} />)
       ) : (
@@ -813,7 +817,11 @@ export function AdminPage() {
 
         <div className="mt-6">
           {tab === "metrics" ? (
-            metricsQuery.isLoading ? <Spinner /> : metricsQuery.data ? (
+            metricsQuery.isLoading ? (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {[0, 1, 2, 3, 4, 5, 6].map((i) => <MetricCardSkeleton key={i} />)}
+              </div>
+            ) : metricsQuery.data ? (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 {([
                   ["metricsSignups", metricsQuery.data.signups],
@@ -834,7 +842,11 @@ export function AdminPage() {
               <EmptyState title={t("moderation", "empty")} />
             )
           ) : tab === "appeals" ? (
-            appealsQuery.isLoading ? <Spinner /> : appeals.length ? (
+            appealsQuery.isLoading ? (
+              <div className="flex flex-col gap-4">
+                {[0, 1, 2].map((i) => <ReportCardSkeleton key={i} />)}
+              </div>
+            ) : appeals.length ? (
               <div className="flex flex-col gap-4">
                 {appeals.map((a) => <AppealCard key={a.id} appeal={a} />)}
               </div>
@@ -848,7 +860,11 @@ export function AdminPage() {
           ) : tab === "message" ? (
             <MessageTab />
           ) : tab !== "audit" ? (
-            reportsQuery.isLoading ? <Spinner /> : (tab === "queue" ? queue : resolved).length ? (
+            reportsQuery.isLoading ? (
+              <div className="flex flex-col gap-4">
+                {[0, 1, 2].map((i) => <ReportCardSkeleton key={i} />)}
+              </div>
+            ) : (tab === "queue" ? queue : resolved).length ? (
               <div className="flex flex-col gap-4">
                 {(tab === "queue" ? queue : resolved).map((r) => <ReportCard key={r.id} report={r} />)}
               </div>
@@ -856,7 +872,7 @@ export function AdminPage() {
               <EmptyState title={t("moderation", "empty")} />
             )
           ) : auditQuery.isLoading ? (
-            <Spinner />
+            <AuditListSkeleton />
           ) : auditQuery.data?.length ? (
             <Card className="divide-y divide-ink/10">
               {auditQuery.data.map((e) => (

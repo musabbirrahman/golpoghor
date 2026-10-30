@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
 import { Avatar, Button, ButtonLink, EmptyState, Spinner } from "../components/ui";
+import { CommentSkeleton, ReaderChapterSkeleton } from "../components/skeleton";
 import { ReportDialog } from "../components/report-dialog";
 import { PENDING_KEEP_KEY, QuoteStudio, type PendingKeepsake } from "../components/quote-studio";
 import { normalizeExcerpt } from "../lib/keepsake-card";
@@ -348,7 +349,9 @@ function Comments({ chapterId, className, theme }: { chapterId: string; classNam
 
       <div className="mt-6 flex flex-col gap-4">
         {commentsQuery.isLoading ? (
-          <Spinner />
+          <>
+            {[0, 1, 2].map((i) => <CommentSkeleton key={i} />)}
+          </>
         ) : commentsQuery.data?.length ? (
           commentsQuery.data.map((c) => (
             <article key={c.id} className={`rounded-xl p-4 shadow-card ${themeCardCls(theme)}`}>
@@ -931,7 +934,7 @@ export function ReaderPage() {
     !storyQuery.isLoading && !story && !storyRedirectPending,
     (nextUser, nextSlug) => `/stories/${nextUser}/${nextSlug}/${chapterSlug}${window.location.search}`
   );
-  if (storyQuery.isLoading || chaptersQuery.isLoading || chapterQuery.isLoading) return <Layout><Spinner /></Layout>;
+  if (storyQuery.isLoading || chaptersQuery.isLoading || chapterQuery.isLoading) return <Layout><ReaderChapterSkeleton /></Layout>;
   if (!story || !chapter) {
     if (!story && (storyRedirectPending || slugRedirectPending)) return <Layout><Spinner /></Layout>;
     return (

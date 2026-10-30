@@ -8,6 +8,7 @@ import type { NotificationPrefs, ReadingProgress, Story } from "../lib/types";
 import { MyKeepsakesSection } from "../components/my-keepsakes";
 import { Layout } from "../components/layout";
 import { Avatar, Button, ButtonLink, EmptyState, Spinner, fieldBase } from "../components/ui";
+import { ContinueCardSkeleton, FollowingRowSkeleton, StoryCardSkeleton } from "../components/skeleton";
 import { Cover, StoryCard, storyPath } from "../components/story-card";
 
 /** Continue-reading card: cover + title + author + the chapter the reader
@@ -123,7 +124,11 @@ export function LibraryPage() {
         <section className="mt-8">
           <h2 className="font-serif text-xl font-bold">{t("library", "inProgress")}</h2>
           <div className="mb-4 mt-2 h-0.5 w-10 bg-gold" />
-          {progressQuery.isLoading ? <Spinner /> : progressQuery.data?.length ? (
+          {progressQuery.isLoading ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[0, 1, 2].map((i) => <ContinueCardSkeleton key={i} />)}
+            </div>
+          ) : progressQuery.data?.length ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {progressQuery.data.map(({ story, progress }) => (
                 <ContinueCard key={story.id} story={story} progress={progress} />
@@ -137,7 +142,11 @@ export function LibraryPage() {
         <section className="mt-10">
           <h2 className="font-serif text-xl font-bold">{t("library", "finished")}</h2>
           <div className="mb-4 mt-2 h-0.5 w-10 bg-gold" />
-          {finishedQuery.isLoading ? <Spinner /> : finishedQuery.data?.length ? (
+          {finishedQuery.isLoading ? (
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
+              {[0, 1, 2, 3].map((i) => <StoryCardSkeleton key={i} />)}
+            </div>
+          ) : finishedQuery.data?.length ? (
             <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
               {finishedQuery.data.map((s) => <StoryCard key={s.id} story={s} compact />)}
             </div>
@@ -151,7 +160,11 @@ export function LibraryPage() {
         <section className="mt-10">
           <h2 className="font-serif text-xl font-bold">{t("library", "readingList")}</h2>
           <div className="mb-4 mt-2 h-0.5 w-10 bg-gold" />
-          {listQuery.isLoading ? <Spinner /> : listQuery.data?.length ? (
+          {listQuery.isLoading ? (
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
+              {[0, 1, 2, 3].map((i) => <StoryCardSkeleton key={i} />)}
+            </div>
+          ) : listQuery.data?.length ? (
             <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
               {listQuery.data.map((s) => <StoryCard key={s.id} story={s} compact />)}
             </div>
@@ -163,7 +176,11 @@ export function LibraryPage() {
         <section className="mt-10">
           <h2 className="font-serif text-xl font-bold">{t("library", "following")}</h2>
           <div className="mb-4 mt-2 h-0.5 w-10 bg-gold" />
-          {followingQuery.isLoading ? <Spinner /> : followingQuery.data?.length ? (
+          {followingQuery.isLoading ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {[0, 1, 2].map((i) => <FollowingRowSkeleton key={i} />)}
+            </div>
+          ) : followingQuery.data?.length ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {followingQuery.data.map((p) => (
                 <Link key={p.id} to={`/authors/${p.username}`} className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-card hover:shadow-lift">

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { renderKeepsakeCard, keepsakeAttribution, downloadKeepsakePNG } from "../lib/keepsake-card";
 import { Card, Button } from "../components/ui";
+import { PublicKeepsakeSkeleton } from "../components/skeleton";
 import { ReportDialog } from "../components/report-dialog";
 import { Layout } from "../components/layout";
 import { usePageMeta, SHELL_TITLE } from "../lib/page-meta";
@@ -57,7 +58,7 @@ export function PublicKeepsakePage() {
     }).catch(() => {});
   }, [k, locale]);
 
-  if (isLoading) return <Layout><p className="text-sm text-ink-faint">{t("common", "loading")}</p></Layout>;
+  if (isLoading) return <Layout><PublicKeepsakeSkeleton /></Layout>;
   if (!k) {
     return (
       <Layout>

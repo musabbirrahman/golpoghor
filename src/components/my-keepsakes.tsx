@@ -5,7 +5,8 @@ import { useApp } from "../lib/app-context";
 import { AppError } from "../lib/utils";
 import type { Keepsake } from "../lib/types";
 import { CARD_TEMPLATES, downloadKeepsakePNG, keepsakeAttribution, renderKeepsakeCard } from "../lib/keepsake-card";
-import { ButtonLink, EmptyState, Spinner } from "./ui";
+import { ButtonLink, EmptyState } from "./ui";
+import { KeepsakeCardSkeleton } from "./skeleton";
 import { KeepsakeViewer } from "./keepsake-viewer";
 
 /**
@@ -175,7 +176,21 @@ export function MyKeepsakesSection({ limit }: { limit?: number }) {
       <h2 className="font-serif text-xl font-bold">{t("keepsakes", "myKeepsakes")}</h2>
       <div className="mb-4 mt-2 h-0.5 w-10 bg-gold" />
       {keepsakesQuery.isLoading ? (
-        <Spinner />
+        limit ? (
+          <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="w-64 shrink-0 sm:w-auto">
+                <KeepsakeCardSkeleton />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 flex flex-col gap-4">
+            {[0, 1, 2].map((i) => (
+              <KeepsakeCardSkeleton key={i} />
+            ))}
+          </div>
+        )
       ) : data.length ? (
         limit ? (
           <>

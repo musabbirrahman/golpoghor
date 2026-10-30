@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
 import { Badge, Button, ButtonLink, Card, EmptyState, Spinner } from "../components/ui";
+import { NotificationListSkeleton } from "../components/skeleton";
 import { notificationText } from "../lib/notifications";
 import { timeAgo } from "../lib/utils";
 import type { AppNotification } from "../lib/types";
@@ -106,7 +107,7 @@ export function InboxPage() {
 
         <div className="mt-6">
           {listQuery.isLoading ? (
-            <Spinner />
+            <NotificationListSkeleton />
           ) : items.length ? (
             <Card className="divide-y divide-ink/10 overflow-hidden">
               {items.map((n) => (

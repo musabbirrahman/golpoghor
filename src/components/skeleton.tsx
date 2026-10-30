@@ -439,3 +439,359 @@ export function AuthorStoryCardSkeleton() {
     </div>
   );
 }
+
+/* ---- Phase 3: signed-in surfaces (Library, Inbox, Admin), reader
+ * internals, and the public keepsake page. Same rule as Phases 1+2:
+ * every box copies the real element's size, gaps and padding. ---- */
+
+/** Continue-reading card: cover + 2-line title + author + chapter line
+ * + progress bar + resume line. Matches ContinueCard (cover w-20,
+ * title clamp-2 text-lg leading-snug = 27px lines, p-4, gap-4). The
+ * story-progress line is conditional, so the skeleton takes the
+ * common case without it. */
+export function ContinueCardSkeleton() {
+  const { t } = useApp();
+  return (
+    <div
+      role="status"
+      aria-label={t("common", "loading")}
+      data-skeleton="continue-card"
+      className="flex h-full gap-4 rounded-xl bg-white p-4 shadow-card"
+    >
+      <div aria-hidden className="aspect-[3/4] w-20 shrink-0 animate-pulse rounded-lg bg-ink/10" />
+      <div className="min-w-0 flex-1">
+        <div aria-hidden>
+          <Bar className="h-[27px] w-4/5" />
+          <Bar className="h-[27px] w-3/5" />
+        </div>
+        <Bar className="mt-0.5 h-5 w-1/2" />
+        <Bar className="mt-2 h-5 w-2/3" />
+        <Bar className="mt-2 h-1.5 w-full" />
+        <Bar className="mt-2 h-5 w-24" />
+      </div>
+    </div>
+  );
+}
+
+/** Following row: avatar + name + username line. Matches the Library
+ * following row (Avatar lg = h-16 w-16, name font-medium, username
+ * text-sm, p-4, gap-3). The story-count suffix is conditional, so the
+ * skeleton takes the plain username line. */
+export function FollowingRowSkeleton() {
+  const { t } = useApp();
+  return (
+    <div
+      role="status"
+      aria-label={t("common", "loading")}
+      data-skeleton="following-row"
+      className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-card"
+    >
+      <div aria-hidden className="h-16 w-16 shrink-0 animate-pulse rounded-full bg-ink/10" />
+      <div className="min-w-0 flex-1">
+        <Bar className="h-6 w-2/3" />
+        <Bar className="mt-0.5 h-5 w-1/2" />
+      </div>
+    </div>
+  );
+}
+
+/** Inbox notification row: unread dot + badge + time + body lines.
+ * Matches NotificationRow (dot h-2.5 mt-1.5, badge row, body text-sm,
+ * px-5 py-4). No status role of its own — it only ever renders
+ * inside the inbox Card, whose skeleton wrapper announces once. */
+export function NotificationRowSkeleton() {
+  return (
+    <div data-skeleton="notification-row" className="flex gap-3 px-5 py-4">
+      <div aria-hidden className="mt-1.5 h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-ink/10" />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2" aria-hidden>
+          <Bar className="h-[22px] w-20 rounded-full" />
+          <Bar className="ml-auto h-4 w-16" />
+        </div>
+        <div aria-hidden>
+          <Bar className="mt-1 h-5 w-full" />
+          <Bar className="h-5 w-2/3" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Inbox skeleton list: one status announcement for the whole list,
+ * matching the inbox Card (divide-y, overflow-hidden). */
+export function NotificationListSkeleton() {
+  const { t } = useApp();
+  return (
+    <div
+      role="status"
+      aria-label={t("common", "loading")}
+      data-skeleton="notification-list"
+      className="divide-y divide-ink/10 overflow-hidden rounded-xl bg-white shadow-card"
+    >
+      {[0, 1, 2, 3, 4].map((i) => (
+        <NotificationRowSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+/** Moderation report/appeal card: badge row + target block + reason
+ * lines + action button row. Matches ReportCard/AppealCard (Card p-5,
+ * badge row, target label + link, reason text-sm, button row with a
+ * top border). Appeal cards share this shape closely enough that one
+ * skeleton serves both lists. */
+export function ReportCardSkeleton() {
+  const { t } = useApp();
+  return (
+    <div
+      role="status"
+      aria-label={t("common", "loading")}
+      data-skeleton="report-card"
+      className="rounded-xl bg-white p-5 shadow-card"
+    >
+      <div className="flex flex-wrap items-center gap-2" aria-hidden>
+        <Bar className="h-[22px] w-16 rounded-full" />
+        <Bar className="h-[22px] w-20 rounded-full" />
+        <Bar className="ml-auto h-4 w-16" />
+      </div>
+      <div className="mt-3" aria-hidden>
+        <Bar className="h-4 w-16" />
+        <Bar className="mt-1 h-5 w-48" />
+      </div>
+      <div aria-hidden>
+        <Bar className="mt-2 h-5 w-full" />
+        <Bar className="h-5 w-3/4" />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-ink/10 pt-4" aria-hidden>
+        <Bar className="h-8 w-24 rounded-lg" />
+        <Bar className="h-8 w-24 rounded-lg" />
+        <Bar className="h-8 w-28 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+/** Metrics grid card: big number + label. Matches the metrics Card
+ * (p-5, number text-3xl = 36px, label text-sm). */
+export function MetricCardSkeleton() {
+  const { t } = useApp();
+  return (
+    <div
+      role="status"
+      aria-label={t("common", "loading")}
+      data-skeleton="metric-card"
+      className="rounded-xl bg-white p-5 shadow-card"
+    >
+      <Bar className="h-9 w-20" />
+      <Bar className="mt-1 h-5 w-24" />
+    </div>
+  );
+}
+
+/** Audit log row: badge + target type + link + byline. Matches the
+ * audit row (px-5 py-3 text-sm, badge, byline ml-auto). No status
+ * role of its own — it renders inside the audit Card wrapper. */
+export function AuditRowSkeleton() {
+  return (
+    <div data-skeleton="audit-row" className="flex flex-wrap items-center gap-2 px-5 py-3 text-sm">
+      <Bar className="h-[22px] w-16 rounded-full" />
+      <Bar className="h-5 w-20" />
+      <Bar className="h-5 w-40" />
+      <Bar className="ml-auto h-4 w-48" />
+    </div>
+  );
+}
+
+/** Audit skeleton list: one status announcement for the whole list,
+ * matching the audit Card (divide-y). */
+export function AuditListSkeleton() {
+  const { t } = useApp();
+  return (
+    <div
+      role="status"
+      aria-label={t("common", "loading")}
+      data-skeleton="audit-list"
+      className="divide-y divide-ink/10 rounded-xl bg-white shadow-card"
+    >
+      {[0, 1, 2, 3, 4].map((i) => (
+        <AuditRowSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+/** Featured row: position + title + author + move/remove buttons.
+ * Matches the featured row (px-5 py-3 text-sm, three sm buttons
+ * ml-auto). No status role of its own — it renders inside the
+ * featured Card wrapper. */
+export function FeaturedRowSkeleton() {
+  return (
+    <div data-skeleton="featured-row" className="flex flex-wrap items-center gap-2 px-5 py-3 text-sm">
+      <Bar className="h-5 w-8" />
+      <Bar className="h-5 w-48" />
+      <Bar className="h-5 w-24" />
+      <span className="ml-auto flex gap-2" aria-hidden>
+        <Bar className="h-8 w-20 rounded-lg" />
+        <Bar className="h-8 w-20 rounded-lg" />
+        <Bar className="h-8 w-24 rounded-lg" />
+      </span>
+    </div>
+  );
+}
+
+/** Featured skeleton list: one status announcement for the whole
+ * list, matching the featured Card (divide-y). */
+export function FeaturedListSkeleton() {
+  const { t } = useApp();
+  return (
+    <div
+      role="status"
+      aria-label={t("common", "loading")}
+      data-skeleton="featured-list"
+      className="divide-y divide-ink/10 rounded-xl bg-white shadow-card"
+    >
+      {[0, 1, 2, 3, 4].map((i) => (
+        <FeaturedRowSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+/** Curated-shelf editor card: name/tagline inputs + layout dropdown +
+ * accent dots + save/move buttons, add-item row, and story rows.
+ * Matches ShelfEditor (Card p-5, inputs min-w-[200px] flex-1 h-10,
+ * accent dots h-7, sm buttons h-8, item rows py-3 with # + title +
+ * author + three buttons). The view link and error line are
+ * conditional, so the skeleton takes the common case without them. */
+export function ShelfEditorSkeleton() {
+  const { t } = useApp();
+  return (
+    <div
+      role="status"
+      aria-label={t("common", "loading")}
+      data-skeleton="shelf-editor"
+      className="rounded-xl bg-white p-5 shadow-card"
+    >
+      <div className="flex flex-wrap items-center gap-2" aria-hidden>
+        <Bar className="h-10 min-w-[200px] flex-1 rounded-lg" />
+        <Bar className="h-10 min-w-[200px] flex-1 rounded-lg" />
+        <Bar className="h-10 w-32 rounded-lg" />
+        <span className="flex shrink-0 items-center gap-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <span key={i} className="h-7 w-7 animate-pulse rounded-full bg-ink/10" />
+          ))}
+        </span>
+        <Bar className="h-8 w-20 rounded-lg" />
+        <Bar className="h-8 w-20 rounded-lg" />
+        <Bar className="h-8 w-20 rounded-lg" />
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2" aria-hidden>
+        <Bar className="h-10 w-48 rounded-lg" />
+        <Bar className="h-8 w-24 rounded-lg" />
+      </div>
+      <div className="mt-4 divide-y divide-ink/10 border-t border-ink/10" aria-hidden>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex flex-wrap items-center gap-2 py-3 text-sm">
+            <Bar className="h-5 w-8" />
+            <Bar className="h-5 w-48" />
+            <Bar className="h-5 w-24" />
+            <span className="ml-auto flex gap-2">
+              <Bar className="h-8 w-16 rounded-lg" />
+              <Bar className="h-8 w-16 rounded-lg" />
+              <Bar className="h-8 w-20 rounded-lg" />
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Reader chapter load: floating bar + article header + body text.
+ * Matches the reader page (bar mx-3 sm:mx-auto max-w-3xl rounded-2xl
+ * px-2 py-1.5; article mx-auto mt-6 max-w-reader py-8 sm:py-12,
+ * centered eyebrow + h1 text-3xl/sm:text-4xl + byline + gold rule,
+ * body at the default 19px/1.8 = 34px line boxes). The article card
+ * background varies by theme, so the skeleton stays neutral white —
+ * a color change on load, not a layout shift. */
+export function ReaderChapterSkeleton() {
+  const { t } = useApp();
+  return (
+    <div role="status" aria-label={t("common", "loading")} data-skeleton="reader-chapter">
+      <div className="-mx-4 min-h-screen bg-paper px-0 pb-8 pt-4">
+        <div className="mx-3 flex max-w-3xl items-center gap-2 rounded-2xl border border-ink/10 bg-sage px-2 py-1.5 shadow-lift sm:mx-auto" aria-hidden>
+          <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-white" />
+          <Bar className="hidden h-5 min-w-0 flex-1 sm:block" />
+          <Bar className="h-[33px] min-w-0 flex-1 rounded-lg !bg-white" />
+        </div>
+        <div className="mx-auto mt-6 max-w-reader rounded-none bg-white px-5 py-8 shadow-card sm:rounded-2xl sm:px-10 sm:py-12">
+          <div className="mb-8 text-center" aria-hidden>
+            <Bar className="mx-auto h-4 w-64" />
+            <Bar className="mx-auto mt-2 h-9 w-3/4 sm:h-10" />
+            <Bar className="mx-auto h-9 w-1/2 sm:h-10" />
+            <Bar className="mx-auto mt-2 h-5 w-48" />
+            <Bar className="mx-auto mt-4 h-5 w-32" />
+          </div>
+          <div className="flex flex-col gap-6" aria-hidden>
+            {[5, 4, 3].map((lines, p) => (
+              <div key={p}>
+                {Array.from({ length: lines }).map((_, i) => (
+                  <Bar key={i} className={`h-[34px] ${i === lines - 1 ? "w-2/3" : "w-full"}`} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Reader comment: avatar + name + time + body lines. Matches the
+ * comment article (rounded-xl p-4, Avatar sm = h-8, name text-sm
+ * semibold, time text-xs, body text). */
+export function CommentSkeleton() {
+  const { t } = useApp();
+  return (
+    <div
+      role="status"
+      aria-label={t("common", "loading")}
+      data-skeleton="comment-row"
+      className="rounded-xl bg-white p-4 shadow-card"
+    >
+      <div className="flex items-center gap-2" aria-hidden>
+        <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-ink/10" />
+        <div className="min-w-0 flex-1">
+          <Bar className="h-5 w-32" />
+          <Bar className="mt-0.5 h-4 w-20" />
+        </div>
+      </div>
+      <div aria-hidden>
+        <Bar className="mt-2 h-5 w-full" />
+        <Bar className="h-5 w-2/3" />
+      </div>
+    </div>
+  );
+}
+
+/** Public keepsake page: back button + 4:5 canvas box + action
+ * buttons. Matches the /k/ page (max-w-xl, canvas 1080x1350 at
+ * full width, sm buttons h-8). The echo card is conditional, so the
+ * skeleton takes the no-echo case. */
+export function PublicKeepsakeSkeleton() {
+  const { t } = useApp();
+  return (
+    <div role="status" aria-label={t("common", "loading")} data-skeleton="public-keepsake" className="mx-auto max-w-xl">
+      <div className="mb-4" aria-hidden>
+        <Bar className="h-8 w-24 rounded-lg" />
+      </div>
+      <div className="overflow-hidden rounded-xl bg-white shadow-card" aria-hidden>
+        <div className="aspect-[4/5] w-full animate-pulse bg-ink/10" />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2" aria-hidden>
+        <Bar className="h-8 w-28 rounded-lg" />
+        <Bar className="h-8 w-40 rounded-lg" />
+      </div>
+    </div>
+  );
+}
