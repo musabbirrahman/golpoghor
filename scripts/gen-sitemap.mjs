@@ -28,7 +28,7 @@ const esc = (s) =>
 const seg = (s) => encodeURIComponent(s);
 
 const stories = await get(
-  "stories?select=id,slug,updated_at,author:profiles!stories_author_id_fkey(username)" +
+  "stories?select=id,slug,genre,updated_at,author:profiles!stories_author_id_fkey(username)" +
     "&status=in.(ongoing,complete)&order=updated_at.desc"
 );
 // A story is public only with >= 1 published chapter (story_is_public):
@@ -81,6 +81,51 @@ for (const sh of shelves) {
     priority: "0.6",
   });
 }
+// Genre landing pages (/genres/<slug>): only genres with >= 1 public
+// story, in taxonomy order. Slugs mirror src/lib/genres.ts (English label,
+// hyphenated); old English spellings normalize onto the canonical value.
+const GENRE_SLUGS = {
+  general: "general",
+  "ছোটগল্প": "short-story",
+  "সমকালীন": "contemporary",
+  "রোমান্স": "romance",
+  "রহস্য": "mystery",
+  "থ্রিলার": "thriller",
+  "ফ্যান্টাসি": "fantasy",
+  "হরর": "horror",
+  "ইতিহাস": "history",
+  "কবিতা": "poetry",
+};
+const GENRE_ALIASES = {
+  "short story": "ছোটগল্প",
+  "short-story": "ছোটগল্প",
+  "short stories": "ছোটগল্প",
+  contemporary: "সমকালীন",
+  romance: "রোমান্স",
+  mystery: "রহস্য",
+  thriller: "থ্রিলার",
+  fantasy: "ফ্যান্টাসি",
+  horror: "হরর",
+  history: "ইতিহাস",
+  historical: "ইতিহাস",
+  poetry: "কবিতা",
+  poem: "কবিতা",
+  poems: "কবিতা",
+};
+const normGenre = (g) =>
+  GENRE_SLUGS[g] ? g : (GENRE_ALIASES[(g ?? "").toLowerCase()] ?? null);
+const presentGenres = new Set(
+  publicStories.map((s) => normGenre(s.genre)).filter(Boolean)
+);
+const genreSlugs = Object.keys(GENRE_SLUGS).filter((v) =>
+  presentGenres.has(v)
+);
+for (const v of genreSlugs) {
+  urls.push({
+    loc: `${BASE}/genres/${GENRE_SLUGS[v]}`,
+    priority: "0.6",
+  });
+}
 
 const xml =
   `<?xml version="1.0" encoding="UTF-8"?>\n` +
@@ -97,5 +142,5 @@ const xml =
 
 writeFileSync(new URL("../public/sitemap.xml", import.meta.url), xml);
 console.log(
-  `sitemap.xml written: ${urls.length} URLs (${publicStories.length} stories, ${publicProfiles.length} authors, ${shelves.length} shelves)`
+  `sitemap.xml written: ${urls.length} URLs (${publicStories.length} stories, ${publicProfiles.length} authors, ${shelves.length} shelves, ${genreSlugs.length} genres)`
 );

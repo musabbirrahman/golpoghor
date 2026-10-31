@@ -64,3 +64,27 @@ export function sortGenres(values: Iterable<string>): string[] {
   const rest = [...set].filter((v) => !BY_VALUE.has(v)).sort();
   return [...ordered, ...rest];
 }
+
+/** URL slug for a genre def, from its English label ("Short story" -> "short-story"). */
+export function genreSlug(def: GenreDef): string {
+  return def.en.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+/** Resolve any stored spelling, alias, or URL slug to its genre def (null when unknown). */
+export function genreFromSlug(slug: string): GenreDef | null {
+  const norm = slug.trim().toLowerCase();
+  return (
+    GENRES.find(
+      (g) =>
+        genreSlug(g) === norm ||
+        g.value === norm ||
+        g.aliases.some((a) => a.toLowerCase() === norm)
+    ) ?? null
+  );
+}
+
+/** English URL slug for any stored genre spelling (null when not in the taxonomy). */
+export function genreSlugFor(value: string): string | null {
+  const def = BY_VALUE.get(normalizeGenre(value));
+  return def ? genreSlug(def) : null;
+}

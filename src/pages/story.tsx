@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useUsernameRedirect } from "../lib/use-username-redirect";
 import { useStorySlugRedirect } from "../lib/use-story-slug-redirect";
-import { genreLabel } from "../lib/genres";
+import { genreLabel, genreSlugFor } from "../lib/genres";
 import { subLabel } from "../lib/subcategories";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
@@ -180,6 +180,14 @@ export function StoryPage() {
 
   const storyAuthorName =
     story?.author?.display_name ?? story?.author?.username;
+  // Genre landing page for the breadcrumb (story -> genre -> home trail):
+  // unknown spellings fall back to the old filtered-Discover address.
+  const genreSlug = story ? genreSlugFor(story.genre) : null;
+  const genrePath = genreSlug
+    ? `/genres/${genreSlug}`
+    : story
+      ? `/discover?genre=${encodeURIComponent(story.genre)}`
+      : "/discover";
   usePageMeta({
     title: story
       ? storyAuthorName
@@ -248,7 +256,7 @@ export function StoryPage() {
                   "@type": "ListItem",
                   position: 2,
                   name: genreLabel(story.genre, locale),
-                  item: `https://golponeer.com/discover?genre=${encodeURIComponent(story.genre)}`,
+                  item: `https://golponeer.com${genrePath}`,
                 },
                 {
                   "@type": "ListItem",
@@ -705,7 +713,7 @@ export function StoryPage() {
         </button>
         <Link to="/" className="hover:text-river hover:underline">{t("nav", "home")}</Link>
         <span aria-hidden>/</span>
-        <Link to={`/discover?genre=${encodeURIComponent(story.genre)}`} className="hover:text-river hover:underline">
+        <Link to={genrePath} className="hover:text-river hover:underline">
           {genreLabel(story.genre, locale)}
         </Link>
         <span aria-hidden>/</span>
