@@ -1232,28 +1232,78 @@ export function AuthorPage() {
   });
   const profile = profileQuery.data;
 
+  const storiesQuery = useQuery({
+    queryKey: ["stories", { authorId: profile?.id }],
+    queryFn: () => dp.listStories({ authorId: profile!.id, limit: 50 }),
+    enabled: !!profile,
+  });
+
+  // Author identity (search): an author with >= 1 public story gets the
+  // full treatment — "Author" in the title, a generated description when
+  // they wrote no bio, and jobTitle in the Person schema. Profiles with
+  // no public stories keep today's plain title/bio/schema (they are not
+  // in the sitemap either, so Google is not pointed at them as authors).
+  // listStories without includeDrafts counts public stories only, so the
+  // gate holds even on the author's own page.
+  const publicCount = storiesQuery.data?.total ?? 0;
+  const isAuthor = publicCount > 0;
+  const stories = storiesQuery.data?.stories ?? [];
+  const authorGenres = isAuthor
+    ? [...new Set(stories.map((s) => s.genre))].slice(0, 3)
+    : [];
+  const authorDescription = profile?.bio
+    ? profile.bio
+    : isAuthor && authorGenres.length > 0
+      ? `${profile?.display_name} is an author on GolpoNeer writing ${authorGenres.map((g) => genreLabel(g, "en")).join(", ")} stories. Read them free, no account needed.`
+      : undefined;
+  const avatar = profile ? dp.avatarUrl(profile.avatar_path) : null;
+
   usePageMeta({
-    title: profile ? `${profile.display_name} | GolpoNeer` : SHELL_TITLE,
-    description: profile?.bio,
+    title: profile
+      ? isAuthor
+        ? `${profile.display_name} · Author on GolpoNeer`
+        : `${profile.display_name} | GolpoNeer`
+      : SHELL_TITLE,
+    description: authorDescription,
     path: `/authors/${username}`,
   });
   useJsonLd(
     profile
       ? JSON.stringify({
           "@context": "https://schema.org",
-          "@type": "Person",
-          name: profile.display_name,
-          url: `https://golponeer.com/authors/${profile.username}`,
-          description: profile.bio || undefined,
+          "@graph": [
+            {
+              "@type": "Person",
+              name: profile.display_name,
+              url: `https://golponeer.com/authors/${profile.username}`,
+              description: profile.bio || undefined,
+              ...(isAuthor ? { jobTitle: "Author" } : {}),
+              ...(avatar ? { image: avatar } : {}),
+            },
+            // The author's stories, as a list, so search results can
+            // associate the works with the author (and offer them as
+            // sub-links under the author result). Only when the author
+            // has public stories; an empty list would say nothing.
+            ...(isAuthor
+              ? [
+                  {
+                    "@type": "ItemList",
+                    itemListElement: stories.map((s, i) => ({
+                      "@type": "ListItem",
+                      position: i + 1,
+                      item: {
+                        "@type": "Book",
+                        name: s.title,
+                        url: `https://golponeer.com/stories/${s.author?.username ?? username}/${s.slug}`,
+                      },
+                    })),
+                  },
+                ]
+              : []),
+          ],
         })
       : null
   );
-
-  const storiesQuery = useQuery({
-    queryKey: ["stories", { authorId: profile?.id }],
-    queryFn: () => dp.listStories({ authorId: profile!.id, limit: 50 }),
-    enabled: !!profile,
-  });
 
   const followQuery = useQuery({
     queryKey: ["follow", profile?.id],
