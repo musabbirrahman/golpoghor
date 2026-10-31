@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
-import { genreLabel } from "../lib/genres";
+import { genreLabel, genreSlugFor, normalizeGenre } from "../lib/genres";
 import { Cover, storyPath } from "./story-card";
 
 /** Live suggestions under the header search bar. Stories come from the same
- *  `q` search as the full results page (title, summary, author, tags);
- *  authors match username/display name; genres match the majors currently
- *  in use. Tapping any row goes straight to its target; the empty row
+ *  `q` search as the full results page (title, summary, author, tags,
+ *  sub-categories, genre); authors match username/display name; genres
+ *  match the majors currently in use, in any spelling or alias. Tapping any row goes straight to its target; the empty row
  *  submits the form (full search). The parent owns visibility — this
  *  component only renders when the debounced query is long enough.
  *  Keyboard: rows are focusable links/buttons, so ArrowDown from the
@@ -35,8 +35,10 @@ export function SearchSuggestions({ query, onPick }: { query: string; onPick: ()
   const stories = storiesQuery.data?.stories ?? [];
   const authors = authorsQuery.data ?? [];
   const needle = term.toLowerCase();
+  const mappedGenre = normalizeGenre(needle);
   const genres = (genresQuery.data ?? []).filter(
-    (g) => genreLabel(g, locale).toLowerCase().includes(needle) || g.toLowerCase().includes(needle),
+    (g) => genreLabel(g, locale).toLowerCase().includes(needle) || g.toLowerCase().includes(needle) ||
+      (genreSlugFor(mappedGenre) !== null && g === mappedGenre),
   ).slice(0, 3);
   const settled = storiesQuery.isSuccess && authorsQuery.isSuccess;
   const empty = settled && stories.length === 0 && authors.length === 0 && genres.length === 0;

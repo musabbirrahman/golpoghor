@@ -49,7 +49,7 @@ import {
   KEEPSAKE_EXCERPT_MAX,
   KEEPSAKE_TEMPLATES,
 } from "../data-provider";
-import { normalizeGenre, sortGenres } from "../genres";
+import { genreSlugFor, normalizeGenre, sortGenres } from "../genres";
 import { normalizeSubcategories } from "../subcategories";
 import { SEED_AUTHORS, SEED_STORIES, DEMO_PASSWORD } from "../demo-content";
 import {
@@ -639,12 +639,21 @@ export class DemoProvider implements DataProvider {
     if (f.q) {
       const term = f.q.trim().toLowerCase();
       if (term) {
+        // Sub-categories match partially on the id (plus the hyphenated
+        // form, so "warm romance" finds "warm-romance"); genre matches
+        // when the term maps onto a known genre, canonicalized so legacy
+        // spellings ("Mystery") group with their canonical value.
+        const mappedGenre = normalizeGenre(term);
+        const genreKnown = genreSlugFor(mappedGenre) !== null;
+        const hyphenTerm = term.replace(/ /g, "-");
         rows = rows.filter((s) => {
           const author = this.db.profiles.find((p) => p.id === s.author_id);
           return (
             s.title.toLowerCase().includes(term) ||
             s.summary.toLowerCase().includes(term) ||
             s.tags.some((t) => t.toLowerCase().includes(term)) ||
+            (s.subcategories ?? []).some((id) => id.includes(term) || id.includes(hyphenTerm)) ||
+            (genreKnown && normalizeGenre(s.genre) === mappedGenre) ||
             (author &&
               (author.username.includes(term) || author.display_name.toLowerCase().includes(term)))
           );

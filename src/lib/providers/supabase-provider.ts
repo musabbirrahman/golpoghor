@@ -43,7 +43,7 @@ import {
   KEEPSAKE_TEMPLATES,
   resolveNotificationPrefs,
 } from "../data-provider";
-import { genreAliases, normalizeGenre, sortGenres } from "../genres";
+import { genreAliases, genreSlugFor, normalizeGenre, sortGenres } from "../genres";
 import { normalizeSubcategories } from "../subcategories";
 import { AppError, countWords, docToText, readingMinutes, slugify, thumbPath, thumbSmPath } from "../utils";
 import {
@@ -445,8 +445,17 @@ export class SupabaseProvider implements DataProvider {
         const authorIds = (authors ?? []).map((a: any) => a.id);
         const ors = [`title.ilike.%${term}%`, `summary.ilike.%${term}%`];
         if (authorIds.length) ors.push(`author_id.in.(${authorIds.join(",")})`);
+        // genre match: a term that maps onto a known genre (any spelling
+        // or alias, e.g. "horror" -> হরর) also matches that genre's
+        // stories, in all stored spellings. Unknown terms add no clause,
+        // so every clause here can only widen results, never narrow them.
+        const mappedGenre = normalizeGenre(term);
+        if (genreSlugFor(mappedGenre) !== null) {
+          for (const sp of genreAliases(mappedGenre)) ors.push(`genre.eq.${sp}`);
+        }
         // tag match: PostgREST can't ILIKE text[] columns, so a DB function
-        // finds public stories with a partially-matching tag (demo parity).
+        // finds public stories with a partially-matching tag or
+        // sub-category (demo parity).
         // Skipped for owner-draft search (function is public-stories only).
         if (!f.includeDrafts) {
           const { data: tagIds } = await this.sb.rpc("story_ids_with_tag", {

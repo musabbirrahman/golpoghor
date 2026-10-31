@@ -149,6 +149,7 @@ const files = [
   "supabase/migrations/20261030180000_cover_thumbs_public.sql",
   "supabase/migrations/20261030190000_cover_thumbs_small.sql",
   "supabase/migrations/20261030230000_cover_folder_guard.sql",
+  "supabase/migrations/20261031130000_tag_search_subcategories.sql",
   "supabase/seed.sql",
 ];
 
