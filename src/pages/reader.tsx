@@ -801,6 +801,63 @@ export function ReaderPage() {
     dp.recordChapterView(chapter.id, anonId).catch(() => {});
   }, [story?.id, chapter?.id, chapter?.status, session?.user.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Phase 2 dwell: measure active reading seconds for this chapter.
+  // Active = tab visible + scroll/touch/keypress within the last 60s.
+  // The accumulator grows 1s per interval tick (never wall-clock
+  // deltas, so a timer waking from sleep cannot add a jump). Sends
+  // use Snapshot-and-Drain: the amount is zeroed synchronously
+  // before the call and restored only if the call throws — a false
+  // return (at-cap) still counts as sent. Hardening (Argon recheck):
+  // the accumulator is effect-local and a cancelled flag blocks
+  // restore after cleanup, so a failed flush can never restore its
+  // seconds into the next chapter's tracker.
+  useEffect(() => {
+    if (!story || !chapter) return;
+    if (session && session.user.id === story.author_id) return;
+    if (story.status !== "ongoing" && story.status !== "complete") return;
+    if (chapter.status !== "published") return;
+    const anonId = session ? undefined : getAnonViewerId();
+    const chapterId = chapter.id;
+    let accum = 0;
+    let lastActive = Date.now();
+    let cancelled = false;
+    const onActivity = () => {
+      lastActive = Date.now();
+    };
+    const flushDwell = () => {
+      if (accum <= 0) return;
+      const toSend = Math.min(accum, 60);
+      accum = 0;
+      dp.recordChapterDwell(chapterId, toSend, anonId).catch(() => {
+        if (!cancelled) accum = Math.min(accum + toSend, 60);
+      });
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flushDwell();
+    };
+    window.addEventListener("scroll", onActivity, { passive: true });
+    window.addEventListener("touchstart", onActivity, { passive: true });
+    window.addEventListener("keydown", onActivity);
+    document.addEventListener("visibilitychange", onVisibility);
+    let ticks = 0;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible" && Date.now() - lastActive <= 60_000) {
+        accum += 1;
+      }
+      ticks += 1;
+      if (ticks % 30 === 0) flushDwell();
+    }, 1000);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("scroll", onActivity);
+      window.removeEventListener("touchstart", onActivity);
+      window.removeEventListener("keydown", onActivity);
+      document.removeEventListener("visibilitychange", onVisibility);
+      flushDwell(); // chapter change / unmount: send what's left
+      cancelled = true;
+    };
+  }, [story?.id, chapter?.id, chapter?.status, session?.user.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Quote Studio selection: any non-collapsed selection inside the chapter
   // body shows the floating button. The button is deliberately NOT hidden
   // on collapsed selections: tapping it (and mobile selection handles)

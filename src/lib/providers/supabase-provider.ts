@@ -2122,6 +2122,16 @@ export class SupabaseProvider implements DataProvider {
     return data === true;
   }
 
+  async recordChapterDwell(chapterId: string, seconds: number, anonId?: string): Promise<boolean> {
+    const { data, error } = await this.sb.rpc("record_chapter_dwell", {
+      p_chapter_id: chapterId,
+      p_anon_id: anonId ?? null,
+      p_seconds: seconds,
+    });
+    if (error) throw toAppError(error);
+    return data === true;
+  }
+
   async listNotifications(opts?: { unreadOnly?: boolean; limit?: number }): Promise<AppNotification[]> {
     const me = await this.uid();
     let q = this.sb.from("notifications").select("*").eq("user_id", me).order("created_at", { ascending: false }).limit(opts?.limit ?? 50);

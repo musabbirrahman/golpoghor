@@ -152,6 +152,7 @@ const files = [
   "supabase/migrations/20261031130000_tag_search_subcategories.sql",
   "supabase/migrations/20261031140000_keepsakes_keeper_id.sql",
   "supabase/migrations/20261031150000_view_counting.sql",
+  "supabase/migrations/20261031160000_phase2_dwell.sql",
   "supabase/seed.sql",
 ];
 

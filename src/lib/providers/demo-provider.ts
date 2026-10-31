@@ -86,8 +86,8 @@ interface DemoDB {
   appeals: Appeal[];
   notifications: AppNotification[];
   storyViews: { story_id: string; viewer_id: string | null; anon_id: string | null; viewer_key: string; viewed_on: string; created_at: string }[];
-  /** Phase 1 chapter views: same shape as storyViews, keyed by chapter. */
-  chapterViews: { chapter_id: string; viewer_id: string | null; anon_id: string | null; viewer_key: string; viewed_on: string; created_at: string }[];
+  /** Phase 1 chapter views: same shape as storyViews, keyed by chapter. Phase 2 adds active_seconds (dwell). */
+  chapterViews: { chapter_id: string; viewer_id: string | null; anon_id: string | null; viewer_key: string; viewed_on: string; created_at: string; active_seconds: number }[];
   usernameRedirects: UsernameRedirect[];
   storySlugRedirects: StorySlugRedirect[];
   keepsakes: Keepsake[];
@@ -264,6 +264,13 @@ export class DemoProvider implements DataProvider {
             v.viewer_key ??= v.viewer_id ? `u:${v.viewer_id}` : "";
           }
           db.storyViews = db.storyViews.filter((v) => !!v.viewer_key);
+          // Phase 2 state migration: dwell seconds on pre-Phase-2 rows.
+          for (const v of db.chapterViews) {
+            v.anon_id ??= null;
+            v.viewer_key ??= v.viewer_id ? `u:${v.viewer_id}` : "";
+            v.active_seconds ??= 0;
+          }
+          db.chapterViews = db.chapterViews.filter((v) => !!v.viewer_key);
           for (const s of db.stories) s.popularity_score ??= 0;
           db.usernameRedirects ??= [];
           db.storySlugRedirects ??= [];
@@ -1440,18 +1447,21 @@ export class DemoProvider implements DataProvider {
     return new Date().toISOString().slice(0, 10);
   }
 
-  /** Demo mirror of refresh_story_popularity: trailing 30 days (today + 30 prior UTC dates). */
+  /** Demo mirror of refresh_story_popularity: trailing 30 days (today + 30 prior UTC dates). Phase 2 blend: 0.4 completion + 0.3 bonus + 0.3 read-through. */
   private refreshStoryPopularity(storyId: string, persist = true): void {
     const s = this.db.stories.find((x) => x.id === storyId);
     if (!s) return;
     const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
     const inWindow = (viewedOn: string) => viewedOn >= cutoff;
-    const total = this.db.chapters.filter((c) => c.story_id === storyId && c.status === "published").length;
+    const publishedChapters = this.db.chapters.filter((c) => c.story_id === storyId && c.status === "published");
+    const total = publishedChapters.length;
     if (total === 0) {
       s.popularity_score = 0;
       if (persist) this.persist();
       return;
     }
+    const wpm = s.language === "bn" ? 180 : 220;
+    const expectedOf = (wordCount: number) => (wordCount > 0 ? (wordCount / wpm) * 60 : 0);
     const readers = [
       ...new Set(
         this.db.storyViews
@@ -1459,17 +1469,25 @@ export class DemoProvider implements DataProvider {
           .map((v) => v.viewer_key)
       ),
     ];
-    const storyChapterIds = new Set(
-      this.db.chapters.filter((c) => c.story_id === storyId && c.status === "published").map((c) => c.id)
-    );
+    const chapterById = new Map(publishedChapters.map((c) => [c.id, c]));
     let depthSum = 0;
     for (const key of readers) {
-      const chaptersRead = new Set(
-        this.db.chapterViews
-          .filter((v) => v.viewer_key === key && inWindow(v.viewed_on) && storyChapterIds.has(v.chapter_id))
-          .map((v) => v.chapter_id)
-      ).size;
-      depthSum += 0.5 * (chaptersRead / total) + 0.5 * (chaptersRead / (chaptersRead + 3));
+      const views = this.db.chapterViews.filter(
+        (v) => v.viewer_key === key && inWindow(v.viewed_on) && chapterById.has(v.chapter_id)
+      );
+      const chaptersRead = new Set(views.map((v) => v.chapter_id)).size;
+      // Per-chapter best-day read-through, averaged over viewed chapters.
+      const bestByChapter = new Map<string, number>();
+      for (const v of views) {
+        const ch = chapterById.get(v.chapter_id)!;
+        const expected = expectedOf(ch.word_count);
+        const rt = expected > 0 ? Math.min(v.active_seconds ?? 0, expected) / expected : 0;
+        bestByChapter.set(v.chapter_id, Math.max(bestByChapter.get(v.chapter_id) ?? 0, rt));
+      }
+      const avgRt =
+        bestByChapter.size === 0 ? 0 : [...bestByChapter.values()].reduce((a, b) => a + b, 0) / bestByChapter.size;
+      depthSum +=
+        0.4 * (chaptersRead / total) + 0.3 * (chaptersRead / (chaptersRead + 3)) + 0.3 * avgRt;
     }
     const avgDepth = readers.length === 0 ? 0 : depthSum / readers.length;
     s.popularity_score = readers.length * (0.5 + 0.5 * avgDepth);
@@ -1531,7 +1549,52 @@ export class DemoProvider implements DataProvider {
       viewer_key: viewer.key,
       viewed_on: today,
       created_at: new Date().toISOString(),
+      active_seconds: 0,
     });
+    this.refreshStoryPopularity(s.id);
+    return true;
+  }
+
+  async recordChapterDwell(chapterId: string, seconds: number, anonId?: string): Promise<boolean> {
+    const c = this.db.chapters.find((x) => x.id === chapterId);
+    if (!c) return false;
+    if (c.status !== "published") return false; // draft / hidden chapters never count
+    const s = this.db.stories.find((x) => x.id === c.story_id);
+    if (!s) return false;
+    const viewer = this.viewerKey(anonId);
+    if (!viewer) return false;
+    if (viewer.viewerId && viewer.viewerId === s.author_id) return false;
+    if (!this.isPublicStory(s)) return false;
+    if (!Number.isFinite(seconds)) return false;
+    // Per-call clamp, mirroring the SQL least(greatest(p, 0), 60).
+    const clamped = Math.min(Math.max(Math.floor(seconds), 0), 60);
+    if (clamped === 0) return false;
+    if (!c.word_count || c.word_count <= 0) return false;
+    const expected = (c.word_count / (s.language === "bn" ? 180 : 220)) * 60;
+    const cap = Math.ceil(1.5 * expected);
+    if (cap <= 0) return false;
+    const today = this.utcToday();
+    let row = this.db.chapterViews.find(
+      (v) => v.chapter_id === chapterId && v.viewer_key === viewer.key && v.viewed_on === today
+    );
+    if (!row) {
+      // Dwell implies a view, but respects the Phase 1 50-chapter daily cap.
+      if (this.db.chapterViews.filter((v) => v.viewer_key === viewer.key && v.viewed_on === today).length >= 50)
+        return false;
+      row = {
+        chapter_id: chapterId,
+        viewer_id: viewer.viewerId,
+        anon_id: viewer.anonId,
+        viewer_key: viewer.key,
+        viewed_on: today,
+        created_at: new Date().toISOString(),
+        active_seconds: 0,
+      };
+      this.db.chapterViews.push(row);
+    }
+    const next = Math.min((row.active_seconds ?? 0) + clamped, cap);
+    if (next <= (row.active_seconds ?? 0)) return false; // already at the cap
+    row.active_seconds = next;
     this.refreshStoryPopularity(s.id);
     return true;
   }

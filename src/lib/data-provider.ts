@@ -253,6 +253,16 @@ export interface DataProvider {
    */
   recordChapterView(chapterId: string, anonId?: string): Promise<boolean>;
 
+  /**
+   * Record active reading seconds for a chapter (Phase 2 dwell).
+   * Same viewer rules and gates as recordChapterView; seconds are
+   * clamped per call (60) and capped per chapter per viewer per day
+   * (ceil of 1.5x expected reading time). Dwell implies a view row
+   * but never bumps view_count. Returns true when seconds increased
+   * the stored total.
+   */
+  recordChapterDwell(chapterId: string, seconds: number, anonId?: string): Promise<boolean>;
+
   // ---------------------------------------------------------- comments
   listComments(chapterId: string): Promise<Comment[]>;
   createComment(chapterId: string, body: string): Promise<Comment>;

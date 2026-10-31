@@ -608,18 +608,18 @@ let appealId;
   check("anon story view repeat not counted", (await dp.recordStoryView(story.id, ANON)) === false);
   check("anon chapter view counted", (await dp.recordChapterView(chIds[0], ANON)) === true);
   check("anon chapter view repeat not counted", (await dp.recordChapterView(chIds[0], ANON)) === false);
-  // score: 1 reader, 1/3 chapters -> depth = 0.5*(1/3) + 0.5*(1/4); score = 1*(0.5 + 0.5*depth)
+  // score (Phase 2 blend, read-through 0): 1 reader, 1/3 chapters -> depth = 0.4*(1/3) + 0.3*(1/4); score = 1*(0.5 + 0.5*depth)
   const scored = (await dp.listStories({ q: "View Score Tale" })).stories[0];
-  check("score after 1 reader 1/3 chapters", Math.abs((scored.popularity_score ?? -1) - 0.6458333333333334) < 1e-9);
+  check("score after 1 reader 1/3 chapters", Math.abs((scored.popularity_score ?? -1) - 0.6041666666666666) < 1e-9);
   check("story view_count is 1 after anon view", scored.view_count === 1);
 
   // signed-in reader passing the SAME anon uuid still counts (u: key != a: key)
   await dp.signIn("tanvir@golpoghor.demo", "golpoghor-demo-2026");
   check("signed-in view with anon uuid counted under account key", (await dp.recordStoryView(story.id, ANON)) === true);
   check("signed-in chapter view counted", (await dp.recordChapterView(chIds[1], ANON)) === true);
-  // now 2 readers, each 1/3 chapters -> score doubles
+  // now 2 readers, each 1/3 chapters -> score doubles (read-through still 0)
   const scored2 = (await dp.listStories({ q: "View Score Tale" })).stories[0];
-  check("score after 2 readers 1/3 chapters each", Math.abs((scored2.popularity_score ?? -1) - 1.2916666666666667) < 1e-9);
+  check("score after 2 readers 1/3 chapters each", Math.abs((scored2.popularity_score ?? -1) - 1.2083333333333333) < 1e-9);
 
   // author self-view excluded even when an anon id is supplied
   await dp.signOut();
@@ -646,6 +646,77 @@ let appealId;
   const f2 = utils.getAnonViewerId();
   globalThis.localStorage.getItem = origGet;
   check("anon fallback id stable within session", f1 === f2 && /^[0-9a-f-]{36}$/i.test(f1));
+}
+
+// ---------------------------------------------------------------- views Phase 2: dwell tracking
+{
+  const ANON2 = "22222222-3333-4444-5555-666666666666";
+  const ANON3 = "33333333-4444-5555-6666-777777777777";
+  const words220 = Array(220).fill("word").join(" ");
+  await dp.signOut();
+  await dp.signIn("test@example.com", "secret12");
+  // Story with 3 long chapters (220 words each -> expected 60s, cap 90s).
+  const story = await dp.createStory({ title: "Dwell Tale", slug: "dwell-tale", summary: "t", language: "en", genre: "general", tags: [], content_notice: "" });
+  const chIds = [];
+  for (let i = 1; i <= 3; i++) {
+    const ch = await dp.createChapter(story.id, { title: `Ch ${i}`, body: paragraphsToDoc([words220]) });
+    await dp.updateChapter(ch.id, { status: "published" });
+    chIds.push(ch.id);
+  }
+  await dp.updateStory(story.id, { status: "ongoing" });
+  // Tiny story: 1 chapter of 1 word (expected 0.27s, cap ceil = 1s).
+  const tiny = await dp.createStory({ title: "Tiny Tale", slug: "tiny-tale", summary: "t", language: "en", genre: "general", tags: [], content_notice: "" });
+  const tinyCh = await dp.createChapter(tiny.id, { title: "Only", body: paragraphsToDoc(["Hi."]) });
+  await dp.updateChapter(tinyCh.id, { status: "published" });
+  await dp.updateStory(tiny.id, { status: "ongoing" });
+  await dp.signOut();
+
+  // Dwell implies a view row but never bumps view_count.
+  check("dwell without prior view counts", (await dp.recordChapterDwell(chIds[0], 30, ANON2)) === true);
+  const dwellStory = (await dp.listStories({ q: "Dwell Tale" })).stories[0];
+  check("dwell does not bump view_count", dwellStory.view_count === 0);
+  // Accumulate to the 90s cap, then further dwell returns false.
+  check("dwell second 30s counts", (await dp.recordChapterDwell(chIds[0], 30, ANON2)) === true);
+  check("dwell third 30s counts (hits cap)", (await dp.recordChapterDwell(chIds[0], 30, ANON2)) === true);
+  check("dwell past cap returns false", (await dp.recordChapterDwell(chIds[0], 30, ANON2)) === false);
+  check("dwell zero seconds returns false", (await dp.recordChapterDwell(chIds[0], 0, ANON2)) === false);
+  check("dwell negative seconds returns false", (await dp.recordChapterDwell(chIds[0], -5, ANON2)) === false);
+  // Score: story view + 1 chapter fully dwelled -> depth = 0.4/3 + 0.3/4 + 0.3*1.0
+  await dp.recordStoryView(story.id, ANON2);
+  const scored = (await dp.listStories({ q: "Dwell Tale" })).stories[0];
+  check("score with full read-through", Math.abs((scored.popularity_score ?? -1) - 0.7541666666666666) < 1e-9);
+
+  // Tiny chapter reaches read-through 1.0 despite sub-second expected time.
+  await dp.recordStoryView(tiny.id, ANON2);
+  check("tiny chapter dwell counts", (await dp.recordChapterDwell(tinyCh.id, 30, ANON2)) === true);
+  const tinyScored = (await dp.listStories({ q: "Tiny Tale" })).stories[0];
+  check("tiny chapter score (rt 1.0)", Math.abs((tinyScored.popularity_score ?? -1) - 0.8875) < 1e-9);
+
+  // Author self-dwell excluded; draft chapter dwell excluded.
+  await dp.signIn("test@example.com", "secret12");
+  check("author self-dwell not counted", (await dp.recordChapterDwell(chIds[1], 30)) === false);
+  const draft = await dp.createStory({ title: "Dwell Draft", slug: "dwell-draft", summary: "t", language: "en", genre: "general", tags: [], content_notice: "" });
+  const draftCh = await dp.createChapter(draft.id, { title: "D", body: paragraphsToDoc([words220]) });
+  await dp.signOut();
+  check("draft chapter dwell not counted", (await dp.recordChapterDwell(draftCh.id, 30, ANON2)) === false);
+
+  // 50-chapter daily cap: dwell cannot create a 51st chapter-view row.
+  await dp.signIn("test@example.com", "secret12");
+  const big = await dp.createStory({ title: "Big Tale", slug: "big-tale", summary: "t", language: "en", genre: "general", tags: [], content_notice: "" });
+  const bigIds = [];
+  for (let i = 1; i <= 51; i++) {
+    const ch = await dp.createChapter(big.id, { title: `C ${i}`, body: paragraphsToDoc(["Some text here."]) });
+    await dp.updateChapter(ch.id, { status: "published" });
+    bigIds.push(ch.id);
+  }
+  await dp.updateStory(big.id, { status: "ongoing" });
+  await dp.signOut();
+  let viewed50 = true;
+  for (let i = 0; i < 50; i++) viewed50 = (await dp.recordChapterView(bigIds[i], ANON3)) === true && viewed50;
+  check("50 chapter views counted", viewed50);
+  check("dwell cannot create 51st chapter row", (await dp.recordChapterDwell(bigIds[50], 30, ANON3)) === false);
+  check("dwell on existing row still counts", (await dp.recordChapterDwell(bigIds[0], 30, ANON3)) === true);
+  await dp.signOut();
 }
 
 // ------------------------------------------------- zero-chapter publish
