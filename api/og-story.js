@@ -17,9 +17,12 @@
  * canonical URL. Username renames are followed the same way as the
  * client's resolveUsername (3 hops max, expiry-aware, loop-guarded).
  *
- * There is deliberately no per-story og:image: covers live in the private
- * covers bucket and a signed URL would expire (see the K7 reasoning in
- * api/og.js). The generic og-cover.jpg is used for every story.
+ * Per-story og:image: public stories use their own cover thumbnail from
+ * the public cover-thumbs bucket (permanent CDN URL, no expiry problem).
+ * This became possible with the Scale Phase 2 public bucket; before that
+ * covers lived only in the private bucket, so the generic image was used
+ * for every story. Drafts, hidden stories, and stories without a usable
+ * cover path still get the generic og-cover.jpg (and a 404, as before).
  *
  * Env: reuses the site's existing Vercel vars (VITE_SUPABASE_URL /
  * VITE_SUPABASE_ANON_KEY) — nothing new to configure.
@@ -103,7 +106,7 @@ export default async function handler(req, res) {
       canonicalUser = profile.username;
       authorName = profile.display_name || profile.username;
       const stories = await get(
-        `stories?author_id=eq.${encodeURIComponent(profile.id)}&slug=eq.${encodeURIComponent(slug)}&select=id,title,summary,status,slug`
+        `stories?author_id=eq.${encodeURIComponent(profile.id)}&slug=eq.${encodeURIComponent(slug)}&select=id,title,summary,status,slug,cover_path`
       );
       story = stories?.[0] ?? null;
       if (!story) {
@@ -114,7 +117,7 @@ export default async function handler(req, res) {
         const targetId = redirects?.[0]?.story_id;
         if (targetId) {
           const targets = await get(
-            `stories?id=eq.${encodeURIComponent(targetId)}&select=id,title,summary,status,slug`
+            `stories?id=eq.${encodeURIComponent(targetId)}&select=id,title,summary,status,slug,cover_path`
           );
           story = targets?.[0] ?? null;
         }
@@ -124,9 +127,22 @@ export default async function handler(req, res) {
 
   const isPublic = await isPublicStory(story);
 
+  // Public cover thumbnail, mirrored from the app's coverThumbPublicUrl:
+  // only a well-formed <author-uuid>/<file> path is trusted, so a stray
+  // cover_path value can never inject a foreign host or path. Anything
+  // else (no cover, malformed path, non-public story) falls back to the
+  // generic site cover below.
+  const COVER_PATH_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[A-Za-z0-9._-]+$/i;
+  function publicThumbUrl(s) {
+    const p = s?.cover_path;
+    if (!p || !COVER_PATH_RE.test(p)) return null;
+    const [uid, file] = p.split("/");
+    return `${base}/storage/v1/object/public/cover-thumbs/${encodeURIComponent(uid)}/thumb-${encodeURIComponent(file)}`;
+  }
+
   const siteTitle = "GolpoNeer";
   const siteDesc = "GolpoNeer — a nest for stories. Read and share Bangla and English stories.";
-  const cover = "https://golponeer.com/og-cover.jpg";
+  const cover = (isPublic && publicThumbUrl(story)) || "https://golponeer.com/og-cover.jpg";
   const canonical = isPublic
     ? `https://golponeer.com/stories/${encPath(canonicalUser)}/${encPath(story.slug)}`
     : "https://golponeer.com/";
