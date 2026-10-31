@@ -1855,6 +1855,17 @@ export class SupabaseProvider implements DataProvider {
     return this.removePublicThumb(before?.cover_path ?? null);
   }
 
+  /** Admin retry for a failed hide cleanup (Argon Q8a gap): re-runs the
+   * same one-retry removal for the story's current cover_path, without
+   * touching the story row. Returns true when there is nothing to clean
+   * or removal succeeded, false when it still failed. Moderators can
+   * run it any time the story is hidden — the original Hide button is
+   * gone by then, and the failure note alone gave them no second try. */
+  async retryPublicThumbCleanup(id: string): Promise<boolean> {
+    const story = await this.getStory(id);
+    return this.removePublicThumb(story?.cover_path ?? null);
+  }
+
   async moderateChapter(id: string, status: "hidden" | "published"): Promise<void> {
     const me = await this.uid();
     const before = await this.getChapter(id);

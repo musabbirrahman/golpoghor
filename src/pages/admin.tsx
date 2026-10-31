@@ -102,6 +102,7 @@ function ReportCard({ report }: { report: Report }) {
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const [cleanupWarn, setCleanupWarn] = useState(false);
+  const [cleanupOk, setCleanupOk] = useState(false);
   const target = useTarget(report.target_type, report.target_id);
 
   const refresh = () => {
@@ -196,8 +197,21 @@ function ReportCard({ report }: { report: Report }) {
         {restorable && (
           <RestoreButton targetType={report.target_type} targetId={report.target_id} onDone={refresh} />
         )}
+        {report.target_type === "story" && isHidden && (
+          <Button size="sm" variant="secondary" disabled={!!busy}
+            onClick={async () => {
+              setCleanupWarn(false);
+              setCleanupOk(false);
+              const ok = await act("retryThumb", () => dp.retryPublicThumbCleanup(report.target_id));
+              if (ok) setCleanupOk(true);
+              else setCleanupWarn(true);
+            }}>
+            {t("moderation", "retryThumbCleanup")}
+          </Button>
+        )}
         {busy && <span className="self-center text-xs text-ink-faint">{t("common", "loading")}</span>}
         {cleanupWarn && <p className="w-full text-sm text-clay">{t("moderation", "thumbCleanupWarn")}</p>}
+        {cleanupOk && <p className="w-full text-sm text-river">{t("moderation", "thumbCleanupOk")}</p>}
       </div>
     </Card>
   );

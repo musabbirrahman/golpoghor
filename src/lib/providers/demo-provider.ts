@@ -1965,6 +1965,20 @@ export class DemoProvider implements DataProvider {
     return true;
   }
 
+  /** Demo parity for retryPublicThumbCleanup: drop the story's recorded
+   * thumbs (both sizes) and report success — demo storage never fails. */
+  async retryPublicThumbCleanup(id: string): Promise<boolean> {
+    const me = await this.requireUid();
+    this.requireModerator(me);
+    const s = this.db.stories.find((x) => x.id === id);
+    if (s?.cover_path) {
+      this.thumbStore.delete(s.cover_path);
+      this.thumbSmStore.delete(s.cover_path);
+      this.persist();
+    }
+    return true;
+  }
+
   async moderateChapter(id: string, status: "hidden" | "published"): Promise<void> {
     const me = await this.requireUid();
     this.requireModerator(me);

@@ -294,6 +294,7 @@ export interface DataProvider {
   listModerationEvents(targetType?: ReportTarget, targetId?: string): Promise<ModerationEvent[]>;
   logModerationEvent(action: string, targetType: ReportTarget, targetId: string, details: Record<string, unknown>): Promise<ModerationEvent>;
   moderateStory(id: string, status: "hidden" | "ongoing" | "complete"): Promise<boolean>;
+  retryPublicThumbCleanup(id: string): Promise<boolean>;
   moderateChapter(id: string, status: "hidden" | "published"): Promise<void>;
   moderateComment(id: string, status: "hidden" | "removed" | "visible"): Promise<void>;
   /** Restore hidden content to its pre-hide visibility; audited + notifies author. */
