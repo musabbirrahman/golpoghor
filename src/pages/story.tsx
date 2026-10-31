@@ -242,6 +242,17 @@ export function StoryPage() {
                 name: "GolpoNeer",
                 url: "https://golponeer.com/",
               },
+              // Story-result extras: the cover as the story's image, and
+              // the free-to-read signal. Both only for public stories —
+              // a draft preview is neither public nor freely accessible,
+              // and its thumb does not live in the public bucket.
+              ...(story.status === "ongoing" || story.status === "complete"
+                ? {
+                    image:
+                      dp.coverThumbPublicUrl(story.cover_path) || undefined,
+                    isAccessibleForFree: true,
+                  }
+                : {}),
             },
             {
               "@type": "BreadcrumbList",
