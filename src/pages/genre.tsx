@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
-import { usePageMeta } from "../lib/page-meta";
+import { usePageMeta, useJsonLd } from "../lib/page-meta";
 import { Layout } from "../components/layout";
 import { ButtonLink, EmptyState, Spinner } from "../components/ui";
 import { VerticalShelfList } from "../components/shelf-blocks";
@@ -51,6 +51,55 @@ export function GenrePage() {
     description: def ? genreDescription(def) : undefined,
     path: def ? `/genres/${genreSlug(def)}` : `/genres/${slug}`,
   });
+
+  // List-page schema, same pattern as author pages: a breadcrumb trail
+  // plus the genre's stories as a list, so search results can associate
+  // the works with the genre. No script for unknown slugs; no list when
+  // the genre has no stories yet.
+  useJsonLd(
+    def
+      ? JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                {
+                  "@type": "ListItem",
+                  position: 1,
+                  name: t("nav", "home"),
+                  item: "https://golponeer.com/",
+                },
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: `${def.bn} · ${def.en}`,
+                  item: `https://golponeer.com/genres/${genreSlug(def)}`,
+                },
+              ],
+            },
+            ...(stories.length > 0
+              ? [
+                  {
+                    "@type": "ItemList",
+                    itemListElement: stories
+                      .filter((s) => s.author?.username)
+                      .map((s, i) => ({
+                        "@type": "ListItem",
+                        position: i + 1,
+                        item: {
+                          "@type": "Book",
+                          name: s.title,
+                          url: `https://golponeer.com/stories/${s.author?.username}/${s.slug}`,
+                        },
+                      })),
+                  },
+                ]
+              : []),
+          ],
+        })
+      : null
+  );
 
   return (
     <Layout>

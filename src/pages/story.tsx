@@ -237,6 +237,7 @@ export function StoryPage() {
               description: story.summary || undefined,
               genre: story.genre || undefined,
               datePublished: story.published_at || undefined,
+              dateModified: story.updated_at || undefined,
               publisher: {
                 "@type": "Organization",
                 name: "GolpoNeer",
@@ -1290,6 +1291,23 @@ export function AuthorPage() {
               description: profile.bio || undefined,
               ...(isAuthor ? { jobTitle: "Author" } : {}),
               ...(avatar ? { image: avatar } : {}),
+            },
+            {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                {
+                  "@type": "ListItem",
+                  position: 1,
+                  name: t("nav", "home"),
+                  item: "https://golponeer.com/",
+                },
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: profile.display_name,
+                  item: `https://golponeer.com/authors/${profile.username}`,
+                },
+              ],
             },
             // The author's stories, as a list, so search results can
             // associate the works with the author (and offer them as
