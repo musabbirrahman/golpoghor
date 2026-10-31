@@ -8,8 +8,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { Layout } from "../components/layout";
 import { Avatar, Badge, Button, ButtonLink, EmptyState, Spinner, StatusBadge, LanguageBadge } from "../components/ui";
-import { AuthorHeroSkeleton, AuthorStoryCardSkeleton, ChapterRowSkeleton, MoreByAuthorSkeleton, StoryHeroSkeleton } from "../components/skeleton";
+import { AuthorHeroSkeleton, AuthorStoryCardSkeleton, ChapterRowSkeleton, KeepsakeCardSkeleton, MoreByAuthorSkeleton, StoryHeroSkeleton } from "../components/skeleton";
 import { Cover } from "../components/story-card";
+import { CARD_TEMPLATES, keepsakeAttribution } from "../lib/keepsake-card";
 import { ReportDialog } from "../components/report-dialog";
 import { formatDate, readingMinutes, timeAgo } from "../lib/utils";
 import { usePageMeta, useJsonLd, SHELL_TITLE } from "../lib/page-meta";
@@ -1233,10 +1234,9 @@ export function AuthorPage() {
   const queryClient = useQueryClient();
   const [reportOpen, setReportOpen] = useState(false);
   // Status tabs filter only the stories already loaded for this page —
-  // no new query, no data change. The Keepsakes tab from the reference
-  // is not built: it needs the author's public keepsakes, which this
-  // page does not load.
-  const [tab, setTab] = useState<"all" | "ongoing" | "complete">("all");
+  // no new query, no data change. The Keepsakes tab loads its own query
+  // (the keeper's public cards) below.
+  const [tab, setTab] = useState<"all" | "ongoing" | "complete" | "keepsakes">("all");
 
   const profileQuery = useQuery({
     queryKey: ["profile", "byUsername", username],
@@ -1247,6 +1247,12 @@ export function AuthorPage() {
   const storiesQuery = useQuery({
     queryKey: ["stories", { authorId: profile?.id }],
     queryFn: () => dp.listStories({ authorId: profile!.id, limit: 50 }),
+    enabled: !!profile,
+  });
+
+  const keepsakesQuery = useQuery({
+    queryKey: ["public-keepsakes", "byKeeper", profile?.id],
+    queryFn: () => dp.listPublicKeepsakesByKeeper(profile!.id, 50),
     enabled: !!profile,
   });
 
@@ -1413,6 +1419,7 @@ export function AuthorPage() {
           { key: "all" as const, label: t("story", "allStories") },
           { key: "ongoing" as const, label: t("story", "ongoing") },
           { key: "complete" as const, label: t("story", "complete") },
+          { key: "keepsakes" as const, label: t("story", "keepsakes") },
         ]).map((tb) => (
           <button
             key={tb.key}
@@ -1430,7 +1437,50 @@ export function AuthorPage() {
           overlap made the tab row 1px taller than its box and drew a
           miniature vertical scrollbar on desktop. */}
       <div className="h-px bg-ink/10" aria-hidden />
-      {storiesQuery.isLoading ? (
+      {tab === "keepsakes" ? (
+        keepsakesQuery.isLoading ? (
+          <div className="mt-6 flex max-w-2xl flex-col gap-4">
+            {[0, 1, 2].map((i) => <KeepsakeCardSkeleton key={i} />)}
+          </div>
+        ) : (keepsakesQuery.data ?? []).length ? (
+          <div className="mt-6 flex max-w-2xl flex-col gap-4">
+            {(keepsakesQuery.data ?? []).map((k) => {
+              const attr = keepsakeAttribution(
+                {
+                  title: k.source_title,
+                  author: { display_name: k.source_author_name },
+                  original_author: k.source_original_author,
+                  translator_name: k.source_translator_name,
+                  adapter_name: k.source_adapter_name,
+                },
+                locale
+              );
+              const tpl = CARD_TEMPLATES[k.template];
+              const excerpt = k.excerpt.length > 240 ? k.excerpt.slice(0, 240).trimEnd() + "…" : k.excerpt;
+              return (
+                <Link key={k.id} to={`/k/${k.slug}`} className="block min-w-0 rounded-xl p-5 shadow-card transition hover:-translate-y-0.5 hover:shadow-lg sm:p-6" style={{ backgroundColor: tpl.bg, color: tpl.ink }}>
+                  <p className="whitespace-pre-line break-words font-serif text-lg leading-relaxed sm:text-xl">“{excerpt}”</p>
+                  {k.echo && (
+                    <p className="mt-4 whitespace-pre-line break-words border-l-2 pl-3 font-serif text-base italic leading-relaxed" style={{ borderColor: tpl.accent, color: tpl.faint }}>{k.echo}</p>
+                  )}
+                  <div className="mt-5 pt-3" style={{ borderTop: `1px solid ${tpl.rule}` }}>
+                    <p className="break-words text-sm" style={{ color: tpl.faint }}>
+                      {attr.title ? `${attr.title} · ${attr.author}` : attr.author}
+                    </p>
+                    <p className="mt-1 text-xs" style={{ color: tpl.faint }}>
+                      {t("keepsakes", "keptBy")} {k.keeper_name}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mt-6">
+            <EmptyState title={t("story", "keepsakesEmpty")} />
+          </div>
+        )
+      ) : storiesQuery.isLoading ? (
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2, 3, 4, 5].map((i) => <AuthorStoryCardSkeleton key={i} />)}
         </div>

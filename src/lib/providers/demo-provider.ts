@@ -1734,6 +1734,7 @@ export class DemoProvider implements DataProvider {
       source_slug: story.slug,
       source_author_username: author?.username ?? "",
       keeper_name: keeper?.display_name ?? "",
+      keeper_id: k.owner_id,
       published_at: k.published_at,
       created_at: k.created_at,
     };
@@ -1749,6 +1750,19 @@ export class DemoProvider implements DataProvider {
   async listPublicKeepsakes(limit?: number): Promise<PublicKeepsake[]> {
     const rows = this.db.keepsakes
       .filter((k) => k.visibility === "public" && k.status === "active")
+      .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""))
+      .map((k) => this.toPublicKeepsake(k))
+      .filter((k): k is PublicKeepsake => k !== null);
+    return limit !== undefined ? rows.slice(0, limit) : rows;
+  }
+
+  /** Author Keepsakes tab (demo mirror). Argon guard 2026-10-31:
+   * toPublicKeepsake does NOT check visibility/status (that lives in
+   * the caller), so this method must keep all three predicates in its
+   * pre-filter — keeper + public + active — before mapping. */
+  async listPublicKeepsakesByKeeper(keeperId: string, limit?: number): Promise<PublicKeepsake[]> {
+    const rows = this.db.keepsakes
+      .filter((k) => k.owner_id === keeperId && k.visibility === "public" && k.status === "active")
       .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""))
       .map((k) => this.toPublicKeepsake(k))
       .filter((k): k is PublicKeepsake => k !== null);

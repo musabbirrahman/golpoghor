@@ -275,6 +275,8 @@ export interface PublicKeepsake {
   source_author_username: string;
   /** Display name of the keeper (owner) — public cards only, by design. */
   keeper_name: string;
+  /** Id of the keeper — public cards only; lets author pages filter by keeper. */
+  keeper_id: string;
   published_at: string | null;
   created_at: string;
 }

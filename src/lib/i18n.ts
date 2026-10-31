@@ -66,6 +66,11 @@ const dict = {
     chapterSingular: { bn: "অধ্যায়", en: "chapter" },
     ongoing: { bn: "চলমান", en: "Ongoing" },
     complete: { bn: "সমাপ্ত", en: "Complete" },
+    keepsakes: { bn: "কিপসেক", en: "Keepsakes" },
+    keepsakesEmpty: {
+      bn: "এই লেখকের এখনো কোনো পাবলিক কিপসেক নেই।",
+      en: "This author has no public keepsakes yet.",
+    },
     draft: { bn: "খসড়া", en: "Draft" },
     hidden: { bn: "লুকানো", en: "Hidden" },
     unpublished: { bn: "অপ্রকাশিত", en: "Unpublished" },

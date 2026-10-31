@@ -276,6 +276,7 @@ export interface DataProvider {
   getPublicKeepsake(slug: string): Promise<PublicKeepsake | null>;
   /** Restricted public projection only — never the base table. */
   listPublicKeepsakes(limit?: number): Promise<PublicKeepsake[]>;
+  listPublicKeepsakesByKeeper(keeperId: string, limit?: number): Promise<PublicKeepsake[]>;
   /** Per-story Sharing Licence (originals only, author-only actions). */
   getKeepsakeLicence(storyId: string): Promise<KeepsakeLicence>;
   acceptKeepsakeLicence(storyId: string): Promise<KeepsakeLicence>;

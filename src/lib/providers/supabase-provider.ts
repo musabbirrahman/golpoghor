@@ -79,6 +79,7 @@ function mapPublicKeepsake(r: any): PublicKeepsake {
     source_slug: r.source_slug,
     source_author_username: r.source_author_username,
     keeper_name: r.keeper_name,
+    keeper_id: r.keeper_id,
     published_at: r.published_at,
     created_at: r.created_at,
   };
@@ -1633,6 +1634,17 @@ export class SupabaseProvider implements DataProvider {
     // Newest first, so a limit means "latest N" (the homepage strip) —
     // not an arbitrary slice of an unordered whole-table download.
     let q = this.sb.rpc("keepsakes_public").order("published_at", { ascending: false });
+    if (limit !== undefined) q = q.limit(limit);
+    const { data, error } = await q;
+    if (error) throw toAppError(error);
+    return (data ?? []).map((r: any) => mapPublicKeepsake(r));
+  }
+
+  /** Author Keepsakes tab: the keeper's own public cards, newest first.
+   * The .eq filter only subsets the projection's rows — it cannot add
+   * a row the unfiltered projection would not return (Argon 2026-10-31). */
+  async listPublicKeepsakesByKeeper(keeperId: string, limit?: number): Promise<PublicKeepsake[]> {
+    let q = this.sb.rpc("keepsakes_public").eq("keeper_id", keeperId).order("published_at", { ascending: false });
     if (limit !== undefined) q = q.limit(limit);
     const { data, error } = await q;
     if (error) throw toAppError(error);
