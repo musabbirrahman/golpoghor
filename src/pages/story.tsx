@@ -12,7 +12,7 @@ import { AuthorHeroSkeleton, AuthorStoryCardSkeleton, ChapterRowSkeleton, Keepsa
 import { Cover } from "../components/story-card";
 import { CARD_TEMPLATES, keepsakeAttribution } from "../lib/keepsake-card";
 import { ReportDialog } from "../components/report-dialog";
-import { formatDate, readingMinutes, timeAgo } from "../lib/utils";
+import { formatDate, getAnonViewerId, readingMinutes, timeAgo } from "../lib/utils";
 import { usePageMeta, useJsonLd, SHELL_TITLE } from "../lib/page-meta";
 import type { TiptapNode } from "../lib/types";
 
@@ -317,12 +317,13 @@ export function StoryPage() {
 
   const isOwner = !!session && !!story && session.user.id === story.author_id;
 
-  // Count the view once per reader per day (provider enforces dedup,
-  // no-self-views and public-only; guests are not tracked).
+  // Count the view once per viewer per day (provider enforces dedup,
+  // no-self-views and public-only). Signed-out visitors count too, via a
+  // random per-browser id — no IP address, no identity.
   useEffect(() => {
-    if (!story || !session || isOwner) return;
+    if (!story || isOwner) return;
     if (story.status !== "ongoing" && story.status !== "complete") return;
-    dp.recordStoryView(story.id)
+    dp.recordStoryView(story.id, session ? undefined : getAnonViewerId())
       .then((counted) => {
         if (counted) queryClient.invalidateQueries({ queryKey: ["story", username, slug] });
       })

@@ -10,7 +10,7 @@ import { CommentSkeleton, ReaderChapterSkeleton } from "../components/skeleton";
 import { ReportDialog } from "../components/report-dialog";
 import { PENDING_KEEP_KEY, QuoteStudio, type PendingKeepsake } from "../components/quote-studio";
 import { normalizeExcerpt } from "../lib/keepsake-card";
-import { readingMinutes, timeAgo, AppError } from "../lib/utils";
+import { readingMinutes, timeAgo, AppError, getAnonViewerId } from "../lib/utils";
 import { usePageMeta, SHELL_TITLE } from "../lib/page-meta";
 import type { Chapter, ReadingPosition, ReadingProgress, TiptapDoc, TiptapNode } from "../lib/types";
 
@@ -788,12 +788,18 @@ export function ReaderPage() {
     };
   }, [story, chapter, session, dp, restart]);
 
-  // Count the story view once per reader per day (dedup + exclusions in provider).
+  // Count the story view + the chapter view once per viewer per day
+  // (dedup + exclusions in provider). Signed-out visitors count too, via
+  // a random per-browser id — no IP address, no identity.
   useEffect(() => {
-    if (!story || !chapter || !session) return;
-    if (session.user.id === story.author_id) return;
-    dp.recordStoryView(story.id).catch(() => {});
-  }, [story?.id, chapter?.id, session?.user.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!story || !chapter) return;
+    if (session && session.user.id === story.author_id) return;
+    if (story.status !== "ongoing" && story.status !== "complete") return;
+    if (chapter.status !== "published") return;
+    const anonId = session ? undefined : getAnonViewerId();
+    dp.recordStoryView(story.id, anonId).catch(() => {});
+    dp.recordChapterView(chapter.id, anonId).catch(() => {});
+  }, [story?.id, chapter?.id, chapter?.status, session?.user.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Quote Studio selection: any non-collapsed selection inside the chapter
   // body shows the floating button. The button is deliberately NOT hidden

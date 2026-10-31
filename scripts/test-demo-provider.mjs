@@ -542,7 +542,7 @@ let appealId;
   const target = stories.find((x) => x.author_id !== me);
   check("view test story exists", !!target);
 
-  // guest (signed out) is not tracked
+  // guest (signed out) without an id is not tracked (anon id required)
   await dp.signOut();
   check("guest view not counted", (await dp.recordStoryView(target.id)) === false);
 
@@ -583,6 +583,69 @@ let appealId;
     const idx = mv.stories.findIndex((x) => x.id === target.id);
     return idx >= 0 && mv.stories.slice(0, idx).every((x) => x.view_count >= tCount);
   })());
+}
+
+// ---------------------------------------------------------------- views Phase 1: anonymous + chapter views + score
+{
+  const ANON = "11111111-2222-3333-4444-555555555555";
+  await dp.signOut();
+  await dp.signIn("test@example.com", "secret12");
+  const story = await dp.createStory({ title: "View Score Tale", slug: "view-score-tale", summary: "t", language: "en", genre: "general", tags: [], content_notice: "" });
+  const chIds = [];
+  for (let i = 1; i <= 3; i++) {
+    const ch = await dp.createChapter(story.id, { title: `Ch ${i}`, body: paragraphsToDoc([`Chapter ${i} body.`]) });
+    await dp.updateChapter(ch.id, { status: "published" });
+    chIds.push(ch.id);
+  }
+  await dp.updateStory(story.id, { status: "ongoing" });
+  await dp.signOut();
+
+  // guest without an id, or with a malformed id, is not tracked
+  check("anon view without id not counted", (await dp.recordStoryView(story.id)) === false);
+  check("anon view with malformed id not counted", (await dp.recordStoryView(story.id, "not-a-uuid")) === false);
+  // guest with an anon id counts once per story per day, once per chapter per day
+  check("anon story view counted", (await dp.recordStoryView(story.id, ANON)) === true);
+  check("anon story view repeat not counted", (await dp.recordStoryView(story.id, ANON)) === false);
+  check("anon chapter view counted", (await dp.recordChapterView(chIds[0], ANON)) === true);
+  check("anon chapter view repeat not counted", (await dp.recordChapterView(chIds[0], ANON)) === false);
+  // score: 1 reader, 1/3 chapters -> depth = 0.5*(1/3) + 0.5*(1/4); score = 1*(0.5 + 0.5*depth)
+  const scored = (await dp.listStories({ q: "View Score Tale" })).stories[0];
+  check("score after 1 reader 1/3 chapters", Math.abs((scored.popularity_score ?? -1) - 0.6458333333333334) < 1e-9);
+  check("story view_count is 1 after anon view", scored.view_count === 1);
+
+  // signed-in reader passing the SAME anon uuid still counts (u: key != a: key)
+  await dp.signIn("tanvir@golpoghor.demo", "golpoghor-demo-2026");
+  check("signed-in view with anon uuid counted under account key", (await dp.recordStoryView(story.id, ANON)) === true);
+  check("signed-in chapter view counted", (await dp.recordChapterView(chIds[1], ANON)) === true);
+  // now 2 readers, each 1/3 chapters -> score doubles
+  const scored2 = (await dp.listStories({ q: "View Score Tale" })).stories[0];
+  check("score after 2 readers 1/3 chapters each", Math.abs((scored2.popularity_score ?? -1) - 1.2916666666666667) < 1e-9);
+
+  // author self-view excluded even when an anon id is supplied
+  await dp.signOut();
+  await dp.signIn("test@example.com", "secret12");
+  check("author story self-view not counted even with anon id", (await dp.recordStoryView(story.id, ANON)) === false);
+  check("author chapter self-view not counted even with anon id", (await dp.recordChapterView(chIds[2], ANON)) === false);
+  await dp.signOut();
+
+  // popular sort orders by score desc (viewed story first; seed stories score 0)
+  const pop = await dp.listStories({ sort: "popular", limit: 50 });
+  check("popular sort puts viewed story first", pop.stories[0].id === story.id);
+  const pops = pop.stories.map((x) => x.popularity_score ?? 0);
+  check("popular sorted desc", pops.every((v, i) => i === 0 || pops[i - 1] >= v));
+
+  // uppercase anon id canonicalizes to lowercase (Postgres casts uuid::text lowercase)
+  const UPPER = "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE";
+  check("uppercase anon id counts", (await dp.recordStoryView(story.id, UPPER)) === true);
+  check("lowercase same id dedups (canonicalized)", (await dp.recordStoryView(story.id, UPPER.toLowerCase())) === false);
+
+  // fallback id is stable within a session when localStorage throws
+  const origGet = globalThis.localStorage.getItem;
+  globalThis.localStorage.getItem = () => { throw new Error("no storage"); };
+  const f1 = utils.getAnonViewerId();
+  const f2 = utils.getAnonViewerId();
+  globalThis.localStorage.getItem = origGet;
+  check("anon fallback id stable within session", f1 === f2 && /^[0-9a-f-]{36}$/i.test(f1));
 }
 
 // ------------------------------------------------- zero-chapter publish

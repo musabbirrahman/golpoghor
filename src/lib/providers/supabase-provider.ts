@@ -478,7 +478,9 @@ export class SupabaseProvider implements DataProvider {
       // tracked view counts first, newest first as tie-breaker
       q = q.order("view_count", { ascending: false }).order("published_at", { ascending: false, nullsFirst: false });
     } else if (f.sort === "popular") {
-      q = q.order("view_count", { ascending: false });
+      // Phase 1 popularity score (readers x depth, trailing 30 days),
+      // newest first as tie-breaker. Counts stay hidden; this only orders.
+      q = q.order("popularity_score", { ascending: false }).order("published_at", { ascending: false, nullsFirst: false });
     } else {
       q = q.order("published_at", { ascending: false, nullsFirst: false });
     }
@@ -2102,8 +2104,20 @@ export class SupabaseProvider implements DataProvider {
   }
 
   // ------------------------------------------------------ notifications
-  async recordStoryView(storyId: string): Promise<boolean> {
-    const { data, error } = await this.sb.rpc("record_story_view", { p_story_id: storyId });
+  async recordStoryView(storyId: string, anonId?: string): Promise<boolean> {
+    const { data, error } = await this.sb.rpc("record_story_view", {
+      p_story_id: storyId,
+      p_anon_id: anonId ?? null,
+    });
+    if (error) throw toAppError(error);
+    return data === true;
+  }
+
+  async recordChapterView(chapterId: string, anonId?: string): Promise<boolean> {
+    const { data, error } = await this.sb.rpc("record_chapter_view", {
+      p_chapter_id: chapterId,
+      p_anon_id: anonId ?? null,
+    });
     if (error) throw toAppError(error);
     return data === true;
   }

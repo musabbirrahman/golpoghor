@@ -237,12 +237,21 @@ export interface DataProvider {
   getInProgressStories(): Promise<{ story: Story; progress: ReadingProgress }[]>;
 
   /**
-   * Record a story view: at most once per signed-in reader per story per
-   * day. Guests are not tracked (no IP storage), authors never count their
+   * Record a story view: at most once per viewer per story per day.
+   * Signed-in viewers use their account id; signed-out viewers pass the
+   * anonymous id from getAnonViewerId() (never sent when signed in — the
+   * server ignores it for signed-in callers). Authors never count their
    * own stories, and drafts/hidden/unpublished stories never count.
    * Returns true when the view was counted.
    */
-  recordStoryView(storyId: string): Promise<boolean>;
+  recordStoryView(storyId: string, anonId?: string): Promise<boolean>;
+
+  /**
+   * Record a chapter view: at most once per viewer per chapter per day.
+   * Same viewer rules as recordStoryView; the chapter must be published
+   * and its story public. Returns true when the view was counted.
+   */
+  recordChapterView(chapterId: string, anonId?: string): Promise<boolean>;
 
   // ---------------------------------------------------------- comments
   listComments(chapterId: string): Promise<Comment[]>;

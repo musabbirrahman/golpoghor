@@ -205,3 +205,37 @@ export async function fileToAvatarFile(file: File): Promise<File> {
   if (!blob) throw new AppError("invalidImage", "That image could not be processed");
   return new File([blob], "avatar.jpg", { type: "image/jpeg" });
 }
+
+/**
+ * View counting (Phase 1): anonymous viewer id + UUID check.
+ * The id is a random per-browser UUID persisted in localStorage. It is
+ * sent ONLY when signed out, never merged into an account, and carries no
+ * identity: no IP address is stored, and clearing site data gives a fresh
+ * id. When signed in, the account id is the viewer key and no anon id is
+ * sent at all (the server ignores a supplied anon id for signed-in callers).
+ */
+export const ANON_VIEWER_KEY = "golponeer-anon-viewer";
+
+let sessionFallbackAnonId: string | null = null;
+
+export function isUuid(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+  );
+}
+
+export function getAnonViewerId(): string {
+  try {
+    const stored = localStorage.getItem(ANON_VIEWER_KEY);
+    if (stored && isUuid(stored)) return stored.toLowerCase();
+    const fresh = crypto.randomUUID();
+    localStorage.setItem(ANON_VIEWER_KEY, fresh);
+    return fresh;
+  } catch {
+    // localStorage unavailable (private mode, etc.): per-session id only.
+    // Counting still works; dedup lasts the session.
+    sessionFallbackAnonId ??= crypto.randomUUID();
+    return sessionFallbackAnonId;
+  }
+}

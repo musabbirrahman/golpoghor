@@ -84,6 +84,10 @@ export interface Story {
   content_notice: string;
   cover_path: string | null;
   view_count: number;
+  /** Hidden popularity aggregate (readers x depth, trailing 30 days).
+   *  NEVER displayed anywhere — it only orders the hidden `popular` sort.
+   *  Undefined on rows fetched before this column existed. */
+  popularity_score?: number;
   /** Admin-picked homepage order: null when not featured, otherwise 1-based position. */
   featured_position?: number | null;
   created_at: string;
