@@ -28,7 +28,7 @@ const esc = (s) =>
 const seg = (s) => encodeURIComponent(s);
 
 const stories = await get(
-  "stories?select=id,slug,genre,updated_at,author:profiles!stories_author_id_fkey(username)" +
+  "stories?select=id,slug,genre,cover_path,updated_at,author:profiles!stories_author_id_fkey(username)" +
     "&status=in.(ongoing,complete)&order=updated_at.desc"
 );
 // A story is public only with >= 1 published chapter (story_is_public):
@@ -62,10 +62,21 @@ const urls = [
   { loc: `${BASE}/contact`, priority: "0.3" },
 ];
 for (const s of publicStories) {
+  // Cover image for the sitemap: the story's public cover-thumb CDN URL.
+  // cover_path is "<author-id>/<file>"; the public thumb is the same path
+  // with "thumb-" prefixed to the filename. Only for stories that have a
+  // cover (coverless public stories simply get no image entry).
+  let image;
+  if (s.cover_path && s.cover_path.includes("/")) {
+    const i = s.cover_path.lastIndexOf("/");
+    const thumb = s.cover_path.slice(0, i + 1) + "thumb-" + s.cover_path.slice(i + 1);
+    image = `${SUPABASE_URL}/storage/v1/object/public/cover-thumbs/${thumb}`;
+  }
   urls.push({
     loc: `${BASE}/stories/${seg(s.author.username)}/${seg(s.slug)}`,
     lastmod: (s.updated_at ?? "").slice(0, 10) || undefined,
     priority: "0.7",
+    image,
   });
 }
 for (const p of publicProfiles) {
@@ -129,12 +140,13 @@ for (const v of genreSlugs) {
 
 const xml =
   `<?xml version="1.0" encoding="UTF-8"?>\n` +
-  `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+  `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n` +
   urls
     .map(
       (u) =>
         `  <url>\n    <loc>${esc(u.loc)}</loc>\n` +
         (u.lastmod ? `    <lastmod>${u.lastmod}</lastmod>\n` : "") +
+        (u.image ? `    <image:image><image:loc>${esc(u.image)}</image:loc></image:image>\n` : "") +
         `    <priority>${u.priority}</priority>\n  </url>`
     )
     .join("\n") +
@@ -142,5 +154,5 @@ const xml =
 
 writeFileSync(new URL("../public/sitemap.xml", import.meta.url), xml);
 console.log(
-  `sitemap.xml written: ${urls.length} URLs (${publicStories.length} stories, ${publicProfiles.length} authors, ${shelves.length} shelves, ${genreSlugs.length} genres)`
+  `sitemap.xml written: ${urls.length} URLs (${publicStories.length} stories, ${publicProfiles.length} authors, ${shelves.length} shelves, ${genreSlugs.length} genres, ${urls.filter((u) => u.image).length} cover images)`
 );
