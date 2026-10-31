@@ -17,7 +17,7 @@ import { StandaloneKeepsake } from "../components/standalone-keepsake";
  */
 export function KeepsakesShelfPage() {
   // Canonical only: /keepsakes as its own canonical (it inherited home's).
-  usePageMeta({ title: null, path: "/keepsakes" });
+  usePageMeta({ title: "Keepsakes shelf | GolpoNeer", description: "Quote cards kept by GolpoNeer readers — passages from Bangla and English stories, made to keep and share.", path: "/keepsakes" });
   const { t, dp, locale } = useApp();
   const navigate = useNavigate();
   const [makerOpen, setMakerOpen] = useState(false);

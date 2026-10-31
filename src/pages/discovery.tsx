@@ -598,7 +598,7 @@ export function DiscoverPage() {
   // Canonical only: title/description stay on the shell fallbacks, so the
   // only change is /discover as its own canonical (it inherited home's).
   // Filtered views canonicalize to the clean base URL, by design.
-  usePageMeta({ title: null, path: "/discover" });
+  usePageMeta({ title: "Discover stories | GolpoNeer", description: "Browse Bangla and English stories — new arrivals, featured picks, horror, mystery, complete novels and quick reads.", path: "/discover" });
   const { t, dp } = useApp();
   const [params, setParams] = useSearchParams();
   const language = (params.get("language") || "") as StoryLanguage | "";
@@ -867,7 +867,7 @@ export function DiscoverPage() {
 
 export function SearchPage() {
   // Canonical only, like DiscoverPage: /search, never the query URL.
-  usePageMeta({ title: null, path: "/search" });
+  usePageMeta({ title: "Search stories | GolpoNeer", description: "Search GolpoNeer stories by title or summary, with suggestions for stories, authors and genres.", path: "/search" });
   const { t } = useApp();
   const [params] = useSearchParams();
   const q = params.get("q") || "";
