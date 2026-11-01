@@ -307,6 +307,17 @@ const MYSTERY_ARTS: Record<string, string> = {
 };
 const MYSTERY_SUB_ORDER = ["detective", "supernatural"];
 
+// Panel art registry: major tag + sub-category worlds. The tag ROW is data-driven:
+// the major tag always shows; a sub tag shows only when some story carries it.
+// Sub tags stay inside the major genre's own group (Fantasy: epic, urban, dark).
+const FANTASY_ARTS: Record<string, string> = {
+  all: "/fantasy-panel-bg.jpg",
+  epic: "/fantasy-panel-bg-epic.jpg",
+  urban: "/fantasy-panel-bg-urban.jpg",
+  dark: "/fantasy-panel-bg-dark.jpg",
+};
+const FANTASY_SUB_ORDER = ["epic", "urban", "dark"];
+
 function GenrePanel({ stories, genre, arts, subOrder, baseRgb }: { stories: Story[]; genre: string; arts: Record<string, string>; subOrder: string[]; baseRgb: string }) {
   const { t, locale } = useApp();
   const [activeTag, setActiveTag] = useState("all");
@@ -598,7 +609,7 @@ export function DiscoverPage() {
   // Canonical only: title/description stay on the shell fallbacks, so the
   // only change is /discover as its own canonical (it inherited home's).
   // Filtered views canonicalize to the clean base URL, by design.
-  usePageMeta({ title: "Discover stories | GolpoNeer", description: "Browse Bangla and English stories — new arrivals, featured picks, horror, mystery, complete novels and quick reads.", path: "/discover" });
+  usePageMeta({ title: "Discover stories | GolpoNeer", description: "Browse Bangla and English stories — new arrivals, featured picks, horror, mystery, fantasy, complete novels and quick reads.", path: "/discover" });
   const { t, dp } = useApp();
   const [params, setParams] = useSearchParams();
   const language = (params.get("language") || "") as StoryLanguage | "";
@@ -680,6 +691,7 @@ export function DiscoverPage() {
   const classics = shelfBase.filter((s) => s.language === "bn" && s.pd_verified).slice(0, 8);
   const horror = shelfBase.filter((s) => normalizeGenre(s.genre) === "হরর").slice(0, 8);
   const mystery = shelfBase.filter((s) => normalizeGenre(s.genre) === "রহস্য").slice(0, 8);
+  const fantasy = shelfBase.filter((s) => normalizeGenre(s.genre) === "ফ্যান্টাসি").slice(0, 8);
   const shelvesLoading = featuredQuery.isLoading || shelfBaseQuery.isLoading || curatedQuery.isLoading;
 
   return (
@@ -790,6 +802,9 @@ export function DiscoverPage() {
               <ShelfRow stories={ongoing} />
             </section>
           )}
+          {/* Fantasy panel sits after Ongoing so a normal shelf always stands
+              between two full-environment panels (Horror / Mystery / Fantasy). */}
+          {fantasy.length > 0 && <GenrePanel stories={fantasy} genre="ফ্যান্টাসি" arts={FANTASY_ARTS} subOrder={FANTASY_SUB_ORDER} baseRgb="12,30,26" />}
           {quick.length > 0 && (
             <section className="mt-12 border-t border-ink/10 pt-10">
               <ShelfHead icon={<BoltIcon />} name={t("discover", "shelfQuick")} tagline={t("discover", "tagQuick")} accent="#6D5BD0" action={<ShelfViewAll to="/discover?time=under15" label={t("home", "viewAll")} accent="#6D5BD0" />} />
