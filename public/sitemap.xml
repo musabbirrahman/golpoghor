@@ -47,32 +47,37 @@
   <url>
     <loc>https://golponeer.com/stories/golponeer/sultanas-dream</loc>
     <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793534261906-8ygz6um6o4t.jpeg</image:loc></image:image>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://golponeer.com/stories/golponeer/the-moonstone</loc>
     <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793534235207-bqhksi4sc9g.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/the-strange-case-of-dr-jekyll-and-mr-hyde</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793534203606-vqagv537vy.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/the-time-machine</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793534170418-jj5nzwlvt5k.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/dubliners</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793534128867-09pmd8qgnq3f.jpeg</image:loc></image:image>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://golponeer.com/stories/golponeer/kopalkundala</loc>
     <lastmod>2026-11-01</lastmod>
     <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792475331617-sbgfij4gadl.jpeg</image:loc></image:image>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/the-strange-case-of-dr-jekyll-and-mr-hyde</loc>
-    <lastmod>2026-11-01</lastmod>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/the-time-machine</loc>
-    <lastmod>2026-11-01</lastmod>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/dubliners</loc>
-    <lastmod>2026-11-01</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
