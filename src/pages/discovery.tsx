@@ -435,7 +435,10 @@ function GenrePanel({ stories, genre, arts, subOrder, baseRgb }: { stories: Stor
                 <p className="mt-4 text-sm" style={{ color: "#D8CFC4" }}>{t("discover", "noResults")}</p>
               ) : (
                 <>
-                  <div ref={trackRef} onTouchStart={handleStripTouchStart} onTouchEnd={handleStripTouchEnd} className="no-scrollbar mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 lg:hidden">
+                  {/* items-start: without it the flex track stretches every page to the
+                      tallest page's height, and the grid then stretches a short last
+                      page's rows so their vertically-centred text floats mid-row. */}
+                  <div ref={trackRef} onTouchStart={handleStripTouchStart} onTouchEnd={handleStripTouchEnd} className="no-scrollbar mt-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto pb-2 lg:hidden">
                     {pages.map((page, pi) => (
                       <div key={pi} className="grid w-full shrink-0 snap-start grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
                         {page.map((st) => <PanelRow key={st.id} story={st} onHover={() => setHoverId(st.id)} active={detail?.id === st.id} />)}
