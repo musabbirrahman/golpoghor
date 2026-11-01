@@ -52,6 +52,7 @@ const GENRES = [
   { value: "রোমান্স", bn: "রোমান্স", en: "Romance", aliases: ["romance"] },
   { value: "রহস্য", bn: "রহস্য", en: "Mystery", aliases: ["mystery"] },
   { value: "থ্রিলার", bn: "থ্রিলার", en: "Thriller", aliases: ["thriller"] },
+  { value: "অ্যাডভেঞ্চার", bn: "অ্যাডভেঞ্চার", en: "Adventure", aliases: ["adventure"] },
   { value: "ফ্যান্টাসি", bn: "ফ্যান্টাসি", en: "Fantasy", aliases: ["fantasy"] },
   { value: "হরর", bn: "হরর", en: "Horror", aliases: ["horror"] },
   { value: "ইতিহাস", bn: "ইতিহাস", en: "History", aliases: ["history", "historical"] },

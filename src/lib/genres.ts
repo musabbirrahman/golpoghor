@@ -10,6 +10,9 @@ import type { Locale } from "./types";
  * 2026-10-29 (owner-approved extension of D6): Thriller added as a 10th
  * major — "thriller" moved out of Mystery's aliases into its own entry,
  * so thriller stories no longer file under Mystery.
+ * 2026-11-01 (owner-approved extension of D6): Adventure added as an
+ * 11th major, so adventure stories (e.g. The Call of the Wild) no longer
+ * fall back to General.
  */
 export interface GenreDef {
   value: string;
@@ -25,6 +28,7 @@ export const GENRES: GenreDef[] = [
   { value: "রোমান্স", bn: "রোমান্স", en: "Romance", aliases: ["romance"] },
   { value: "রহস্য", bn: "রহস্য", en: "Mystery", aliases: ["mystery"] },
   { value: "থ্রিলার", bn: "থ্রিলার", en: "Thriller", aliases: ["thriller"] },
+  { value: "অ্যাডভেঞ্চার", bn: "অ্যাডভেঞ্চার", en: "Adventure", aliases: ["adventure"] },
   { value: "ফ্যান্টাসি", bn: "ফ্যান্টাসি", en: "Fantasy", aliases: ["fantasy"] },
   { value: "হরর", bn: "হরর", en: "Horror", aliases: ["horror"] },
   { value: "ইতিহাস", bn: "ইতিহাস", en: "History", aliases: ["history", "historical"] },

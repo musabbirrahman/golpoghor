@@ -240,8 +240,8 @@ const DOCS: Record<string, LegalDoc> = {
       {
         q: { bn: "কী ধরনের গল্প পড়া যায়?", en: "What kind of stories can I read?" },
         a: {
-          bn: "ছোটগল্প, উপন্যাস, রোমান্স, রহস্য, থ্রিলার, হরর, ইতিহাস, ফ্যান্টাসি, কবিতা ও সমকালীন গল্প — সাথে রবীন্দ্রনাথ ঠাকুরসহ পাবলিক ডোমেইন ক্লাসিক।",
-          en: "Short stories, novels, romance, mystery, thriller, horror, history, fantasy, poetry, and contemporary stories — plus public-domain classics including Tagore.",
+          bn: "ছোটগল্প, উপন্যাস, রোমান্স, রহস্য, থ্রিলার, অ্যাডভেঞ্চার, হরর, ইতিহাস, ফ্যান্টাসি, কবিতা ও সমকালীন গল্প — সাথে রবীন্দ্রনাথ ঠাকুরসহ পাবলিক ডোমেইন ক্লাসিক।",
+          en: "Short stories, novels, romance, mystery, thriller, adventure, horror, history, fantasy, poetry, and contemporary stories — plus public-domain classics including Tagore.",
         },
       },
       {
