@@ -379,7 +379,17 @@ function GenrePanel({ stories, genre, arts, subOrder, baseRgb }: { stories: Stor
   const visible = activeTag === "all" ? stories : stories.filter((st) => (st.subcategories ?? []).map((s) => s.toLowerCase()).includes(activeTag));
   const pages: Story[][] = [];
   for (let i = 0; i < visible.length; i += 3) pages.push(visible.slice(i, i + 3));
-  const detail = visible.find((st) => st.id === hoverId) ?? visible[0];
+  // Desktop paging (mobile keeps its swipe strip untouched): the desktop grid
+  // used to show every story at once, so there was no way to reach a second
+  // page. Desktop pages hold 4 (a full 2x2 grid); controls render only when
+  // there is more than one page, and only on lg screens.
+  const [deskPage, setDeskPage] = useState(0);
+  useEffect(() => { setDeskPage(0); }, [activeTag]);
+  const DESK_PER_PAGE = 4;
+  const deskPageCount = Math.max(1, Math.ceil(visible.length / DESK_PER_PAGE));
+  const safeDeskPage = Math.min(deskPage, deskPageCount - 1);
+  const deskStories = visible.slice(safeDeskPage * DESK_PER_PAGE, safeDeskPage * DESK_PER_PAGE + DESK_PER_PAGE);
+  const detail = deskStories.find((st) => st.id === hoverId) ?? deskStories[0];
   const detailMinutes = detail ? readingMinutes(detail.word_count ?? 0, detail.language) : 0;
   const newCount = visible.filter((st) => {
     const d = st.published_at ? new Date(st.published_at).getTime() : NaN;
@@ -400,13 +410,18 @@ function GenrePanel({ stories, genre, arts, subOrder, baseRgb }: { stories: Stor
                 <div className="rounded-2xl border border-white/10 bg-black/35 p-5 backdrop-blur-sm">
                   <div className="flex gap-4">
                     <Cover story={detail} className="h-44 w-32 shrink-0 rounded-lg" thumb small />
-                    <p className="min-w-0 flex-1 text-sm leading-relaxed" style={{ color: "#EDE6DA", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>{detail.summary}</p>
+                    {/* line-clamp-6 keeps the summary shorter than the 176px cover, so
+                        the cover row — and therefore the whole detail card — is the
+                        same height no matter which story is hovered. */}
+                    <p className="min-w-0 flex-1 text-sm leading-relaxed line-clamp-6" style={{ color: "#EDE6DA", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>{detail.summary}</p>
                   </div>
-                  <h3 className="mt-4 font-serif text-xl font-bold leading-snug text-white" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>{detail.title}</h3>
+                  {/* Title always occupies two lines' height and meta always two, so
+                      hovering a short-titled story never shrinks the card. */}
+                  <h3 className="mt-4 font-serif text-xl font-bold leading-snug text-white clamp-2 min-h-[55px]" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>{detail.title}</h3>
                   <p className="mt-1 truncate text-sm" style={{ color: "#EDE6DA", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>
                     {t("story", "by")} {detail.original_author ?? detail.author?.display_name}
                   </p>
-                  <p className="mt-3 text-xs" style={{ color: "#D8CFC4", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>
+                  <p className="mt-3 text-xs line-clamp-2 min-h-[32px]" style={{ color: "#D8CFC4", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>
                     {detail.chapter_count ?? 0}{" "}
                     {(detail.chapter_count ?? 0) === 1 ? t("story", "chapterSingular") : t("story", "chapters")}
                     {detailMinutes > 0 ? ` · ~${detailMinutes} ${t("story", "minRead")}` : ""}
@@ -445,8 +460,17 @@ function GenrePanel({ stories, genre, arts, subOrder, baseRgb }: { stories: Stor
                       </div>
                     ))}
                   </div>
+                  {deskPageCount > 1 && (
+                    <div className="mt-4 hidden items-center justify-end gap-2 lg:flex">
+                      <span className="text-sm font-medium" style={{ color: "#EDE6DA" }}>
+                        {safeDeskPage + 1} / {deskPageCount}
+                      </span>
+                      <button type="button" aria-label={t("discover", "prevPage")} disabled={safeDeskPage === 0} onClick={() => setDeskPage(safeDeskPage - 1)} className="flex h-8 w-8 items-center justify-center rounded-full border border-white/25 text-lg leading-none text-white disabled:opacity-40">‹</button>
+                      <button type="button" aria-label={t("discover", "nextPage")} disabled={safeDeskPage === deskPageCount - 1} onClick={() => setDeskPage(safeDeskPage + 1)} className="flex h-8 w-8 items-center justify-center rounded-full border border-white/25 text-lg leading-none text-white disabled:opacity-40">›</button>
+                    </div>
+                  )}
                   <div className="mt-4 hidden gap-x-6 gap-y-4 lg:grid lg:grid-cols-2">
-                    {visible.map((st) => <PanelRow key={st.id} story={st} onHover={() => setHoverId(st.id)} active={detail?.id === st.id} />)}
+                    {deskStories.map((st) => <PanelRow key={st.id} story={st} onHover={() => setHoverId(st.id)} active={detail?.id === st.id} />)}
                   </div>
                 </>
               )}

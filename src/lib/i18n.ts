@@ -463,6 +463,8 @@ const dict = {
     },
     newChapters: { bn: "নতুন অধ্যায়", en: "New chapters" },
     newLabel: { bn: "নতুন", en: "new" },
+    prevPage: { bn: "আগের পৃষ্ঠা", en: "Previous page" },
+    nextPage: { bn: "পরের পৃষ্ঠা", en: "Next page" },
   },
   reports: {
     title: { bn: "রিপোর্ট করুন", en: "Report content" },
