@@ -10,6 +10,7 @@ import {
   genreSlug,
   type GenreDef,
 } from "../lib/genres";
+import { SUBCATEGORIES, subLabel } from "../lib/subcategories";
 
 /** English plural for a genre def ("Short story" -> "Short stories"). */
 function pluralEn(def: GenreDef): string {
@@ -115,6 +116,24 @@ export function GenrePage() {
           <div className="mb-4 mt-4">
             <h1 className="font-serif text-3xl font-bold">{def.bn} · {def.en}</h1>
             <div className="mt-2 h-0.5 w-10 bg-gold" aria-hidden />
+            {/* Sub-category landing pages: link the sub-categories this
+                genre's stories actually carry, so the new pages are reached
+                by internal links as well as the sitemap. */}
+            {(() => {
+              const order = new Map(SUBCATEGORIES.map((s, i) => [s.id, i]));
+              const present = [...new Set(stories.flatMap((s) => s.subcategories ?? []))]
+                .filter((id) => order.has(id))
+                .sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
+              return present.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {present.map((id) => (
+                    <Link key={id} to={`/subcategories/${id}`} className="rounded-full border border-ink/15 px-3 py-1 text-sm text-river hover:underline">
+                      {subLabel(id)}
+                    </Link>
+                  ))}
+                </div>
+              ) : null;
+            })()}
           </div>
           {stories.length === 0 ? (
             <EmptyState title={t("discover", "noResults")} />

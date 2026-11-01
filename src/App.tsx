@@ -105,6 +105,8 @@ const router = createBrowserRouter([
       { path: "/keepsakes", lazy: () => import("./pages/keepsakes-shelf").then((m) => ({ Component: m.KeepsakesShelfPage })) },
       { path: "/shelves/:slug", lazy: () => import("./pages/shelf").then((m) => ({ Component: m.ShelfPage })) },
       { path: "/genres/:slug", lazy: () => import("./pages/genre").then((m) => ({ Component: m.GenrePage })) },
+      { path: "/subcategories/:slug", lazy: () => import("./pages/tag").then((m) => ({ Component: m.SubcategoryPage })) },
+      { path: "/tags/:slug", lazy: () => import("./pages/tag").then((m) => ({ Component: m.TagPage })) },
       { path: "/k/:slug", lazy: () => import("./pages/public-keepsake").then((m) => ({ Component: m.PublicKeepsakePage })) },
       { path: "*", element: <NotFound /> },
     ],

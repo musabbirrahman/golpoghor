@@ -85,6 +85,44 @@ function genreDescription(def) {
   return `${bnPhrase} ও English ${plural} — Bangla ${plural} and English ${plural} on GolpoNeer, free, no account needed.`;
 }
 
+// Sub-category mirror of src/lib/subcategories.ts (ids + labels) and
+// src/pages/tag.tsx SUBCATEGORY_BN. Same hand-sync caveat as genres.
+const SUBCATEGORIES = [
+  { id: "detective", label: "Detective", bn: "গোয়েন্দা" },
+  { id: "supernatural", label: "Supernatural", bn: "অতিপ্রাকৃত" },
+  { id: "psychological", label: "Psychological", bn: "মনস্তাত্ত্বিক" },
+  { id: "gothic", label: "Gothic", bn: "গথিক" },
+  { id: "warm-romance", label: "Warm romance", bn: "উষ্ণ প্রেম" },
+  { id: "tragic-romance", label: "Tragic romance", bn: "বিয়োগান্ত প্রেম" },
+  { id: "war-conflict", label: "War & conflict", bn: "যুদ্ধ ও সংঘাত" },
+  { id: "freedom-struggle", label: "Freedom struggle", bn: "স্বাধীনতা সংগ্রাম" },
+  { id: "coming-of-age", label: "Coming of age", bn: "বেড়ে ওঠা" },
+  { id: "village-life", label: "Village life", bn: "গ্রামীণ জীবন" },
+  { id: "relationships", label: "Relationships", bn: "সম্পর্ক" },
+  { id: "childhood", label: "Childhood", bn: "শৈশব" },
+  { id: "human-nature", label: "Human nature", bn: "মানব প্রকৃতি" },
+  { id: "twist-irony", label: "Twist & irony", bn: "অপ্রত্যাশিত মোড়" },
+  { id: "everyday-life", label: "Everyday life", bn: "দৈনন্দিন জীবন" },
+  { id: "epic", label: "Epic", bn: "মহাকাব্যিক" },
+  { id: "urban", label: "Urban", bn: "নাগরিক" },
+  { id: "dark", label: "Dark", bn: "অন্ধকার" },
+  { id: "lyric", label: "Lyric", bn: "গীতিময়" },
+  { id: "narrative", label: "Narrative", bn: "আখ্যানমূলক" },
+];
+
+function subDescription(sub) {
+  return `বাংলা ${sub.bn} গল্প ও English ${sub.label} stories — Bangla ${sub.label} stories and English ${sub.label} stories on GolpoNeer, free, no account needed.`;
+}
+
+// Tag pages mirror of src/pages/tag.tsx TAG_PAGES (only "classics" today).
+const TAG_PAGES = {
+  classics: {
+    title: "ক্লাসিক · Classic stories | GolpoNeer",
+    description:
+      "ক্লাসিক গল্প ও Classic stories — timeless classic stories on GolpoNeer, free, no account needed.",
+  },
+};
+
 export default async function handler(req, res) {
   const params =
     req.query ?? Object.fromEntries(new URL(req.url, "https://golponeer.com").searchParams);
@@ -169,6 +207,24 @@ export default async function handler(req, res) {
       title = `${shelf.name} | GolpoNeer`;
       desc = shelf.tagline ? String(shelf.tagline).slice(0, 200) : siteDesc;
       canonical = `https://golponeer.com/shelves/${encPath(shelf.slug)}`;
+    }
+  } else if (kind === "subcategory" && params.slug) {
+    const sub = SUBCATEGORIES.find(
+      (s) => s.id === String(params.slug).trim().toLowerCase()
+    );
+    if (sub) {
+      found = true;
+      title = `${sub.bn} · ${sub.label} stories | GolpoNeer`;
+      desc = subDescription(sub);
+      canonical = `https://golponeer.com/subcategories/${sub.id}`;
+    }
+  } else if (kind === "tag" && params.slug) {
+    const tag = TAG_PAGES[String(params.slug).trim().toLowerCase()];
+    if (tag) {
+      found = true;
+      title = tag.title;
+      desc = tag.description;
+      canonical = `https://golponeer.com/tags/${encPath(String(params.slug).trim().toLowerCase())}`;
     }
   }
 

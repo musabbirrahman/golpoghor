@@ -28,7 +28,7 @@ const esc = (s) =>
 const seg = (s) => encodeURIComponent(s);
 
 const stories = await get(
-  "stories?select=id,slug,genre,cover_path,updated_at,author:profiles!stories_author_id_fkey(username)" +
+  "stories?select=id,slug,genre,subcategories,tags,cover_path,updated_at,author:profiles!stories_author_id_fkey(username)" +
     "&status=in.(ongoing,complete)&order=updated_at.desc"
 );
 // A story is public only with >= 1 published chapter (story_is_public):
@@ -137,6 +137,38 @@ for (const v of genreSlugs) {
     priority: "0.6",
   });
 }
+// Sub-category landing pages (/subcategories/<id>): only sub-categories
+// with >= 1 public story, in src/lib/subcategories.ts order. Kept out of
+// the sitemap until their first story arrives (same rule as genres).
+const SUBCATEGORY_ORDER = [
+  "detective", "supernatural", "psychological", "gothic", "warm-romance",
+  "tragic-romance", "war-conflict", "freedom-struggle", "coming-of-age",
+  "village-life", "relationships", "childhood", "human-nature",
+  "twist-irony", "everyday-life", "epic", "urban", "dark", "lyric",
+  "narrative",
+];
+const presentSubs = new Set(
+  publicStories.flatMap((s) => s.subcategories ?? [])
+);
+const subSlugs = SUBCATEGORY_ORDER.filter((id) => presentSubs.has(id));
+for (const id of subSlugs) {
+  urls.push({
+    loc: `${BASE}/subcategories/${id}`,
+    priority: "0.6",
+  });
+}
+// Tag landing pages (/tags/<slug>): only registered tags with >= 1 public
+// story (see src/pages/tag.tsx TAG_PAGES). Today that is just "classics",
+// matching the "Classic" and "ক্লাসিক" tags.
+const hasClassics = publicStories.some((s) =>
+  (s.tags ?? []).some((tag) => tag === "Classic" || tag === "ক্লাসিক")
+);
+if (hasClassics) {
+  urls.push({
+    loc: `${BASE}/tags/classics`,
+    priority: "0.6",
+  });
+}
 
 const xml =
   `<?xml version="1.0" encoding="UTF-8"?>\n` +
@@ -154,5 +186,5 @@ const xml =
 
 writeFileSync(new URL("../public/sitemap.xml", import.meta.url), xml);
 console.log(
-  `sitemap.xml written: ${urls.length} URLs (${publicStories.length} stories, ${publicProfiles.length} authors, ${shelves.length} shelves, ${genreSlugs.length} genres, ${urls.filter((u) => u.image).length} cover images)`
+  `sitemap.xml written: ${urls.length} URLs (${publicStories.length} stories, ${publicProfiles.length} authors, ${shelves.length} shelves, ${genreSlugs.length} genres, ${subSlugs.length} subcategories, ${hasClassics ? 1 : 0} tags, ${urls.filter((u) => u.image).length} cover images)`
 );
