@@ -114,12 +114,17 @@ function subDescription(sub) {
   return `বাংলা ${sub.bn} গল্প ও English ${sub.label} stories — Bangla ${sub.label} stories and English ${sub.label} stories on GolpoNeer, free, no account needed.`;
 }
 
-// Tag pages mirror of src/pages/tag.tsx TAG_PAGES (only "classics" today).
+// Tag pages mirror of src/pages/tag.tsx TAG_PAGES ("classics" + "tagore").
 const TAG_PAGES = {
   classics: {
     title: "ক্লাসিক · Classic stories | GolpoNeer",
     description:
       "ক্লাসিক গল্প ও Classic stories — timeless classic stories on GolpoNeer, free, no account needed.",
+  },
+  tagore: {
+    title: "রবীন্দ্রনাথ ঠাকুর · Tagore stories | GolpoNeer",
+    description:
+      "রবীন্দ্রনাথ ঠাকুরের গল্প ও Tagore stories — stories by Rabindranath Tagore on GolpoNeer, free, no account needed.",
   },
 };
 

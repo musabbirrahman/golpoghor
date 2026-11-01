@@ -37,9 +37,10 @@ export const SUBCATEGORY_BN: Record<string, string> = {
 };
 
 /** Tag landing pages: one registry entry per tag that gets a page.
- *  Only "classics" is registered for now — the other free tags are mostly
- *  author names, which would duplicate author pages. A story matches when
- *  it carries ANY of matchTags. */
+ *  Only "classics" and "tagore" are registered for now — the other free
+ *  tags are mostly author names, which would duplicate author pages, or
+ *  duplicates of genre/sub-category pages. A story matches when it
+ *  carries ANY of matchTags. */
 export const TAG_PAGES: Record<
   string,
   { bn: string; en: string; matchTags: string[]; description: string }
@@ -50,6 +51,13 @@ export const TAG_PAGES: Record<
     matchTags: ["Classic", "ক্লাসিক"],
     description:
       "ক্লাসিক গল্প ও Classic stories — timeless classic stories on GolpoNeer, free, no account needed.",
+  },
+  tagore: {
+    bn: "রবীন্দ্রনাথ ঠাকুর",
+    en: "Tagore",
+    matchTags: ["রবীন্দ্রনাথ ঠাকুর"],
+    description:
+      "রবীন্দ্রনাথ ঠাকুরের গল্প ও Tagore stories — stories by Rabindranath Tagore on GolpoNeer, free, no account needed.",
   },
 };
 
@@ -199,10 +207,11 @@ export function SubcategoryPage() {
 }
 
 /** Tag landing page (/tags/<slug>): every public story carrying a
- *  registered tag. Only "classics" is registered for now (see TAG_PAGES):
- *  it matches the "Classic" and "ক্লাসিক" tags, 26 stories today with no
- *  overlap between the two spellings. Unknown tags render the empty state
- *  and stay out of the sitemap. */
+ *  registered tag. "classics" and "tagore" are registered for now (see
+ *  TAG_PAGES): classics matches the "Classic" and "ক্লাসিক" tags, 26
+ *  stories today with no overlap between the two spellings; tagore
+ *  matches the "রবীন্দ্রনাথ ঠাকুর" tag, 6 stories today. Unknown tags
+ *  render the empty state and stay out of the sitemap. */
 export function TagPage() {
   const { slug = "" } = useParams();
   const key = slug.trim().toLowerCase();

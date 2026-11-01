@@ -158,14 +158,24 @@ for (const id of subSlugs) {
   });
 }
 // Tag landing pages (/tags/<slug>): only registered tags with >= 1 public
-// story (see src/pages/tag.tsx TAG_PAGES). Today that is just "classics",
-// matching the "Classic" and "ক্লাসিক" tags.
+// story (see src/pages/tag.tsx TAG_PAGES). Today that is "classics"
+// (matching the "Classic" and "ক্লাসিক" tags) and "tagore" (matching the
+// "রবীন্দ্রনাথ ঠাকুর" tag).
 const hasClassics = publicStories.some((s) =>
   (s.tags ?? []).some((tag) => tag === "Classic" || tag === "ক্লাসিক")
 );
 if (hasClassics) {
   urls.push({
     loc: `${BASE}/tags/classics`,
+    priority: "0.6",
+  });
+}
+const hasTagore = publicStories.some((s) =>
+  (s.tags ?? []).includes("রবীন্দ্রনাথ ঠাকুর")
+);
+if (hasTagore) {
+  urls.push({
+    loc: `${BASE}/tags/tagore`,
     priority: "0.6",
   });
 }
@@ -186,5 +196,5 @@ const xml =
 
 writeFileSync(new URL("../public/sitemap.xml", import.meta.url), xml);
 console.log(
-  `sitemap.xml written: ${urls.length} URLs (${publicStories.length} stories, ${publicProfiles.length} authors, ${shelves.length} shelves, ${genreSlugs.length} genres, ${subSlugs.length} subcategories, ${hasClassics ? 1 : 0} tags, ${urls.filter((u) => u.image).length} cover images)`
+  `sitemap.xml written: ${urls.length} URLs (${publicStories.length} stories, ${publicProfiles.length} authors, ${shelves.length} shelves, ${genreSlugs.length} genres, ${subSlugs.length} subcategories, ${(hasClassics ? 1 : 0) + (hasTagore ? 1 : 0)} tags, ${urls.filter((u) => u.image).length} cover images)`
 );
