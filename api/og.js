@@ -1,6 +1,6 @@
 /**
  * V4-27c OG function (K7). Shared Keepsake links (/k/:slug) are SPA
- * routes, so social crawlers would only ever see the generic shell meta.
+ * routes, so social and search crawlers would only ever see the generic shell meta.
  * Vercel rewrites crawler user-agents on /k/:slug to this function, which
  * reads the SAME restricted projection as the public page — so after an
  * unpublish / restrict / source-hide, new scrapes get generic meta, not

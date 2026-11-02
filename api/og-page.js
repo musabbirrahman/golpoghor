@@ -1,6 +1,6 @@
 /**
  * List/author bot OG. Shared author, genre, and shelf links are SPA
- * routes, so social crawlers would only ever see the generic shell meta.
+ * routes, so social and search crawlers would only ever see the generic shell meta.
  * Vercel rewrites crawler user-agents on those URLs to this function,
  * which serves each page's own title/description to bots — the same
  * pattern as api/og-story.js, for pages that carry no single story.

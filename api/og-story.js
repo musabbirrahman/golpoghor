@@ -1,6 +1,6 @@
 /**
  * Story bot OG (SEO item 4). Shared story links (/stories/:username/:slug)
- * are SPA routes, so social crawlers would only ever see the generic shell
+ * are SPA routes, so social and search crawlers would only ever see the generic shell
  * meta. Vercel rewrites crawler user-agents on story URLs to this function,
  * which serves the story's own title/summary to bots.
  *
