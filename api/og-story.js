@@ -2,7 +2,8 @@
  * Story bot OG (SEO item 4). Shared story links (/stories/:username/:slug)
  * are SPA routes, so social and search crawlers would only ever see the generic shell
  * meta. Vercel rewrites crawler user-agents on story URLs to this function,
- * which serves the story's own title/summary to bots.
+ * which serves the story's own title/summary to bots, plus the
+ * same Book + breadcrumb JSON-LD the rendered story page emits.
  *
  * Privacy rule (the whole point of the gating below): ONLY public stories
  * unfurl. A story counts as public iff status is ongoing/complete AND it
@@ -38,6 +39,37 @@ function esc(s) {
 
 function encPath(seg) {
   return encodeURIComponent(seg);
+}
+
+// JSON-LD helpers: the bot HTML carries the same Book + breadcrumb data
+// the rendered story page emits, so search crawlers get the associations
+// without running JavaScript. Script content is escaped so a stray "<"
+// in a title can never break out.
+function ldJson(obj) {
+  return JSON.stringify(obj)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026");
+}
+
+// Genre taxonomy mirror of src/lib/genres.ts (values + labels only;
+// og-page.js carries the same table with slugs and aliases).
+const GENRES = [
+  { value: "general", bn: "সাধারণ", en: "General" },
+  { value: "ছোটগল্প", bn: "ছোটগল্প", en: "Short story" },
+  { value: "সমকালীন", bn: "সমকালীন", en: "Contemporary" },
+  { value: "রোমান্স", bn: "রোমান্স", en: "Romance" },
+  { value: "রহস্য", bn: "রহস্য", en: "Mystery" },
+  { value: "থ্রিলার", bn: "থ্রিলার", en: "Thriller" },
+  { value: "অ্যাডভেঞ্চার", bn: "অ্যাডভেঞ্চার", en: "Adventure" },
+  { value: "ফ্যান্টাসি", bn: "ফ্যান্টাসি", en: "Fantasy" },
+  { value: "হরর", bn: "হরর", en: "Horror" },
+  { value: "ইতিহাস", bn: "ইতিহাস", en: "History" },
+  { value: "কবিতা", bn: "কবিতা", en: "Poetry" },
+];
+
+function genreSlug(def) {
+  return def.en.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 export default async function handler(req, res) {
@@ -106,7 +138,7 @@ export default async function handler(req, res) {
       canonicalUser = profile.username;
       authorName = profile.display_name || profile.username;
       const stories = await get(
-        `stories?author_id=eq.${encodeURIComponent(profile.id)}&slug=eq.${encodeURIComponent(slug)}&select=id,title,summary,status,slug,cover_path`
+        `stories?author_id=eq.${encodeURIComponent(profile.id)}&slug=eq.${encodeURIComponent(slug)}&select=id,title,summary,status,slug,cover_path,language,genre,published_at,updated_at,origin_type,original_author,translator_name`
       );
       story = stories?.[0] ?? null;
       if (!story) {
@@ -117,7 +149,7 @@ export default async function handler(req, res) {
         const targetId = redirects?.[0]?.story_id;
         if (targetId) {
           const targets = await get(
-            `stories?id=eq.${encodeURIComponent(targetId)}&select=id,title,summary,status,slug,cover_path`
+            `stories?id=eq.${encodeURIComponent(targetId)}&select=id,title,summary,status,slug,cover_path,language,genre,published_at,updated_at,origin_type,original_author,translator_name`
           );
           story = targets?.[0] ?? null;
         }
@@ -152,6 +184,68 @@ export default async function handler(req, res) {
     ? String(story.summary || "").slice(0, 200) || siteDesc
     : siteDesc;
 
+  // Book + breadcrumb JSON-LD, mirroring the rendered story page: for
+  // classics/translations the author is the original author, otherwise
+  // the publishing account; translator, language, genre, dates, cover,
+  // and the free-to-read signal match the page exactly. Non-public
+  // stories get no script, same as the 404 + generic meta above.
+  let jsonLd = null;
+  if (isPublic) {
+    const isClassic =
+      story.origin_type && story.origin_type !== "original" && story.original_author;
+    const genreDef = (GENRES.find((g) => g.value === story.genre)) ?? null;
+    const crumbs = [["Home", "https://golponeer.com/"]];
+    if (genreDef) {
+      crumbs.push([
+        `${genreDef.bn} · ${genreDef.en}`,
+        `https://golponeer.com/genres/${genreSlug(genreDef)}`,
+      ]);
+    }
+    crumbs.push([story.title, canonical]);
+    jsonLd = {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Book",
+          name: story.title,
+          author: isClassic
+            ? { "@type": "Person", name: story.original_author }
+            : {
+                "@type": "Person",
+                name: authorName,
+                url: `https://golponeer.com/authors/${encPath(canonicalUser)}`,
+              },
+          ...(story.translator_name
+            ? { translator: { "@type": "Person", name: story.translator_name } }
+            : {}),
+          inLanguage: story.language,
+          url: canonical,
+          description: story.summary || undefined,
+          genre: story.genre || undefined,
+          datePublished: story.published_at || undefined,
+          dateModified: story.updated_at || undefined,
+          publisher: {
+            "@type": "Organization",
+            name: "GolpoNeer",
+            url: "https://golponeer.com/",
+          },
+          ...(cover !== "https://golponeer.com/og-cover.jpg"
+            ? { image: cover, isAccessibleForFree: true }
+            : {}),
+        },
+        {
+          "@type": "BreadcrumbList",
+          itemListElement: crumbs.map(([name, url], i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name,
+            item: url,
+          })),
+        },
+      ],
+    };
+  }
+
   // Short cache: an unpublished / restricted story must stop unfurling promptly.
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=60, s-maxage=60");
@@ -170,6 +264,7 @@ export default async function handler(req, res) {
 <meta name="twitter:title" content="${esc(title)}">
 <meta name="twitter:description" content="${esc(desc)}">
 <meta name="twitter:image" content="${cover}">
+${jsonLd ? `<script type="application/ld+json">${ldJson(jsonLd)}</script>` : ""}
 </head><body>
 ${isPublic
   ? `<p><a href="${esc(canonical)}">Read this story on GolpoNeer</a></p>`
