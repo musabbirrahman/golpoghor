@@ -13,6 +13,9 @@ import type { Locale } from "./types";
  * 2026-11-01 (owner-approved extension of D6): Adventure added as an
  * 11th major, so adventure stories (e.g. The Call of the Wild) no longer
  * fall back to General.
+ * 2026-11-02 (owner-approved extension of D6): Science Fiction added as
+ * a 12th major, so science-fiction stories (e.g. The Time Machine) no
+ * longer file under Fantasy.
  */
 export interface GenreDef {
   value: string;
@@ -30,6 +33,7 @@ export const GENRES: GenreDef[] = [
   { value: "থ্রিলার", bn: "থ্রিলার", en: "Thriller", aliases: ["thriller"] },
   { value: "অ্যাডভেঞ্চার", bn: "অ্যাডভেঞ্চার", en: "Adventure", aliases: ["adventure"] },
   { value: "ফ্যান্টাসি", bn: "ফ্যান্টাসি", en: "Fantasy", aliases: ["fantasy"] },
+  { value: "বিজ্ঞান কল্পকাহিনী", bn: "বিজ্ঞান কল্পকাহিনী", en: "Science Fiction", aliases: ["science-fiction", "science fiction", "sci-fi"] },
   { value: "হরর", bn: "হরর", en: "Horror", aliases: ["horror"] },
   { value: "ইতিহাস", bn: "ইতিহাস", en: "History", aliases: ["history", "historical"] },
   { value: "কবিতা", bn: "কবিতা", en: "Poetry", aliases: ["poetry", "poem", "poems"] },
