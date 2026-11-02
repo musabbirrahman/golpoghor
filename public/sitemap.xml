@@ -45,9 +45,25 @@
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://golponeer.com/stories/golponeer/%E0%A6%A6%E0%A7%87%E0%A6%AC%E0%A6%A6%E0%A6%BE%E0%A6%B8</loc>
+    <loc>https://golponeer.com/stories/golponeer/anne-of-green-gables</loc>
     <lastmod>2026-11-01</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793510200108-bvtgmbtetf.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/risad/%E0%A6%86%E0%A6%AE%E0%A6%BE%E0%A6%A8%E0%A6%A4%E0%A7%87-%E0%A6%96%E0%A7%87%E0%A6%AF%E0%A6%BC%E0%A6%BE%E0%A6%A4%E0%A6%B0%E0%A7%80</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/58de1402-c91a-4e2b-9076-6349eb6eb076/thumb-1792229696976-px58jpdoz4.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/%E0%A6%86%E0%A6%A8%E0%A6%A8%E0%A7%8D%E0%A6%A6%E0%A6%AE%E0%A6%A0</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792475280526-wroyfi38fc.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/the-call-of-the-wild</loc>
+    <lastmod>2026-11-01</lastmod>
     <priority>0.7</priority>
   </url>
   <url>
@@ -57,45 +73,8 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://golponeer.com/stories/golponeer/alices-adventures-in-wonderland</loc>
+    <loc>https://golponeer.com/stories/golponeer/leaves-of-grass</loc>
     <lastmod>2026-11-01</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793509403704-cw78uydvomk.jpeg</image:loc></image:image>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/the-secret-garden</loc>
-    <lastmod>2026-11-01</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793510151797-e8u55s76gft.jpeg</image:loc></image:image>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/the-wonderful-wizard-of-oz</loc>
-    <lastmod>2026-11-01</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793510303958-y9gnjfz58cl.jpeg</image:loc></image:image>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/sultanas-dream</loc>
-    <lastmod>2026-11-01</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793534261906-8ygz6um6o4t.jpeg</image:loc></image:image>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/the-moonstone</loc>
-    <lastmod>2026-11-01</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793534235207-bqhksi4sc9g.jpeg</image:loc></image:image>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/the-strange-case-of-dr-jekyll-and-mr-hyde</loc>
-    <lastmod>2026-11-01</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793534203606-vqagv537vy.jpeg</image:loc></image:image>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/the-time-machine</loc>
-    <lastmod>2026-11-01</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793534170418-jj5nzwlvt5k.jpeg</image:loc></image:image>
     <priority>0.7</priority>
   </url>
   <url>
@@ -105,9 +84,38 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://golponeer.com/stories/golponeer/kopalkundala</loc>
+    <loc>https://golponeer.com/stories/golponeer/sultanas-dream</loc>
     <lastmod>2026-11-01</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792475331617-sbgfij4gadl.jpeg</image:loc></image:image>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793534261906-8ygz6um6o4t.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/the-strange-case-of-dr-jekyll-and-mr-hyde</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793534203606-vqagv537vy.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/the-adventure-of-the-speckled-band</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792478132325-07vedkmjnd3g.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/the-time-machine</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793534170418-jj5nzwlvt5k.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/the-garden-party</loc>
+    <lastmod>2026-11-01</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/how-much-land-does-a-man-need</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792477916783-blpxolxftf.jpeg</image:loc></image:image>
     <priority>0.7</priority>
   </url>
   <url>
@@ -117,27 +125,50 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://golponeer.com/stories/golponeer/%E0%A6%A6%E0%A7%87%E0%A6%AC%E0%A6%A6%E0%A6%BE%E0%A6%B8</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793510200108-bvtgmbtetf.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/the-wonderful-wizard-of-oz</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793510303958-y9gnjfz58cl.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/the-secret-garden</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793510151797-e8u55s76gft.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/the-moonstone</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793534235207-bqhksi4sc9g.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/%E0%A6%AE%E0%A6%B9%E0%A7%87%E0%A6%B6</loc>
+    <lastmod>2026-11-01</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/alices-adventures-in-wonderland</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1793509403704-cw78uydvomk.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/kopalkundala</loc>
+    <lastmod>2026-11-01</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792475331617-sbgfij4gadl.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://golponeer.com/stories/golponeer/the-tell-tale-heart</loc>
     <lastmod>2026-10-31</lastmod>
     <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792477140920-8yijhzou523.jpeg</image:loc></image:image>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/%E0%A6%86%E0%A6%A8%E0%A6%A8%E0%A7%8D%E0%A6%A6%E0%A6%AE%E0%A6%A0</loc>
-    <lastmod>2026-10-31</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792475280526-wroyfi38fc.jpeg</image:loc></image:image>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/the-adventure-of-the-speckled-band</loc>
-    <lastmod>2026-10-31</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792478132325-07vedkmjnd3g.jpeg</image:loc></image:image>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/risad/%E0%A6%86%E0%A6%AE%E0%A6%BE%E0%A6%A8%E0%A6%A4%E0%A7%87-%E0%A6%96%E0%A7%87%E0%A6%AF%E0%A6%BC%E0%A6%BE%E0%A6%A4%E0%A6%B0%E0%A7%80</loc>
-    <lastmod>2026-10-31</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/58de1402-c91a-4e2b-9076-6349eb6eb076/thumb-1792229696976-px58jpdoz4.jpeg</image:loc></image:image>
     <priority>0.7</priority>
   </url>
   <url>
@@ -153,21 +184,9 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://golponeer.com/stories/golponeer/the-open-window</loc>
+    <loc>https://golponeer.com/stories/golponeer/%E0%A6%95%E0%A6%BE%E0%A6%AC%E0%A7%81%E0%A6%B2%E0%A6%BF%E0%A6%93%E0%A6%AF%E0%A6%BC%E0%A6%BE%E0%A6%B2%E0%A6%BE</loc>
     <lastmod>2026-10-31</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792476559667-4u129b6t89c.jpeg</image:loc></image:image>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/how-much-land-does-a-man-need</loc>
-    <lastmod>2026-10-31</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792477916783-blpxolxftf.jpeg</image:loc></image:image>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/the-gift-of-the-magi</loc>
-    <lastmod>2026-10-31</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792476870358-6qfj9fw9gig.jpeg</image:loc></image:image>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792427326102-gxfscnime8.webp</image:loc></image:image>
     <priority>0.7</priority>
   </url>
   <url>
@@ -177,15 +196,27 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://golponeer.com/stories/golponeer/%E0%A6%B8%E0%A6%AE%E0%A6%BE%E0%A6%AA%E0%A7%8D%E0%A6%A4%E0%A6%BF</loc>
+    <loc>https://golponeer.com/stories/golponeer/the-gift-of-the-magi</loc>
     <lastmod>2026-10-31</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792428542958-9xrsjndp4nf.webp</image:loc></image:image>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792476870358-6qfj9fw9gig.jpeg</image:loc></image:image>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://golponeer.com/stories/golponeer/%E0%A6%95%E0%A7%8D%E0%A6%B7%E0%A7%81%E0%A6%A7%E0%A6%BF%E0%A6%A4-%E0%A6%AA%E0%A6%BE%E0%A6%B7%E0%A6%BE%E0%A6%A3</loc>
+    <loc>https://golponeer.com/stories/golponeer/the-bet</loc>
     <lastmod>2026-10-31</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792428204187-hdku4wmbfel.webp</image:loc></image:image>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792477552745-gv0xb9i009j.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/the-open-window</loc>
+    <lastmod>2026-10-31</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792476559667-4u129b6t89c.jpeg</image:loc></image:image>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/stories/golponeer/%E0%A6%B8%E0%A6%AE%E0%A6%BE%E0%A6%AA%E0%A7%8D%E0%A6%A4%E0%A6%BF</loc>
+    <lastmod>2026-10-31</lastmod>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792428542958-9xrsjndp4nf.webp</image:loc></image:image>
     <priority>0.7</priority>
   </url>
   <url>
@@ -195,15 +226,9 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://golponeer.com/stories/golponeer/%E0%A6%95%E0%A6%BE%E0%A6%AC%E0%A7%81%E0%A6%B2%E0%A6%BF%E0%A6%93%E0%A6%AF%E0%A6%BC%E0%A6%BE%E0%A6%B2%E0%A6%BE</loc>
+    <loc>https://golponeer.com/stories/golponeer/%E0%A6%95%E0%A7%8D%E0%A6%B7%E0%A7%81%E0%A6%A7%E0%A6%BF%E0%A6%A4-%E0%A6%AA%E0%A6%BE%E0%A6%B7%E0%A6%BE%E0%A6%A3</loc>
     <lastmod>2026-10-31</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792427326102-gxfscnime8.webp</image:loc></image:image>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://golponeer.com/stories/golponeer/the-bet</loc>
-    <lastmod>2026-10-31</lastmod>
-    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792477552745-gv0xb9i009j.jpeg</image:loc></image:image>
+    <image:image><image:loc>https://gwqngoywcupkytyxukfu.supabase.co/storage/v1/object/public/cover-thumbs/e619c3e3-5c7b-4c35-a93d-b7ea761f1b45/thumb-1792428204187-hdku4wmbfel.webp</image:loc></image:image>
     <priority>0.7</priority>
   </url>
   <url>
@@ -241,6 +266,10 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://golponeer.com/genres/adventure</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://golponeer.com/genres/fantasy</loc>
     <priority>0.6</priority>
   </url>
@@ -250,6 +279,10 @@
   </url>
   <url>
     <loc>https://golponeer.com/genres/history</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://golponeer.com/genres/poetry</loc>
     <priority>0.6</priority>
   </url>
   <url>
