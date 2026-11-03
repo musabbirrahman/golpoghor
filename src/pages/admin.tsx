@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
+import { usePageMeta } from "../lib/page-meta";
 import { Layout } from "../components/layout";
 import { Badge, Button, ButtonLink, Card, Dropdown, EmptyState, Input, Label, Modal, Spinner, Textarea } from "../components/ui";
 import { AuditListSkeleton, FeaturedListSkeleton, MetricCardSkeleton, ReportCardSkeleton, ShelfEditorSkeleton } from "../components/skeleton";
@@ -766,6 +767,7 @@ function MessageTab() {
 }
 
 export function AdminPage() {
+  usePageMeta({ robots: "noindex" });
   const { t, locale, dp } = useApp();
   const [tab, setTab] = useState<"queue" | "appeals" | "resolved" | "audit" | "metrics" | "featured" | "shelves" | "message">("queue");
 

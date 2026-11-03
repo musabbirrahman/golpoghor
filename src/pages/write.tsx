@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
+import { usePageMeta } from "../lib/page-meta";
 import { GENRES, genreLabel, normalizeGenre } from "../lib/genres";
 import { SUBCATEGORIES, normalizeSubcategories } from "../lib/subcategories";
 import { Layout } from "../components/layout";
@@ -30,6 +31,7 @@ function RequireAuthor({ children }: { children: React.ReactNode }) {
 }
 
 export function WriteDashboard() {
+  usePageMeta({ title: "Write on GolpoNeer", description: "Write and publish your stories on GolpoNeer — chapter by chapter, in Bangla and English. Sign in to start writing.", path: "/write" });
   const { t, dp, locale } = useApp();
   const storiesQuery = useQuery({
     queryKey: ["myStories"],
@@ -131,6 +133,7 @@ function PublishStoryButton({ storyId, onPublish, label }: { storyId: string; on
 }
 
 export function StoryFormPage() {
+  usePageMeta({ robots: "noindex" });
   const { id } = useParams();
   const isNew = !id;
   const { t, dp, locale, session, sessionLoading } = useApp();

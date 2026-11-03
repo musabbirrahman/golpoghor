@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { AppError, fileToAvatarFile } from "../lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
+import { usePageMeta } from "../lib/page-meta";
 import { resolveNotificationPrefs } from "../lib/data-provider";
 import type { NotificationPrefs, ReadingProgress, Story } from "../lib/types";
 import { MyKeepsakesSection } from "../components/my-keepsakes";
@@ -79,6 +80,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 export function LibraryPage() {
+  usePageMeta({ robots: "noindex" });
   const { t, dp, session } = useApp();
 
   const listQuery = useQuery({
@@ -207,6 +209,7 @@ export function LibraryPage() {
 }
 
 export function LibraryKeepsakesPage() {
+  usePageMeta({ robots: "noindex" });
   const { t } = useApp();
   const navigate = useNavigate();
   return (
@@ -225,6 +228,7 @@ export function LibraryKeepsakesPage() {
 }
 
 export function SettingsPage() {
+  usePageMeta({ robots: "noindex" });
   const { t, dp, profile, refreshSession, locale, setLocale } = useApp();
   const [displayName, setDisplayName] = useState(profile?.display_name ?? "");
   const [avatarError, setAvatarError] = useState<string | null>(null);

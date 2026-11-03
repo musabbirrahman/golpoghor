@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
+import { usePageMeta } from "../lib/page-meta";
 import { Layout } from "../components/layout";
 import { Badge, Button, ButtonLink, Card, EmptyState, Spinner } from "../components/ui";
 import { NotificationListSkeleton } from "../components/skeleton";
@@ -77,6 +78,7 @@ function NotificationRow({ n }: { n: AppNotification }) {
 }
 
 export function InboxPage() {
+  usePageMeta({ robots: "noindex" });
   const { t, dp } = useApp();
   const queryClient = useQueryClient();
 

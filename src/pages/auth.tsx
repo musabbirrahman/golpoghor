@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useApp } from "../lib/app-context";
+import { usePageMeta } from "../lib/page-meta";
 import { AppError } from "../lib/utils";
 import { NarrowLayout } from "../components/layout";
 import { Button, Card, FieldError, Input, Label } from "../components/ui";
@@ -27,6 +28,7 @@ function errorText(t: (s: any, k: string) => string, err: unknown): string | nul
 }
 
 export function LoginPage() {
+  usePageMeta({ title: "Sign in to GolpoNeer", description: "Sign in to GolpoNeer to write, publish, and read stories in Bangla and English.", path: "/login" });
   const { t, dp, refreshSession } = useApp();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -87,6 +89,7 @@ export function LoginPage() {
 }
 
 export function SignupPage() {
+  usePageMeta({ title: "Sign up for GolpoNeer", description: "Create a free GolpoNeer account and start writing — publish your stories chapter by chapter, and read stories in Bangla and English.", path: "/signup" });
   const { t, dp, isDemoMode } = useApp();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -170,6 +173,7 @@ export function SignupPage() {
 }
 
 export function ResetPasswordPage() {
+  usePageMeta({ robots: "noindex" });
   const { t, dp } = useApp();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -213,6 +217,7 @@ export function ResetPasswordPage() {
 }
 
 export function SetPasswordPage() {
+  usePageMeta({ robots: "noindex" });
   const { t, dp } = useApp();
   const navigate = useNavigate();
   const [password, setPassword] = useState("");

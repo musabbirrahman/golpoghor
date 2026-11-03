@@ -5,6 +5,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useApp } from "../lib/app-context";
+import { usePageMeta } from "../lib/page-meta";
 import { Layout } from "../components/layout";
 import { Button, ButtonLink, EmptyState, Modal, Spinner, StatusBadge } from "../components/ui";
 import { ChapterBody } from "./reader";
@@ -82,6 +83,7 @@ function LastChapterWarning({ storyId, chapterId }: { storyId: string; chapterId
 }
 
 export function ChapterEditorPage() {
+  usePageMeta({ robots: "noindex" });
   const { storyId, chapterId } = useParams();
   const isNew = !chapterId;
   const { t, locale, dp, session, sessionLoading } = useApp();

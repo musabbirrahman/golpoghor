@@ -147,6 +147,9 @@ async function buildSitemapXml() {
     { loc: `${BASE}/terms`, priority: "0.3" },
     { loc: `${BASE}/privacy`, priority: "0.3" },
     { loc: `${BASE}/contact`, priority: "0.3" },
+    { loc: `${BASE}/write`, priority: "0.4" },
+    { loc: `${BASE}/login`, priority: "0.4" },
+    { loc: `${BASE}/signup`, priority: "0.4" },
   ];
   for (const s of publicStories) {
     let image;

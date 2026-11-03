@@ -7,7 +7,9 @@ import { useEffect } from "react";
  * shell title/description. This hook sets document.title, the meta
  * description, and a canonical link while a page is mounted, and restores
  * the shell values on unmount — so pages without the hook (home and app
- * surfaces) keep showing the site title.
+ * surfaces) keep showing the site title. It can also set a robots
+ * directive (e.g. "noindex") for personal surfaces that should stay out
+ * of the search index.
  *
  * Safety: title is assigned as plain text and description/canonical go
  * through setAttribute, so story/author text can never inject markup.
@@ -73,17 +75,20 @@ export function usePageMeta({
   title,
   description,
   path,
+  robots,
 }: {
   /** Raw title; normalized to one line. Falls back to the shell title. */
-  title: string | null | undefined;
+  title?: string | null;
   /** Raw description; truncated to ~160 chars, shell fallback when empty. */
   description?: string | null;
-  /** Route path, e.g. `/stories/golponeer/kopalkundala`. */
-  path: string;
+  /** Route path, e.g. `/stories/golponeer/kopalkundala`. Omit when the page only needs a robots directive. */
+  path?: string;
+  /** Optional robots directive, e.g. "noindex" — kept off content pages. */
+  robots?: string | null;
 }) {
   const finalTitle = oneLine(title ?? "") || SHELL_TITLE;
   const finalDesc = metaDescription(description);
-  const finalCanon = SITE + encodePath(path);
+  const finalCanon = path ? SITE + encodePath(path) : null;
 
   useEffect(() => {
     const prevTitle = document.title;
@@ -94,22 +99,41 @@ export function usePageMeta({
     ) as HTMLLinkElement | null;
     const prevCanon = canonEl?.getAttribute("href") ?? null;
     const createdCanon = !canonEl;
-    if (!canonEl) {
-      canonEl = document.createElement("link");
-      canonEl.setAttribute("rel", "canonical");
-      document.head.appendChild(canonEl);
+    let robotsEl = document.querySelector(
+      'meta[name="robots"]'
+    ) as HTMLMetaElement | null;
+    const prevRobots = robotsEl?.getAttribute("content") ?? null;
+    const createdRobots = !robotsEl;
+    if (finalCanon) {
+      if (!canonEl) {
+        canonEl = document.createElement("link");
+        canonEl.setAttribute("rel", "canonical");
+        document.head.appendChild(canonEl);
+      }
+      canonEl.setAttribute("href", finalCanon);
+    }
+    if (robots) {
+      if (!robotsEl) {
+        robotsEl = document.createElement("meta");
+        robotsEl.setAttribute("name", "robots");
+        document.head.appendChild(robotsEl);
+      }
+      robotsEl.setAttribute("content", robots);
     }
     document.title = finalTitle;
     descEl?.setAttribute("content", finalDesc);
-    canonEl.setAttribute("href", finalCanon);
     return () => {
       document.title = prevTitle;
       if (descEl && prevDesc !== null)
         descEl.setAttribute("content", prevDesc);
-      if (canonEl) {
+      if (canonEl && finalCanon) {
         if (prevCanon !== null) canonEl.setAttribute("href", prevCanon);
         else if (createdCanon) canonEl.remove();
       }
+      if (robotsEl && robots) {
+        if (prevRobots !== null) robotsEl.setAttribute("content", prevRobots);
+        else if (createdRobots) robotsEl.remove();
+      }
     };
-  }, [finalTitle, finalDesc, finalCanon]);
+  }, [finalTitle, finalDesc, finalCanon, robots]);
 }
