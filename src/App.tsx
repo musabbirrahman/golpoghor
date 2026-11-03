@@ -1,5 +1,6 @@
 import { createBrowserRouter, Outlet, RouterProvider, useRouteError } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Analytics } from "@vercel/analytics/react";
 import { AppProvider, useApp } from "./lib/app-context";
 import { Layout, ScrollToTopOnNavigate } from "./components/layout";
 import { ButtonLink, EmptyState } from "./components/ui";
@@ -118,6 +119,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AppProvider>
         <RouterProvider router={router} />
+        <Analytics />
       </AppProvider>
     </QueryClientProvider>
   );
