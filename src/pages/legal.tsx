@@ -258,6 +258,13 @@ const DOCS: Record<string, LegalDoc> = {
           en: "No. Reading stories on GolpoNeer is free and open to everyone; an account is only needed if you want to publish, save stories, follow authors, or comment.",
         },
       },
+      {
+        q: { bn: "গল্পনীড় কি কোনো অ্যাপ?", en: "Is GolpoNeer an app?" },
+        a: {
+          bn: "না। গল্পনীড় একটি ওয়েবসাইট (golponeer.com) — যেকোনো ব্রাউজার থেকে সরাসরি ব্যবহার করা যায়, কোনো অ্যাপ ইনস্টল করতে হয় না।",
+          en: "No. GolpoNeer is a website (golponeer.com) — it works directly in any browser, with no app to install.",
+        },
+      },
     ],
   },
 
@@ -277,8 +284,8 @@ const DOCS: Record<string, LegalDoc> = {
         h: { bn: "ফেসবুক", en: "Facebook" },
         paras: [
           {
-            bn: "আমাদের ফেসবুক পেজ: facebook.com/golponeerapp (গল্পনীড় - GolpoNeer)। ঘোষণা ও নতুন সংযোজনের খবর সেখানে পাওয়া যাবে।",
-            en: "Our Facebook page is facebook.com/golponeerapp (গল্পনীড় - GolpoNeer), where announcements and new additions are posted.",
+            bn: "আমাদের ফেসবুক পেজ: facebook.com/golponeerofficial (গল্পনীড় - GolpoNeer)। ঘোষণা ও নতুন সংযোজনের খবর সেখানে পাওয়া যাবে।",
+            en: "Our Facebook page is facebook.com/golponeerofficial (গল্পনীড় - GolpoNeer), where announcements and new additions are posted.",
           },
         ],
       },
@@ -417,7 +424,7 @@ const DOCS: Record<string, LegalDoc> = {
  *  Other pages keep them as plain text — their mentions are references,
  *  not calls to write or visit. */
 function linkifyContact(text: string) {
-  const parts = text.split(new RegExp(`(${EMAIL.replace(".", "\\.")}|facebook\\.com/golponeerapp)`, "g"));
+  const parts = text.split(new RegExp(`(${EMAIL.replace(".", "\\.")}|facebook\\.com/golponeerofficial)`, "g"));
   if (parts.length === 1) return text;
   return parts.map((part, i) => {
     if (part === EMAIL)
@@ -426,9 +433,9 @@ function linkifyContact(text: string) {
           {part}
         </a>
       );
-    if (part === "facebook.com/golponeerapp")
+    if (part === "facebook.com/golponeerofficial")
       return (
-        <a key={i} href="https://facebook.com/golponeerapp" target="_blank" rel="noreferrer" className="font-medium text-river hover:underline">
+        <a key={i} href="https://facebook.com/golponeerofficial" target="_blank" rel="noreferrer" className="font-medium text-river hover:underline">
           {part}
         </a>
       );
