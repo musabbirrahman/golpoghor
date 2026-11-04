@@ -490,6 +490,7 @@ export function Footer() {
             <Link to="/licence" className={linkCls}>{t("footer", "licence")}</Link>
             <Link to="/keepsakes-policy" className={linkCls}>{t("footer", "keepsakesPolicy")}</Link>
             <Link to="/contact" className={linkCls}>{t("footer", "contact")}</Link>
+            <a href="https://www.facebook.com/golponeerofficial" target="_blank" rel="noreferrer" className={linkCls}>Facebook</a>
           </nav>
         </div>
       </div>
