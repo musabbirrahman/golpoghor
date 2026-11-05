@@ -35,7 +35,7 @@ export const GENRES: GenreDef[] = [
   { value: "ফ্যান্টাসি", bn: "ফ্যান্টাসি", en: "Fantasy", aliases: ["fantasy"] },
   { value: "বিজ্ঞান কল্পকাহিনী", bn: "বিজ্ঞান কল্পকাহিনী", en: "Science Fiction", aliases: ["science-fiction", "science fiction", "sci-fi"] },
   { value: "হরর", bn: "হরর", en: "Horror", aliases: ["horror"] },
-  { value: "ইতিহাস", bn: "ইতিহাস", en: "History", aliases: ["history", "historical"] },
+  { value: "ঐতিহাসিক", bn: "ঐতিহাসিক", en: "History", aliases: ["history", "historical"] },
   { value: "কবিতা", bn: "কবিতা", en: "Poetry", aliases: ["poetry", "poem", "poems"] },
 ];
 

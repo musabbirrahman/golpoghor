@@ -87,7 +87,7 @@ const GENRE_SLUGS = {
   "ফ্যান্টাসি": "fantasy",
   "বিজ্ঞান কল্পকাহিনী": "science-fiction",
   "হরর": "horror",
-  "ইতিহাস": "history",
+  "ঐতিহাসিক": "history",
   "কবিতা": "poetry",
 };
 const GENRE_ALIASES = {
@@ -104,8 +104,8 @@ const GENRE_ALIASES = {
   "science fiction": "বিজ্ঞান কল্পকাহিনী",
   "sci-fi": "বিজ্ঞান কল্পকাহিনী",
   horror: "হরর",
-  history: "ইতিহাস",
-  historical: "ইতিহাস",
+  history: "ঐতিহাসিক",
+  historical: "ঐতিহাসিক",
   poetry: "কবিতা",
   poem: "কবিতা",
   poems: "কবিতা",

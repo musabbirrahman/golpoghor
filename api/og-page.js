@@ -102,7 +102,7 @@ const GENRES = [
   { value: "ফ্যান্টাসি", bn: "ফ্যান্টাসি", en: "Fantasy", aliases: ["fantasy"] },
   { value: "বিজ্ঞান কল্পকাহিনী", bn: "বিজ্ঞান কল্পকাহিনী", en: "Science Fiction", aliases: ["science-fiction", "science fiction", "sci-fi"] },
   { value: "হরর", bn: "হরর", en: "Horror", aliases: ["horror"] },
-  { value: "ইতিহাস", bn: "ইতিহাস", en: "History", aliases: ["history", "historical"] },
+  { value: "ঐতিহাসিক", bn: "ঐতিহাসিক", en: "History", aliases: ["history", "historical"] },
   { value: "কবিতা", bn: "কবিতা", en: "Poetry", aliases: ["poetry", "poem", "poems"] },
 ];
 
@@ -209,7 +209,7 @@ const SUBCATEGORY_GROUPS = {
   detective: "রহস্য", supernatural: "রহস্য",
   psychological: "হরর", gothic: "হরর",
   "warm-romance": "রোমান্স", "tragic-romance": "রোমান্স",
-  "war-conflict": "ইতিহাস", "freedom-struggle": "ইতিহাস",
+  "war-conflict": "ঐতিহাসিক", "freedom-struggle": "ঐতিহাসিক",
   "coming-of-age": "সমকালীন",
   "village-life": "ছোটগল্প", relationships: "ছোটগল্প", childhood: "ছোটগল্প",
   "human-nature": "general", "twist-irony": "general", "everyday-life": "general",

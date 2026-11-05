@@ -105,7 +105,7 @@ const GENRE_SLUGS = {
   "অ্যাডভেঞ্চার": "adventure",
   "ফ্যান্টাসি": "fantasy",
   "হরর": "horror",
-  "ইতিহাস": "history",
+  "ঐতিহাসিক": "history",
   "কবিতা": "poetry",
 };
 const GENRE_ALIASES = {
@@ -119,8 +119,8 @@ const GENRE_ALIASES = {
   adventure: "অ্যাডভেঞ্চার",
   fantasy: "ফ্যান্টাসি",
   horror: "হরর",
-  history: "ইতিহাস",
-  historical: "ইতিহাস",
+  history: "ঐতিহাসিক",
+  historical: "ঐতিহাসিক",
   poetry: "কবিতা",
   poem: "কবিতা",
   poems: "কবিতা",

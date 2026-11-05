@@ -65,7 +65,7 @@ const GENRES = [
   { value: "ফ্যান্টাসি", bn: "ফ্যান্টাসি", en: "Fantasy" },
   { value: "বিজ্ঞান কল্পকাহিনী", bn: "বিজ্ঞান কল্পকাহিনী", en: "Science Fiction" },
   { value: "হরর", bn: "হরর", en: "Horror" },
-  { value: "ইতিহাস", bn: "ইতিহাস", en: "History" },
+  { value: "ঐতিহাসিক", bn: "ঐতিহাসিক", en: "History" },
   { value: "কবিতা", bn: "কবিতা", en: "Poetry" },
 ];
 
