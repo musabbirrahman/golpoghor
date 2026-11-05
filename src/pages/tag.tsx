@@ -6,6 +6,7 @@ import { Layout } from "../components/layout";
 import { ButtonLink, EmptyState, Spinner } from "../components/ui";
 import { VerticalShelfList } from "../components/shelf-blocks";
 import { SUBCATEGORIES, SUBCATEGORY_BN, subLabel } from "../lib/subcategories";
+import { TAXONOMY_METADATA } from "../lib/taxonomy-seo";
 import { genreSlug, GENRES } from "../lib/genres";
 import type { Story } from "../lib/types";
 
@@ -34,6 +35,8 @@ export const TAG_PAGES: Record<
   },
 };
 
+// Fallback meta description, used only when a sub-category has no entry
+// in TAXONOMY_METADATA. The live text comes from that object instead.
 function subDescription(id: string): string {
   const label = subLabel(id, "en");
   const bn = SUBCATEGORY_BN[id] ?? label;
@@ -44,6 +47,9 @@ interface CollectionDef {
   /** Page title without the site suffix. */
   title: string;
   description: string;
+  /** Visible subtitle shown under the heading (sub-category pages only;
+   *  tag pages leave this unset and show no subtitle). */
+  subtitle?: string;
   /** Canonical path. */
   path: string;
   /** Breadcrumb trail: [name, url] pairs after Home. */
@@ -132,6 +138,7 @@ function CollectionPage({ def, slug }: { def: CollectionDef | null; slug: string
           <div className="mb-4 mt-4">
             <h1 className="font-serif text-3xl font-bold">{def.heading[0]} · {def.heading[1]}</h1>
             <div className="mt-2 h-0.5 w-10 bg-gold" aria-hidden />
+            {def.subtitle ? <p className="mt-2 max-w-2xl text-ink-soft">{def.subtitle}</p> : null}
           </div>
           {stories.length === 0 ? (
             <EmptyState title={t("discover", "noResults")} />
@@ -152,15 +159,18 @@ function CollectionPage({ def, slug }: { def: CollectionDef | null; slug: string
  *  genre pages). */
 export function SubcategoryPage() {
   const { slug = "" } = useParams();
+  const { locale } = useApp();
   const id = slug.trim().toLowerCase();
   const sub = SUBCATEGORIES.find((s) => s.id === id);
   const group = sub ? GENRES.find((g) => g.value === sub.group) : undefined;
   const label = sub ? subLabel(sub.id, "en") : id;
   const bn = sub ? (SUBCATEGORY_BN[sub.id] ?? label) : id;
+  const seo = sub ? TAXONOMY_METADATA[sub.id] : undefined;
   const def: CollectionDef | null = sub
     ? {
         title: `${bn} · ${label} stories`,
-        description: subDescription(sub.id),
+        description: seo?.metaDescriptionBn ?? subDescription(sub.id),
+        subtitle: seo?.subtitle[locale],
         path: `/subcategories/${sub.id}`,
         crumbs: group
           ? [

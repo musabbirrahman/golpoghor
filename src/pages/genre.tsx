@@ -11,15 +11,16 @@ import {
   type GenreDef,
 } from "../lib/genres";
 import { SUBCATEGORIES, subLabel } from "../lib/subcategories";
+import { TAXONOMY_METADATA } from "../lib/taxonomy-seo";
 
 /** English plural for a genre def ("Short story" -> "Short stories"). */
 function pluralEn(def: GenreDef): string {
   return def.value === "ছোটগল্প" ? "Short stories" : `${def.en} stories`;
 }
 
-/** Bilingual meta description. One line covers Bangla-script queries
- *  ("বাংলা হরর গল্প", "হরর গল্প") and Latin queries ("bangla horror
- *  stories", "horror stories"): both phrasings appear verbatim. */
+/** Fallback meta description, used only when a genre has no entry in
+ *  TAXONOMY_METADATA. The live text comes from that object instead
+ *  (keyword-rich Bangla meta + a locale-aware visible subtitle). */
 function genreDescription(def: GenreDef): string {
   const plural = pluralEn(def);
   const bnPhrase =
@@ -37,6 +38,7 @@ export function GenrePage() {
   const { t, dp, locale } = useApp();
   const { slug = "" } = useParams();
   const def = genreFromSlug(slug);
+  const seo = def ? TAXONOMY_METADATA[genreSlug(def)] : undefined;
   const storiesQuery = useQuery({
     queryKey: ["genre", def?.value ?? slug],
     queryFn: () => {
@@ -49,7 +51,7 @@ export function GenrePage() {
 
   usePageMeta({
     title: def ? `${def.bn} · ${pluralEn(def)} | GolpoNeer` : null,
-    description: def ? genreDescription(def) : undefined,
+    description: def ? (seo?.metaDescriptionBn ?? genreDescription(def)) : undefined,
     path: def ? `/genres/${genreSlug(def)}` : `/genres/${slug}`,
   });
 
@@ -116,6 +118,7 @@ export function GenrePage() {
           <div className="mb-4 mt-4">
             <h1 className="font-serif text-3xl font-bold">{def.bn} · {def.en}</h1>
             <div className="mt-2 h-0.5 w-10 bg-gold" aria-hidden />
+            {seo ? <p className="mt-2 max-w-2xl text-ink-soft">{seo.subtitle[locale]}</p> : null}
             {/* Sub-category landing pages: link the sub-categories this
                 genre's stories actually carry, so the new pages are reached
                 by internal links as well as the sitemap. */}
