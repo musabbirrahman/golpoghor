@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "../lib/app-context";
 import { usePageMeta } from "../lib/page-meta";
 import { GENRES, genreLabel, normalizeGenre } from "../lib/genres";
-import { SUBCATEGORIES, normalizeSubcategories } from "../lib/subcategories";
+import { SUBCATEGORIES, normalizeSubcategories, subLabel } from "../lib/subcategories";
 import { Layout } from "../components/layout";
 import {
   Badge, Button, ButtonLink, Card, EmptyState, FieldError, Input, Label, Modal,
@@ -408,7 +408,7 @@ export function StoryFormPage() {
               <p className="mt-1 text-sm text-ink/70">{t("write", "subcategoriesHint")}</p>
               {genreSubs.length > 0 && (
                 <p className="mt-1 text-sm text-river">
-                  {t("write", "genreSubs")}: {genreSubs.map((s) => s.label).join(", ")}
+                  {t("write", "genreSubs")}: {genreSubs.map((s) => subLabel(s.id, locale)).join(", ")}
                 </p>
               )}
               {GENRES.map((g) => {
@@ -423,7 +423,7 @@ export function StoryFormPage() {
                           <input type="checkbox" className="accent-river" checked={subcategories.includes(s.id)}
                             disabled={!subcategories.includes(s.id) && subcategories.length >= 4}
                             onChange={() => setSubcategories((cur) => cur.includes(s.id) ? cur.filter((x) => x !== s.id) : [...cur, s.id])} />
-                          {s.label}
+                          {subLabel(s.id, locale)}
                         </label>
                       ))}
                     </div>

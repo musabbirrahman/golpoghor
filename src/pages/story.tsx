@@ -795,7 +795,7 @@ export function StoryPage() {
                 Discover to stories carrying that sub. */}
             {(story.subcategories ?? []).map((sub) => (
               <Link key={sub} to={`/discover?sub=${encodeURIComponent(sub)}`}>
-                <Badge tone="gold">#{subLabel(sub)}</Badge>
+                <Badge tone="gold">#{subLabel(sub, locale)}</Badge>
               </Link>
             ))}
           </div>
@@ -834,7 +834,7 @@ export function StoryPage() {
             ))}
             {(story.subcategories ?? []).map((sub) => (
               <Link key={sub} to={`/discover?sub=${encodeURIComponent(sub)}`}>
-                <Badge tone="gold">#{subLabel(sub)}</Badge>
+                <Badge tone="gold">#{subLabel(sub, locale)}</Badge>
               </Link>
             ))}
           </div>

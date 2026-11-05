@@ -72,13 +72,13 @@ export function ShelfRow({ stories }: { stories: Story[] }) {
    hairline dividers, no card boxes, so the shelf reads like a list of
    books rather than a strip of covers. */
 export function VerticalShelfList({ stories }: { stories: Story[] }) {
-  const { t } = useApp();
+  const { t, locale } = useApp();
   return (
     <div className="divide-y divide-ink/10">
       {stories.map((s) => {
         const minutes = readingMinutes(s.word_count ?? 0, s.language);
         const tagItems = [
-          ...(s.subcategories ?? []).map((sub) => `#${subLabel(sub)}`),
+          ...(s.subcategories ?? []).map((sub) => `#${subLabel(sub, locale)}`),
           ...(s.tags ?? []).map((tag) => `#${tag}`),
         ];
         const shown = tagItems.slice(0, 4);

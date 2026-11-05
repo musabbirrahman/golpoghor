@@ -10,13 +10,14 @@ import { subLabel } from "../lib/subcategories";
 /** Capped #tag row: full cards show a few, compact cards show none (the
     caller decides by rendering or omitting this). Overflow counts as +N. */
 function SubTags({ subs, max }: { subs: string[]; max: number }) {
+  const { locale } = useApp();
   const shown = subs.slice(0, max);
   const rest = subs.length - shown.length;
   if (shown.length === 0) return null;
   return (
     <span className="flex flex-wrap items-center gap-1.5">
       {shown.map((sub) => (
-        <Badge key={sub} tone="gold">#{subLabel(sub)}</Badge>
+        <Badge key={sub} tone="gold">#{subLabel(sub, locale)}</Badge>
       ))}
       {rest > 0 && <span className="text-xs text-ink-faint">+{rest}</span>}
     </span>

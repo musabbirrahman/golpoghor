@@ -5,36 +5,9 @@ import { usePageMeta, useJsonLd } from "../lib/page-meta";
 import { Layout } from "../components/layout";
 import { ButtonLink, EmptyState, Spinner } from "../components/ui";
 import { VerticalShelfList } from "../components/shelf-blocks";
-import { SUBCATEGORIES, subLabel } from "../lib/subcategories";
+import { SUBCATEGORIES, SUBCATEGORY_BN, subLabel } from "../lib/subcategories";
 import { genreSlug, GENRES } from "../lib/genres";
 import type { Story } from "../lib/types";
-
-/** Bangla display terms for the fixed sub-category vocabulary, mirroring
- *  the genre pages' bilingual titles ("বাংলা হরর গল্প" style) so Bangla
- *  queries like "বাংলা গোয়েন্দা গল্প" match the page text. Wording is
- *  Muse's sensible default; the owner can correct any term. */
-export const SUBCATEGORY_BN: Record<string, string> = {
-  detective: "গোয়েন্দা",
-  supernatural: "অতিপ্রাকৃত",
-  psychological: "মনস্তাত্ত্বিক",
-  gothic: "গথিক",
-  "warm-romance": "উষ্ণ প্রেম",
-  "tragic-romance": "বিয়োগান্ত প্রেম",
-  "war-conflict": "যুদ্ধ ও সংঘাত",
-  "freedom-struggle": "স্বাধীনতা সংগ্রাম",
-  "coming-of-age": "বেড়ে ওঠা",
-  "village-life": "গ্রামীণ জীবন",
-  relationships: "সম্পর্ক",
-  childhood: "শৈশব",
-  "human-nature": "মানব প্রকৃতি",
-  "twist-irony": "অপ্রত্যাশিত মোড়",
-  "everyday-life": "দৈনন্দিন জীবন",
-  epic: "মহাকাব্যিক",
-  urban: "নাগরিক",
-  dark: "অন্ধকার",
-  lyric: "গীতিময়",
-  narrative: "আখ্যানমূলক",
-};
 
 /** Tag landing pages: one registry entry per tag that gets a page.
  *  Only "classics" and "tagore" are registered for now — the other free
@@ -62,7 +35,7 @@ export const TAG_PAGES: Record<
 };
 
 function subDescription(id: string): string {
-  const label = subLabel(id);
+  const label = subLabel(id, "en");
   const bn = SUBCATEGORY_BN[id] ?? label;
   return `বাংলা ${bn} গল্প ও English ${label} stories — Bangla ${label} stories and English ${label} stories on GolpoNeer, free, no account needed.`;
 }
@@ -182,7 +155,7 @@ export function SubcategoryPage() {
   const id = slug.trim().toLowerCase();
   const sub = SUBCATEGORIES.find((s) => s.id === id);
   const group = sub ? GENRES.find((g) => g.value === sub.group) : undefined;
-  const label = sub ? subLabel(sub.id) : id;
+  const label = sub ? subLabel(sub.id, "en") : id;
   const bn = sub ? (SUBCATEGORY_BN[sub.id] ?? label) : id;
   const def: CollectionDef | null = sub
     ? {

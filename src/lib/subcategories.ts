@@ -1,3 +1,5 @@
+import type { Locale } from "./types";
+
 /**
  * Phase 1 (Discover taxonomy): the fixed sub-category vocabulary.
  *
@@ -53,7 +55,40 @@ export function normalizeSubcategories(values: unknown): string[] {
   return out.slice(0, 4);
 }
 
-/** Display term for a stored id (unknown ids pass through). */
-export function subLabel(id: string): string {
-  return SUBCATEGORIES.find((s) => s.id === id)?.label ?? id;
+/** Display term for a stored id in the given UI language (unknown ids
+    pass through; Bangla falls back to the English label when a term is
+    missing). Mirrors genreLabel() in lib/genres.ts. */
+export function subLabel(id: string, locale: Locale): string {
+  const label = SUBCATEGORIES.find((s) => s.id === id)?.label ?? id;
+  return locale === "bn" ? (SUBCATEGORY_BN[id] ?? label) : label;
 }
+
+/** Bangla display terms for the fixed sub-category vocabulary. Single
+ *  source of truth — the sub-category landing pages (src/pages/tag.tsx)
+ *  and the bot previews (api/og-page.js) share these terms through this
+ *  map or a hand-synced copy. Wording was corrected by the owner
+ *  2026-11-05 to natural Bangla literary terms (e.g. অলৌকিক, মিষ্টি প্রেম,
+ *  বিরহ, ডার্ক ফ্যান্টাসি, গীতিকবিতা, কাহিনীকাব্য) instead of literal
+ *  translations; the owner can correct any term. */
+export const SUBCATEGORY_BN: Record<string, string> = {
+  detective: "গোয়েন্দা",
+  supernatural: "অলৌকিক",
+  psychological: "মনস্তাত্ত্বিক",
+  gothic: "গথিক",
+  "warm-romance": "মিষ্টি প্রেম",
+  "tragic-romance": "বিরহ",
+  "war-conflict": "যুদ্ধ ও সংঘাত",
+  "freedom-struggle": "স্বাধীনতা সংগ্রাম",
+  "coming-of-age": "তারুণ্য ও বেড়ে ওঠা",
+  "village-life": "গ্রামীণ জীবন",
+  relationships: "সম্পর্ক",
+  childhood: "শৈশব",
+  "human-nature": "মানবচরিত্র",
+  "twist-irony": "অপ্রত্যাশিত মোড়",
+  "everyday-life": "দৈনন্দিন জীবন",
+  epic: "মহাকাব্যিক",
+  urban: "শহুরে ফ্যান্টাসি",
+  dark: "ডার্ক ফ্যান্টাসি",
+  lyric: "গীতিকবিতা",
+  narrative: "কাহিনীকাব্য",
+};

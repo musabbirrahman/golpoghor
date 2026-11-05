@@ -340,7 +340,7 @@ function GenrePanel({ stories, genre, arts, subOrder, baseRgb }: { stories: Stor
   }, [activeTag]);
   const subIds = [...new Set(stories.flatMap((st) => (st.subcategories ?? []).map((s) => s.toLowerCase())))];
   const tagIds = ["all", ...subOrder.filter((id) => subIds.includes(id))];
-  const tagLabel = (id: string) => id === "all" ? `#${genreLabel(genre, locale)}` : `#${id.charAt(0).toUpperCase() + id.slice(1)}`;
+  const tagLabel = (id: string) => id === "all" ? `#${genreLabel(genre, locale)}` : `#${subLabel(id, locale)}`;
   const tagArt = (id: string) => arts[id] ?? arts.all;
   // NOTE: no onScroll auto-advance — a fling that merely passes through
   // the end must not skip a page and jump tags. Tag paging happens only
@@ -612,7 +612,7 @@ function FilterDialog({ language, genre, selectedSubs, status, time, sort, genre
                     {isOpen && (
                       <div className="mt-2 flex flex-wrap gap-2 pl-4">
                         {visibleSubs.map((s) => (
-                          <Pick key={s.id} active={selectedSubs.includes(s.id)} onClick={() => toggleSub(s.id)}>#{subLabel(s.id)}</Pick>
+                          <Pick key={s.id} active={selectedSubs.includes(s.id)} onClick={() => toggleSub(s.id)}>#{subLabel(s.id, locale)}</Pick>
                         ))}
                       </div>
                     )}

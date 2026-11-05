@@ -34,7 +34,7 @@ function genreDescription(def: GenreDef): string {
  *  Genres with no stories yet render an honest empty state and are kept
  *  out of the sitemap until their first story arrives. */
 export function GenrePage() {
-  const { t, dp } = useApp();
+  const { t, dp, locale } = useApp();
   const { slug = "" } = useParams();
   const def = genreFromSlug(slug);
   const storiesQuery = useQuery({
@@ -128,7 +128,7 @@ export function GenrePage() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   {present.map((id) => (
                     <Link key={id} to={`/subcategories/${id}`} className="rounded-full border border-ink/15 px-3 py-1 text-sm text-river hover:underline">
-                      {subLabel(id)}
+                      {subLabel(id, locale)}
                     </Link>
                   ))}
                 </div>
