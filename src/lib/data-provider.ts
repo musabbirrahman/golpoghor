@@ -110,12 +110,13 @@ export interface DataProvider {
     password: string;
     username: string;
     displayName: string;
+    captchaToken?: string;
   }): Promise<{ needsEmailConfirmation: boolean }>;
-  signIn(email: string, password: string): Promise<void>;
+  signIn(email: string, password: string, captchaToken?: string): Promise<void>;
   signOut(): Promise<void>;
   /** Create the caller's profile row if it is missing (self-heal after signup). */
   ensureOwnProfile(): Promise<void>;
-  resetPassword(email: string): Promise<void>;
+  resetPassword(email: string, captchaToken?: string): Promise<void>;
   updatePassword(newPassword: string): Promise<void>;
   /**
    * Rename the signed-in user (V4-07). Enforces the signup format rules, a

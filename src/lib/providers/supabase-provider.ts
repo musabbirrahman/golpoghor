@@ -173,7 +173,7 @@ export class SupabaseProvider implements DataProvider {
     }
   }
 
-  async signUp(input: { email: string; password: string; username: string; displayName: string }) {
+  async signUp(input: { email: string; password: string; username: string; displayName: string; captchaToken?: string }) {
     const username = input.username.trim().toLowerCase();
     if (!/^[a-z0-9_]{3,30}$/.test(username)) throw new AppError("invalidUsername", "Invalid username");
     if (input.password.length < 6) throw new AppError("weakPassword", "Password too short");
@@ -187,7 +187,10 @@ export class SupabaseProvider implements DataProvider {
     const { data, error } = await this.sb.auth.signUp({
       email: input.email,
       password: input.password,
-      options: { data: { username, display_name: input.displayName.trim() || username } },
+      options: {
+        data: { username, display_name: input.displayName.trim() || username },
+        ...(input.captchaToken ? { captchaToken: input.captchaToken } : {}),
+      },
     });
     if (error) {
       if (/already registered|already exists/i.test(error.message))
@@ -208,8 +211,12 @@ export class SupabaseProvider implements DataProvider {
     return { needsEmailConfirmation };
   }
 
-  async signIn(email: string, password: string): Promise<void> {
-    const { data, error } = await this.sb.auth.signInWithPassword({ email, password });
+  async signIn(email: string, password: string, captchaToken?: string): Promise<void> {
+    const { data, error } = await this.sb.auth.signInWithPassword({
+      email,
+      password,
+      ...(captchaToken ? { options: { captchaToken } } : {}),
+    });
     if (error) {
       if (/email not confirmed/i.test(error.message))
         throw new AppError("emailNotConfirmed", error.message);
@@ -242,9 +249,12 @@ export class SupabaseProvider implements DataProvider {
     await this.ensureProfile(session.user.id, session.user.email ?? "");
   }
 
-  async resetPassword(email: string): Promise<void> {
+  async resetPassword(email: string, captchaToken?: string): Promise<void> {
     const redirectTo = `${window.location.origin}/reset-password`;
-    const { error } = await this.sb.auth.resetPasswordForEmail(email, { redirectTo });
+    const { error } = await this.sb.auth.resetPasswordForEmail(email, {
+      redirectTo,
+      ...(captchaToken ? { captchaToken } : {}),
+    });
     if (error) throw toAppError(error);
   }
 

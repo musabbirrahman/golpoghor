@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useApp } from "../lib/app-context";
 import { usePageMeta } from "../lib/page-meta";
 import { AppError } from "../lib/utils";
 import { NarrowLayout } from "../components/layout";
 import { Button, Card, FieldError, Input, Label } from "../components/ui";
+import { TurnstileWidget, isCaptchaConfigured, type TurnstileHandle } from "../components/turnstile";
 
 function AuthCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -36,6 +37,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   const next = params.get("next") || "/";
 
@@ -44,7 +46,12 @@ export function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      await dp.signIn(email, password);
+      let captchaToken: string | undefined;
+      if (isCaptchaConfigured()) {
+        captchaToken = (await turnstileRef.current?.executeAsync()) ?? undefined;
+        if (!captchaToken) throw new AppError("captchaFailed", "Captcha verification failed");
+      }
+      await dp.signIn(email, password, captchaToken);
       refreshSession();
       navigate(next, { replace: true });
     } catch (err) {
@@ -69,6 +76,7 @@ export function LoginPage() {
             <Label htmlFor="password">{t("auth", "password")}</Label>
             <Input id="password" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
+          <TurnstileWidget turnstileRef={turnstileRef} />
           <FieldError message={error} />
           <Button type="submit" size="lg" disabled={busy}>
             {busy ? t("common", "loading") : t("auth", "signInCta")}
@@ -99,17 +107,24 @@ export function SignupPage() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
+      let captchaToken: string | undefined;
+      if (isCaptchaConfigured()) {
+        captchaToken = (await turnstileRef.current?.executeAsync()) ?? undefined;
+        if (!captchaToken) throw new AppError("captchaFailed", "Captcha verification failed");
+      }
       const { needsEmailConfirmation } = await dp.signUp({
         email,
         password,
         username,
         displayName: displayName || username,
+        captchaToken,
       });
       if (needsEmailConfirmation) {
         navigate("/login?confirm=1", { replace: true });
@@ -158,6 +173,7 @@ export function SignupPage() {
             <Label htmlFor="su-password">{t("auth", "password")}</Label>
             <Input id="su-password" type="password" required autoComplete="new-password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
+          <TurnstileWidget turnstileRef={turnstileRef} />
           <FieldError message={error} />
           <Button type="submit" size="lg" disabled={busy}>
             {busy ? t("common", "loading") : t("auth", "signUpCta")}
@@ -179,13 +195,19 @@ export function ResetPasswordPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      await dp.resetPassword(email);
+      let captchaToken: string | undefined;
+      if (isCaptchaConfigured()) {
+        captchaToken = (await turnstileRef.current?.executeAsync()) ?? undefined;
+        if (!captchaToken) throw new AppError("captchaFailed", "Captcha verification failed");
+      }
+      await dp.resetPassword(email, captchaToken);
       setSent(true);
     } catch (err) {
       setError(errorText(t, err));
@@ -205,6 +227,7 @@ export function ResetPasswordPage() {
               <Label htmlFor="rp-email">{t("auth", "email")}</Label>
               <Input id="rp-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
+            <TurnstileWidget turnstileRef={turnstileRef} />
             <FieldError message={error} />
             <Button type="submit" size="lg" disabled={busy}>
               {busy ? t("common", "loading") : t("auth", "resetCta")}

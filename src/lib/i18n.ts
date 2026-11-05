@@ -812,6 +812,10 @@ const dict = {
       bn: "ইমেইল এখনো নিশ্চিত হয়নি। ইনবক্সে পাঠানো লিংকে ক্লিক করুন।",
       en: "Email not confirmed yet. Click the link sent to your inbox.",
     },
+    captchaFailed: {
+      bn: "যাচাইকরণ ব্যর্থ হয়েছে। আবার চেষ্টা করুন।",
+      en: "Verification failed. Please try again.",
+    },
     weakPassword: {
       bn: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।",
       en: "Password must be at least 6 characters.",
