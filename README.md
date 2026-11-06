@@ -29,7 +29,7 @@ GolpoNeer is live and open to readers. New stories are published in verified bat
 
 ## How it's built
 
-GolpoNeer is built with AI assistance: Muse is the main builder, with help along the way from Gemini (Argon), ChatGPT, and Claude — reviews, ideas, and second opinions. I direct the scope, test every change, and operate the live site. I'm learning web development as I build it — in the open, with the code here to show for it.
+GolpoNeer is built by me with AI assistance — Muse is my main building partner, with help along the way from Gemini (Argon), ChatGPT, and Claude for reviews, ideas, and second opinions. I direct the scope, test every change, and operate the live site. I'm learning web development as I build it — in the open, with the code here to show for it.
 
 ## Contact
 
