@@ -226,6 +226,10 @@ const DOCS: Record<string, LegalDoc> = {
             bn: "গল্পনীড় বাংলাদেশ থেকে একজন স্বাধীন ডেভেলপারের তৈরি ছোট প্রকল্প, ভালোবাসা আর ফ্রি টুলের সমন্বয়ে এগিয়ে চলেছে। পরামর্শ ও মতামত স্বাগতম — যোগাযোগের পেজ দেখুন।",
             en: "GolpoNeer is a small project by an independent developer in Bangladesh, built with care on free tools. Suggestions and feedback are welcome — see the Contact page.",
           },
+          {
+            bn: "গল্পনীড় তৈরি করেছেন মুসাব্বির রহমান।",
+            en: "GolpoNeer was created by Musabbir Rahman.",
+          },
         ],
       },
     ],
