@@ -447,16 +447,17 @@ function linkifyContact(text: string) {
   });
 }
 
-/** About page only: the founder's name links to his GitHub profile —
- *  GitHub is his most active account and the hub that connects to his
- *  other profiles, so it says which Musabbir this is. Other pages
+/** About page only: the founder's name links to his LinkedIn profile —
+ *  LinkedIn is the professional identity (photo, headline, background)
+ *  that says which Musabbir this is for any reader, not just developers.
+ *  GitHub stays linked in the founder JSON-LD sameAs. Other pages
  *  keep names as plain text. */
 function linkifyFounder(text: string) {
   const parts = text.split(/(মুসাব্বির রহমান|Musabbir Rahman)/g);
   if (parts.length === 1) return text;
   return parts.map((part, i) =>
     part === "মুসাব্বির রহমান" || part === "Musabbir Rahman" ? (
-      <a key={i} href="https://github.com/musabbirrahman" target="_blank" rel="noreferrer" className="font-medium text-river hover:underline">
+      <a key={i} href="https://www.linkedin.com/in/musabbirrahman" target="_blank" rel="noreferrer" className="font-medium text-river hover:underline">
         {part}
       </a>
     ) : (
