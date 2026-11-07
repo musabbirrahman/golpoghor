@@ -447,6 +447,24 @@ function linkifyContact(text: string) {
   });
 }
 
+/** About page only: the founder's name links to his GitHub profile —
+ *  GitHub is his most active account and the hub that connects to his
+ *  other profiles, so it says which Musabbir this is. Other pages
+ *  keep names as plain text. */
+function linkifyFounder(text: string) {
+  const parts = text.split(/(মুসাব্বির রহমান|Musabbir Rahman)/g);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    part === "মুসাব্বির রহমান" || part === "Musabbir Rahman" ? (
+      <a key={i} href="https://github.com/musabbirrahman" target="_blank" rel="noreferrer" className="font-medium text-river hover:underline">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}
+
 export function LegalPage({ slug }: { slug: keyof typeof DOCS }) {
   const { t, locale } = useApp();
   const doc = DOCS[slug];
@@ -482,7 +500,11 @@ export function LegalPage({ slug }: { slug: keyof typeof DOCS }) {
               <h2 className="font-serif text-lg font-bold">{s.h[locale]}</h2>
               {s.paras.map((para) => (
                 <p key={para.en.slice(0, 24)} className="mt-2 leading-relaxed text-ink-soft">
-                  {slug === "contact" ? linkifyContact(para[locale]) : para[locale]}
+                  {slug === "contact"
+                    ? linkifyContact(para[locale])
+                    : slug === "about"
+                      ? linkifyFounder(para[locale])
+                      : para[locale]}
                 </p>
               ))}
             </section>
