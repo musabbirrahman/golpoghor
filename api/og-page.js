@@ -34,6 +34,48 @@
  * VITE_SUPABASE_ANON_KEY) — nothing new to configure.
  */
 
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Search indexers only — full prerendered body HTML goes to these UAs.
+// Social bots keep the lightweight OG head-only response (they only parse
+// <head> meta and have strict time/size caps).
+const INDEXER_UA = /googlebot|bingbot|google-inspectiontool/i;
+
+// The SPA shell template (dist/index.html), bundled via vercel.json
+// `includeFiles`, read once and cached. Returns null when it cannot be
+// found (the standalone fallback then serves the content without the
+// shell). Same pattern as api/prerender.js (Phase 1).
+let shellCache = null;
+let shellTried = false;
+function readShell() {
+  if (shellTried) return shellCache;
+  shellTried = true;
+  const candidates = [
+    path.join(process.cwd(), "dist", "index.html"),
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "dist", "index.html"),
+  ];
+  for (const candidate of candidates) {
+    try {
+      shellCache = readFileSync(candidate, "utf8");
+      return shellCache;
+    } catch {
+      // Try the next candidate.
+    }
+  }
+  return null;
+}
+
+// Strip the homepage-only bake tags from the shell template, so the
+// featured-cover preload and the baked featured data never leak onto
+// another page. Same pattern as api/prerender.js (Phase 1).
+function stripBakeTags(shell) {
+  return shell
+    .replace(/<link rel="preload"[^>]*>/g, "")
+    .replace(/<script>window\.__BAKED_FEATURED__=[\s\S]*?<\/script>/g, "");
+}
+
 function esc(s) {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
@@ -169,6 +211,47 @@ const TAXONOMY_META = {
   "narrative": "বাংলা কাহিনীকাব্য ও আখ্যানকাব্য অনলাইনে পড়ুন। ছন্দের তালে গাথা পূর্ণাঙ্গ গল্প, ঐতিহাসিক ঘটনা ও জীবনের দীর্ঘ কাব্যগাথা।",
 };
 
+
+// Visible subtitles for genre + subcategory pages — mirror of
+// src/lib/taxonomy-seo.ts (TAXONOMY_METADATA[key].subtitle.bn). The
+// prerender shows the Bangla subtitle, the SPA's default locale.
+// Kept in sync by scripts/check-taxonomy-parity.mjs (it compares these
+// against the subtitle.bn values in src/lib/taxonomy-seo.ts).
+const TAXONOMY_SUBTITLES = {
+  "general": "আমাদের চারপাশের চেনা মানুষ, বাস্তব অভিজ্ঞতা এবং জীবনধর্মী বাংলা গল্প।",
+  "human-nature": "মানুষের বিচিত্র মনস্তত্ত্ব, নৈতিক দ্বন্দ্ব এবং মানবচরিত্রের গভীর রূপের গল্প।",
+  "twist-irony": "ভাগ্যের নির্মম পরিহাস এবং শেষ মুহূর্তে চমকে দেওয়া অপ্রত্যাশিত মোড়ের গল্প।",
+  "everyday-life": "রোজকার চেনা রুটিন, ছোট ছোট সুখ-দুঃখ এবং সাধারণ মানুষের দৈনন্দিন জীবনের গল্প।",
+  "short-story": "স্বল্প পরিসরে জীবনের গভীর অনুভূতি ও টুকরো মুহূর্তের বাংলা ছোটগল্প।",
+  "village-life": "বাংলার মাটি ও মানুষ, নদীর বাঁক এবং সহজ-সরল গ্রামীণ জীবনের অনবদ্য গল্প।",
+  "relationships": "পরিবার, বন্ধুত্ব এবং মানুষের পারস্পরিক সম্পর্কের জটিলতা ও মায়ার গল্প।",
+  "childhood": "ফেলে আসা দুরন্ত দিন, শৈশবের স্মৃতি এবং নিষ্পাপ আনন্দ-বেদনার গল্প।",
+  "contemporary": "আজকের প্রজন্মের জীবনযাত্রা, আধুনিক সমাজ এবং সমসাময়িক সময়ের বাংলা গল্প।",
+  "coming-of-age": "কৈশোর থেকে যৌবনের রূপান্তর, আত্মোপলব্ধি এবং জীবনের পথে বেড়ে ওঠার গল্প।",
+  "romance": "হৃদয়ের টানাপোড়েন, ভালোবাসার অনুভূতি এবং আবেগঘন বাংলা রোমান্টিক গল্প।",
+  "warm-romance": "মন ভালো করে দেওয়া অনুভূতি, নিষ্পাপ ভালোবাসা এবং হৃদয়ছোঁয়া মিষ্টি প্রেমের গল্প।",
+  "tragic-romance": "অপূর্ণ ভালোবাসা, বিচ্ছেদের দহন এবং চোখ ভিজিয়ে দেওয়া বিয়োগান্তক প্রেমের কাহিনী।",
+  "mystery": "রুদ্ধশ্বাস রহস্য, অজানা সংকেত এবং চমকে দেওয়া বাংলা রহস্য গল্পের দুনিয়া।",
+  "detective": "বুদ্ধিদীপ্ত তদন্ত, অপরাধের জট খোলা এবং রোমাঞ্চকর বাংলা গোয়েন্দা গল্পের সম্ভার।",
+  "supernatural": "যুক্তির বাইরের ঘটনা, অশরীরী রহস্য এবং অলৌকিক জগতের শিহরণ জাগানো গল্প।",
+  "thriller": "টানটান উত্তেজনা, স্নায়ুক্ষয়ী সাসপেন্স এবং শেষ পৃষ্ঠা পর্যন্ত আটকে রাখার মতো গল্প।",
+  "adventure": "অজানার উদ্দেশ্যে যাত্রা, দুর্গম পথের হাতছানি এবং রোমাঞ্চকর অভিযানের কাহিনী।",
+  "fantasy": "জাদুর রাজ্য, কাল্পনিক জগৎ এবং বাস্তবতার সীমানা ছাড়ানো বাংলা ফ্যান্টাসি গল্প।",
+  "epic": "বিশাল কাল্পনিক জগৎ, শুভ-অশুভের মহাযুদ্ধ এবং মহাকাব্যিক আখ্যান।",
+  "urban": "আধুনিক শহরের পরিচিত অলিগলিতে লুকিয়ে থাকা জাদু ও অতিপ্রাকৃত শক্তির গল্প।",
+  "dark": "অন্ধকার জাদু, ভয়াবহ কল্পলোক এবং রহস্যে ঘেরা তমসাচ্ছন্ন ফ্যান্টাসি গল্প।",
+  "science-fiction": "ভবিষ্যতের পৃথিবী, মহাকাশের অজানা রহস্য এবং বিজ্ঞানের বিস্ময়কর কল্পকাহিনী।",
+  "horror": "গা ছমছমে পরিবেশ, অজানা ভয় এবং হাড় হিম করা বাংলা হরর ও ভৌতিক গল্প।",
+  "psychological": "মনের অন্ধকার কোণ, ভ্রম এবং স্নায়ুচাপ বাড়িয়ে দেওয়া মনস্তাত্ত্বিক গল্প।",
+  "gothic": "প্রাচীন প্রাসাদ, অভিশপ্ত অতীত এবং বিষণ্ণ ও রহস্যময় পরিবেশের গথিক কাহিনী।",
+  "history": "অতীতের ফেলে আসা দিন, রাজ-রাজড়ার কাহিনী এবং ইতিহাসের পটভূমিতে লেখা গল্প।",
+  "war-conflict": "রণক্ষেত্রের উত্তাপ, টিকে থাকার লড়াই এবং যুদ্ধ ও সংঘাতের মানবিক গল্প।",
+  "freedom-struggle": "দেশপ্রেম, আত্মত্যাগ এবং শেকল ভাঙার লড়াই নিয়ে লেখা স্বাধীনতা সংগ্রামের গল্প।",
+  "poetry": "ছন্দ, উপমা এবং হৃদয়ের গভীরতম অনুভূতির প্রকাশ নিয়ে বাংলা কবিতার আসর।",
+  "lyric": "কবির ব্যক্তিগত আবেগ, প্রেম ও প্রকৃতির সুরেলা অনুভূতি নিয়ে লেখা গীতিকবিতা।",
+  "narrative": "ছন্দের তালে গাথা পূর্ণাঙ্গ গল্প, ঐতিহাসিক ঘটনা এবং আখ্যানমূলক বাংলা কবিতা।",
+};
+
 function genreDescription(def) {
   if (TAXONOMY_META[genreSlug(def)]) return TAXONOMY_META[genreSlug(def)];
   const plural = pluralEn(def);
@@ -297,19 +380,43 @@ export default async function handler(req, res) {
     return `${base}/storage/v1/object/public/avatars/${encodeURIComponent(uid)}/${encodeURIComponent(file)}`;
   }
 
+  // Cover paths are always <story-author-uuid>/<safe filename> (see the
+  // covers bucket). Only that shape is trusted — the same strict regex
+  // as COVER_PATH_RE in api/sitemap.js — so a crafted cover_path can
+  // never inject a foreign host or a ../ traversal into a prerendered
+  // <img>. Anything else renders without an image.
+  const COVER_PATH_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[A-Za-z0-9._-]+$/i;
+  function coverThumbUrl(cp) {
+    if (!cp || !COVER_PATH_RE.test(cp)) return null;
+    const [uid, file] = cp.split("/");
+    return `${base}/storage/v1/object/public/cover-thumbs/${encodeURIComponent(uid)}/thumb-${encodeURIComponent(file)}`;
+  }
+
   const siteTitle = "GolpoNeer";
   const siteDesc = "GolpoNeer — a nest for stories. Read and share Bangla and English stories.";
   const cover = "https://golponeer.com/og-cover.jpg";
 
   // Per-kind story-list fetchers (public stories only, newest first,
   // mirroring the SPA listStories default order of published_at desc).
-  async function usernameMap(ids) {
+  // Author identity for the prerendered story list: the username (for
+  // the story URL) and the display name (what the SPA shows on cards).
+  // Classics show original_author instead (see renderStoryItem).
+  // Memoized: booksFor (JSON-LD) and renderStoryList (the body) request
+  // the same authors, so the profile fetch runs once per render.
+  let authorMapMemo = { key: "", value: null };
+  async function authorMap(ids) {
     const uniq = [...new Set((ids ?? []).filter(Boolean))];
     if (!uniq.length) return new Map();
+    const key = uniq.slice().sort().join(",");
+    if (authorMapMemo.key === key && authorMapMemo.value) return authorMapMemo.value;
     const rows = await get(
-      `profiles?id=in.(${uniq.map((x) => encodeURIComponent(x)).join(",")})&select=id,username`
+      `profiles?id=in.(${uniq.map((x) => encodeURIComponent(x)).join(",")})&select=id,username,display_name`
     );
-    return new Map((rows ?? []).map((r) => [r.id, r.username]));
+    const value = new Map(
+      (rows ?? []).map((r) => [r.id, { username: r.username, display_name: r.display_name }])
+    );
+    authorMapMemo = { key, value };
+    return value;
   }
 
   // Public = status ongoing/complete AND >= 1 published chapter (the
@@ -322,16 +429,16 @@ export default async function handler(req, res) {
   // so the prerender can match the SPA exactly.
   async function listStories(where, limit) {
     const rows = await get(
-      `stories?${where}&status=in.(ongoing,complete)&order=published_at.desc.nullslast,id.asc&limit=${limit}&select=id,title,slug,author_id,published_at,origin_type,original_author,translator_name,summary,genre,tags,language,cover_path,chapters!inner(id)&chapters.status=eq.published&chapters.limit=1`
+      `stories?${where}&status=in.(ongoing,complete)&order=published_at.desc.nullslast,id.asc&limit=${limit}&select=id,title,slug,author_id,published_at,origin_type,original_author,translator_name,summary,genre,tags,subcategories,status,language,cover_path,chapters!inner(id)&chapters.status=eq.published&chapters.limit=1`
     );
     return rows ?? [];
   }
 
   async function booksFor(stories) {
-    const names = await usernameMap(stories.map((r) => r.author_id));
+    const authors = await authorMap(stories.map((r) => r.author_id));
     return stories
-      .filter((r) => names.get(r.author_id))
-      .map((r) => bookItem(r.title, names.get(r.author_id), r.slug));
+      .filter((r) => authors.get(r.author_id)?.username)
+      .map((r) => bookItem(r.title, authors.get(r.author_id).username, r.slug));
   }
 
   let found = false;
@@ -341,6 +448,14 @@ export default async function handler(req, res) {
   let canonical = "https://golponeer.com/";
   let image = cover;
   let ogType = "website";
+  // Prerender data (Phase 2): the fetched public stories + the per-kind
+  // page pieces, set by the branch that served the request. Only set
+  // when the stories were actually fetched — the drift safety-net
+  // branches (generic meta, no stories) leave these null, so a search
+  // indexer gets the OG head-only response instead of a body it cannot
+  // build.
+  let pageStories = null;
+  let pageData = null;
 
   if (kind === "author" && params.username) {
     // Follow username renames the same way the story handler does, so a
@@ -353,7 +468,7 @@ export default async function handler(req, res) {
     if (profile) {
       const display = profile.display_name || profile.username;
       const stories = await get(
-        `stories?author_id=eq.${encodeURIComponent(profile.id)}&status=in.(ongoing,complete)&order=published_at.desc.nullslast,id.asc&select=id,title,slug,genre,author_id,published_at,origin_type,original_author,translator_name,summary,tags,language,cover_path,chapters!inner(id)&chapters.status=eq.published&chapters.limit=1&limit=50`
+        `stories?author_id=eq.${encodeURIComponent(profile.id)}&status=in.(ongoing,complete)&order=published_at.desc.nullslast,id.asc&select=id,title,slug,genre,author_id,published_at,origin_type,original_author,translator_name,summary,tags,subcategories,status,language,cover_path,chapters!inner(id)&chapters.status=eq.published&chapters.limit=1&limit=50`
       );
       const genres = [...new Set((stories ?? []).map((r) => r.genre))].slice(0, 3);
       const isAuthor = (stories ?? []).length > 0;
@@ -390,6 +505,8 @@ export default async function handler(req, res) {
         if (books.length > 0) graph.push(itemList(books));
       }
       jsonLd = { "@context": "https://schema.org", "@graph": graph };
+      pageStories = stories;
+      pageData = { kind: "author", profile, avatarUrl, isAuthor };
     }
   } else if (kind === "genre" && params.slug) {
     const def = genreFromSlug(params.slug);
@@ -408,6 +525,8 @@ export default async function handler(req, res) {
       const books = await booksFor(stories);
       if (books.length > 0) graph.push(itemList(books));
       jsonLd = { "@context": "https://schema.org", "@graph": graph };
+      pageStories = stories;
+      pageData = { kind: "genre", def, subtitle: TAXONOMY_SUBTITLES[genreSlug(def)] };
     } else {
       // Taxonomy-drift safety net: a genre the SPA knows but this file
       // does not (see the parity check) must not 404 a live page.
@@ -417,7 +536,7 @@ export default async function handler(req, res) {
     }
   } else if (kind === "shelf" && params.slug) {
     const shelves = await get(
-      `shelves?slug=eq.${encodeURIComponent(params.slug)}&select=id,slug,name,tagline`
+      `shelves?slug=eq.${encodeURIComponent(params.slug)}&select=id,slug,name,tagline,layout`
     );
     const shelf = shelves?.[0] ?? null;
     if (shelf) {
@@ -433,7 +552,7 @@ export default async function handler(req, res) {
       let stories = [];
       if (idSet.length > 0) {
         const rows = await get(
-          `stories?id=in.(${idSet.map((x) => encodeURIComponent(x)).join(",")})&status=in.(ongoing,complete)&select=id,title,slug,author_id,published_at,origin_type,original_author,translator_name,summary,genre,tags,language,cover_path,chapters!inner(id)&chapters.status=eq.published&chapters.limit=1`
+          `stories?id=in.(${idSet.map((x) => encodeURIComponent(x)).join(",")})&status=in.(ongoing,complete)&select=id,title,slug,author_id,published_at,origin_type,original_author,translator_name,summary,genre,tags,subcategories,status,language,cover_path,chapters!inner(id)&chapters.status=eq.published&chapters.limit=1`
         );
         const byId = new Map((rows ?? []).map((r) => [r.id, r]));
         stories = order.map((id) => byId.get(id)).filter(Boolean);
@@ -447,6 +566,8 @@ export default async function handler(req, res) {
       const books = await booksFor(stories);
       if (books.length > 0) graph.push(itemList(books));
       jsonLd = { "@context": "https://schema.org", "@graph": graph };
+      pageStories = stories;
+      pageData = { kind: "shelf", shelf };
     }
   } else if (kind === "subcategory" && params.slug) {
     const sub = SUBCATEGORIES.find(
@@ -472,13 +593,21 @@ export default async function handler(req, res) {
       const books = await booksFor(stories);
       if (books.length > 0) graph.push(itemList(books));
       jsonLd = { "@context": "https://schema.org", "@graph": graph };
+      pageStories = stories;
+      pageData = { kind: "subcategory", sub, subtitle: TAXONOMY_SUBTITLES[sub.id] };
     } else {
       // Taxonomy-drift safety net (see the genre branch above).
       found = true;
       canonical = `https://golponeer.com/subcategories/${encPath(String(params.slug).trim().toLowerCase())}`;
     }
   } else if (kind === "tag" && params.slug) {
-    const tag = TAG_PAGES[String(params.slug).trim().toLowerCase()];
+    // Guard the lookup with Object.hasOwn: TAG_PAGES is a plain object,
+    // so a direct index with a prototype key ("constructor", "__proto__")
+    // would resolve to a truthy Object.prototype member and crash at
+    // `tag.matchTags` (HTTP 500). With the guard, prototype keys fall
+    // through to the drift safety net below.
+    const tagKey = String(params.slug).trim().toLowerCase();
+    const tag = Object.hasOwn(TAG_PAGES, tagKey) ? TAG_PAGES[tagKey] : undefined;
     if (tag) {
       found = true;
       title = tag.title;
@@ -510,6 +639,8 @@ export default async function handler(req, res) {
       const books = await booksFor(stories);
       if (books.length > 0) graph.push(itemList(books));
       jsonLd = { "@context": "https://schema.org", "@graph": graph };
+      pageStories = stories;
+      pageData = { kind: "tag", tag };
     } else {
       // Taxonomy-drift safety net (see the genre branch above).
       found = true;
@@ -517,6 +648,185 @@ export default async function handler(req, res) {
     }
   }
 
+  // ---- Phase 2 prerender body (search indexers only) ----
+  // The story list, mirroring the SPA's VerticalShelfList (genre,
+  // subcategory, tag, author, vertical shelf) and the compact StoryCard
+  // grid (horizontal shelf). Rendered in Bangla (the SPA default).
+  // Chapter counts and reading minutes are NOT rendered — they come
+  // from the story_counts RPC, not the stories table, and they are UI
+  // metadata, not the page's indexable content. The identifying content
+  // (title, author, summary, cover, link) is all present.
+
+  const STATUS_BN = { ongoing: "চলমান", complete: "সমাপ্ত" };
+
+  function renderStoryItem(story, authors, compact) {
+    const author = authors.get(story.author_id);
+    if (!author?.username) return "";
+    const url = `https://golponeer.com/stories/${encPath(author.username)}/${encPath(story.slug)}`;
+    // Author line: the vertical list shows the uploader's display name;
+    // the compact card shows the original author for classics. Match
+    // each component exactly.
+    const by = compact
+      ? story.original_author || author.display_name || author.username
+      : author.display_name || author.username;
+    const img = coverThumbUrl(story.cover_path);
+    const tagItems = [
+      ...((story.subcategories ?? [])
+        .map((id) => {
+          const sub = SUBCATEGORIES.find((s) => s.id === id);
+          return sub ? `#${sub.bn}` : null;
+        })
+        .filter(Boolean)),
+      ...((story.tags ?? []).map((t) => `#${t}`)),
+    ];
+    const shown = tagItems.slice(0, 4);
+    const rest = tagItems.length - shown.length;
+    const status = STATUS_BN[story.status] ?? story.status;
+    const cover = img ? `<a href="${esc(url)}"><img src="${esc(img)}" alt="" loading="lazy"></a>` : "";
+    const titleLink = `<h3><a href="${esc(url)}">${esc(story.title)}</a></h3>`;
+    if (compact) {
+      return `<article>${cover}${titleLink}<p>${esc(by)}</p></article>`;
+    }
+    return `<article>${cover}${shown.length > 0 ? `<p>${shown.map(esc).join(" ")}${rest > 0 ? ` +${rest}` : ""}</p>` : ""}${titleLink}<p>${esc(by)}</p>${story.summary ? `<p>${esc(story.summary)}</p>` : ""}<p>${esc(status)}</p></article>`;
+  }
+
+  async function renderStoryList(stories, compact) {
+    const authors = await authorMap(stories.map((r) => r.author_id));
+    return stories
+      .map((s) => renderStoryItem(s, authors, compact))
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  // The page body for the prerender, per kind — mirroring the SPA page
+  // (heading, subtitle, pills, profile/shelf header, story list).
+  async function renderPageBody() {
+    const parts = [];
+    if (pageData.kind === "author") {
+      const { profile, avatarUrl } = pageData;
+      const display = profile.display_name || profile.username;
+      if (avatarUrl) parts.push(`<img src="${esc(avatarUrl)}" alt="${esc(display)}">`);
+      parts.push(`<h1>${esc(display)}</h1>`);
+      if (profile.bio) parts.push(`<p>${esc(profile.bio)}</p>`);
+      parts.push(await renderStoryList(pageStories, false));
+    } else if (pageData.kind === "genre") {
+      const { def, subtitle } = pageData;
+      parts.push(`<h1>${esc(def.bn)} · ${esc(def.en)}</h1>`);
+      if (subtitle) parts.push(`<p>${esc(subtitle)}</p>`);
+      // Sub-category pills: the sub-categories this genre's stories
+      // actually carry, in SUBCATEGORIES order (as in GenrePage).
+      const order = new Map(SUBCATEGORIES.map((s, i) => [s.id, i]));
+      const present = [...new Set(pageStories.flatMap((s) => s.subcategories ?? []))]
+        .filter((id) => order.has(id))
+        .sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
+      if (present.length > 0) {
+        parts.push(
+          `<nav>${present
+            .map((id) => {
+              const sub = SUBCATEGORIES.find((s) => s.id === id);
+              return `<a href="https://golponeer.com/subcategories/${encPath(id)}">${esc(sub.bn)}</a>`;
+            })
+            .join(" · ")}</nav>`
+        );
+      }
+      parts.push(await renderStoryList(pageStories, false));
+    } else if (pageData.kind === "shelf") {
+      const { shelf } = pageData;
+      parts.push(`<h1>${esc(shelf.name)}</h1>`);
+      if (shelf.tagline) parts.push(`<p>${esc(shelf.tagline)}</p>`);
+      const compact = shelf.layout !== "vertical";
+      const list = await renderStoryList(pageStories, compact);
+      parts.push(compact ? `<div>${list}</div>` : list);
+    } else if (pageData.kind === "subcategory") {
+      const { sub, subtitle } = pageData;
+      parts.push(`<h1>${esc(sub.bn)} · ${esc(sub.label)} stories</h1>`);
+      if (subtitle) parts.push(`<p>${esc(subtitle)}</p>`);
+      parts.push(await renderStoryList(pageStories, false));
+    } else if (pageData.kind === "tag") {
+      const { tag } = pageData;
+      parts.push(`<h1>${esc(tag.bn)} · ${esc(tag.en)} stories</h1>`);
+      parts.push(await renderStoryList(pageStories, false));
+    }
+    return parts.join("\n");
+  }
+
+  // A standalone HTML page (no SPA shell) for the no-shell fallback.
+  // Carries the title, description, canonical, JSON-LD, and the body —
+  // so a crawler always gets readable content, never an error.
+  function standaloneHtml(body) {
+    return (
+      `<!doctype html><html lang="bn"><head><meta charset="utf-8">` +
+      `<title>${esc(title)}</title>` +
+      `<meta name="description" content="${esc(desc)}">` +
+      `<link rel="canonical" href="${esc(canonical)}">` +
+      (jsonLd ? `<script type="application/ld+json">${ldJson(jsonLd)}</script>` : "") +
+      `</head><body>${body}</body></html>`
+    );
+  }
+
+  const ua = String(req.headers["user-agent"] ?? "");
+  const isIndexer = INDEXER_UA.test(ua);
+
+  // Search indexer with a fully-fetched list page: full HTML (shell +
+  // body), same 60-second cache as the OG response — revoked content
+  // stops being served within ~1-2 minutes.
+  if (isIndexer && found && pageStories && pageData) {
+    const body = await renderPageBody();
+    const shell = readShell();
+    if (!shell) {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      res.status(200).send(standaloneHtml(body));
+      return;
+    }
+    let html = stripBakeTags(shell);
+    html = html.replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`);
+    html = html.replace(
+      /<meta\s+name="description"\s+content="[^"]*"\s*\/?>/,
+      `<meta name="description" content="${esc(desc)}" />`
+    );
+    html = html.replace(
+      /<link rel="canonical" href="[^"]*"[^>]*>/,
+      `<link rel="canonical" href="${esc(canonical)}" />`
+    );
+    // The og tags in the prerendered head match the OG response (the
+    // bot layer's per-page values), not the shell's homepage values.
+    // The \s+ forms match the shell's multi-line meta tags.
+    html = html.replace(
+      /<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/,
+      `<meta property="og:title" content="${esc(title)}" />`
+    );
+    html = html.replace(
+      /<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/,
+      `<meta property="og:description" content="${esc(desc)}" />`
+    );
+    html = html.replace(
+      /<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/,
+      `<meta property="og:url" content="${esc(canonical)}" />`
+    );
+    html = html.replace(
+      /<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/,
+      `<meta property="og:image" content="${esc(image)}" />`
+    );
+    if (jsonLd) {
+      html = html.replace(
+        "</head>",
+        `<script type="application/ld+json">${ldJson(jsonLd)}</script>\n</head>`
+      );
+    }
+    if (html.includes('<div id="root"></div>')) {
+      html = html.replace('<div id="root"></div>', `<div id="root">${body}</div>`);
+    } else {
+      html = html.replace(/<div id="root">\s*<\/div>/, `<div id="root">${body}</div>`);
+    }
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=60");
+    res.status(200).send(html);
+    return;
+  }
+
+  // Everyone else (social bots, and search indexers on pages whose list
+  // could not be fetched): the OG head-only response, unchanged.
   // Short cache: a renamed author or retagged shelf must stop unfurling
   // its old preview promptly.
   res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -548,4 +858,4 @@ ${found
 // taxonomy tables above are hand-synced copies of src/lib/ — the parity
 // script imports them to prove they still match. Vercel only uses the
 // default handler export; these add nothing to the served response.
-export { GENRES, TAXONOMY_META, SUBCATEGORIES, SUBCATEGORY_GROUPS, TAG_PAGES };
+export { GENRES, TAXONOMY_META, TAXONOMY_SUBTITLES, SUBCATEGORIES, SUBCATEGORY_GROUPS, TAG_PAGES };

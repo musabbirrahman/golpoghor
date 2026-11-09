@@ -29,6 +29,7 @@ import {
 import {
   GENRES as API_PAGE_GENRES,
   TAXONOMY_META as API_META,
+  TAXONOMY_SUBTITLES as API_SUBTITLES,
   SUBCATEGORIES as API_SUBS,
   SUBCATEGORY_GROUPS as API_SUB_GROUPS,
   TAG_PAGES as API_TAG_PAGES,
@@ -121,6 +122,17 @@ for (const k of srcMetaKeys) {
     fail(`TAXONOMY_META["${k}"]: description differs between src/lib/taxonomy-seo.ts and api/og-page.js`);
 }
 
+// --- 4b. TAXONOMY_SUBTITLES (visible Bangla subtitles, Phase 2) ------
+const apiSubtitleKeys = Object.keys(API_SUBTITLES);
+if (!sameSet(srcMetaKeys, apiSubtitleKeys)) {
+  const d = diffSets(srcMetaKeys, apiSubtitleKeys);
+  fail(`TAXONOMY_SUBTITLES keys differ: only in src/lib/taxonomy-seo.ts: ${d.onlyA.join(", ") || "—"}; only in api/og-page.js: ${d.onlyB.join(", ") || "—"}`);
+}
+for (const k of srcMetaKeys) {
+  if (API_SUBTITLES[k] !== undefined && API_SUBTITLES[k] !== SRC_META[k].subtitle.bn)
+    fail(`TAXONOMY_SUBTITLES["${k}"]: subtitle differs between src/lib/taxonomy-seo.ts and api/og-page.js`);
+}
+
 // --- 5. Subcategories --------------------------------------------------
 const srcSubIds = SRC_SUBS.map((s) => s.id);
 const apiSubIds = API_SUBS.map((s) => s.id);
@@ -191,5 +203,5 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log(
-  `Taxonomy parity OK: ${srcGenreValues.length} genres, ${srcMetaKeys.length} taxonomy descriptions, ${srcSubIds.length} subcategories, ${srcTagKeys.length} tag pages — src/ and api/ agree.`
+  `Taxonomy parity OK: ${srcGenreValues.length} genres, ${srcMetaKeys.length} taxonomy descriptions, ${srcMetaKeys.length} taxonomy subtitles, ${srcSubIds.length} subcategories, ${srcTagKeys.length} tag pages — src/ and api/ agree.`
 );
