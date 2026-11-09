@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "check-taxonomy": "node scripts/check-taxonomy-parity.mjs"
+    "check-taxonomy": "node scripts/check-taxonomy-parity.mjs",
+    "generate-legal-docs": "node scripts/generate-legal-docs.mjs",
+    "check-legal-docs": "node scripts/check-legal-docs-parity.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
