@@ -34,7 +34,8 @@ function esc(s) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function encPath(seg) {
@@ -85,6 +86,7 @@ export default async function handler(req, res) {
     if (!base || !key) return null;
     try {
       const r = await fetch(`${base}/rest/v1/${path}`, {
+        signal: AbortSignal.timeout(3500),
         headers: {
           apikey: key,
           Authorization: `Bearer ${key}`,
@@ -180,7 +182,14 @@ export default async function handler(req, res) {
     ? `https://golponeer.com/stories/${encPath(canonicalUser)}/${encPath(story.slug)}`
     : "https://golponeer.com/";
 
-  const title = isPublic ? `${story.title} — ${authorName} | ${siteTitle}` : siteTitle;
+  const titleAuthor =
+    isPublic &&
+    story.origin_type &&
+    story.origin_type !== "original" &&
+    story.original_author
+      ? story.original_author
+      : authorName;
+  const title = isPublic ? `${story.title} — ${titleAuthor} | ${siteTitle}` : siteTitle;
   const desc = isPublic
     ? String(story.summary || "").slice(0, 200) || siteDesc
     : siteDesc;
@@ -272,3 +281,6 @@ ${isPublic
   : `<p>This story is not public. <a href="https://golponeer.com/">Visit GolpoNeer</a></p>`}
 </body></html>`);
 }
+
+// Named export for scripts/check-taxonomy-parity.mjs (CI guard).
+export { GENRES };

@@ -17,7 +17,8 @@ function esc(s) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 export default async function handler(req, res) {
@@ -31,6 +32,7 @@ export default async function handler(req, res) {
       const r = await fetch(
         `${base}/rest/v1/rpc/keepsakes_public?slug=eq.${encodeURIComponent(slug)}`,
         {
+          signal: AbortSignal.timeout(3500),
           headers: {
             apikey: key,
             Authorization: `Bearer ${key}`,

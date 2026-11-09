@@ -39,7 +39,8 @@ function esc(s) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function encPath(seg) {
@@ -90,7 +91,10 @@ function itemList(items) {
 
 // Genre taxonomy mirror of src/lib/genres.ts (values, Bangla + English
 // labels, URL slugs, aliases). Kept in sync by hand; the taxonomy
-// changes rarely, and a mismatch here only falls back to generic meta.
+// changes rarely. A mismatch here falls back to generic meta (see the
+// drift safety net in the genre/subcategory/tag branches) instead of a
+// 404 — and scripts/check-taxonomy-parity.mjs fails CI if the tables
+// drift from src/lib/ at all.
 const GENRES = [
   { value: "general", bn: "সাধারণ", en: "General", aliases: [] },
   { value: "ছোটগল্প", bn: "ছোটগল্প", en: "Short story", aliases: ["short story", "short-story", "short stories"] },
@@ -244,6 +248,7 @@ export default async function handler(req, res) {
     if (!base || !key) return null;
     try {
       const r = await fetch(`${base}/rest/v1/${path}`, {
+        signal: AbortSignal.timeout(3500),
         headers: {
           apikey: key,
           Authorization: `Bearer ${key}`,
@@ -256,6 +261,40 @@ export default async function handler(req, res) {
     } catch {
       return null;
     }
+  }
+
+  // Follow username renames (mirror of resolveUsername in api/og-story.js
+  // and the client's resolveUsername): 3 hops max, expiry-aware,
+  // loop-guarded, lowercased. Without this, a renamed author 404s on
+  // /authors/:old_username for bots while the SPA resolves it.
+  async function resolveUsername(start) {
+    let current = String(start).toLowerCase();
+    const seen = new Set([current]);
+    for (let hop = 0; hop < 3; hop++) {
+      const rows = await get(
+        `username_redirects?old_username=eq.${encodeURIComponent(current)}&select=new_username,expires_at`
+      );
+      const row = rows?.[0];
+      if (!row || new Date(row.expires_at).getTime() <= Date.now()) break;
+      const next = String(row.new_username).toLowerCase();
+      if (seen.has(next)) break;
+      seen.add(next);
+      current = next;
+    }
+    return current;
+  }
+
+  // Avatar paths are always <author-uuid>/<safe filename> (see
+  // uploadAvatar in the Supabase provider). Only that shape is trusted —
+  // the same strict regex as COVER_PATH_RE in api/og-story.js — so a
+  // crafted avatar_path can never inject a foreign host, a data: URI, or
+  // a ../ traversal into og:image / JSON-LD / prerendered <img> tags.
+  // Anything else falls back to the generic cover.
+  const AVATAR_PATH_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[A-Za-z0-9._-]+$/i;
+  function publicAvatarUrl(p) {
+    if (!p || !AVATAR_PATH_RE.test(p)) return null;
+    const [uid, file] = p.split("/");
+    return `${base}/storage/v1/object/public/avatars/${encodeURIComponent(uid)}/${encodeURIComponent(file)}`;
   }
 
   const siteTitle = "GolpoNeer";
@@ -273,9 +312,17 @@ export default async function handler(req, res) {
     return new Map((rows ?? []).map((r) => [r.id, r.username]));
   }
 
+  // Public = status ongoing/complete AND >= 1 published chapter (the
+  // story_is_public rule): the chapters!inner join enforces the chapter
+  // gate server-side, so a story whose chapters are all drafts never
+  // leaks into a list and never marks its account as an author.
+  // Ordering matches the SPA (published_at desc, NULLS LAST, id
+  // tie-breaker). The select carries the attribution fields the SPA
+  // shows on cards/titles (origin_type, original_author, translator_name)
+  // so the prerender can match the SPA exactly.
   async function listStories(where, limit) {
     const rows = await get(
-      `stories?${where}&status=in.(ongoing,complete)&order=published_at.desc&limit=${limit}&select=id,title,slug,author_id,published_at`
+      `stories?${where}&status=in.(ongoing,complete)&order=published_at.desc.nullslast,id.asc&limit=${limit}&select=id,title,slug,author_id,published_at,origin_type,original_author,translator_name,summary,genre,tags,language,cover_path,chapters!inner(id)&chapters.status=eq.published&chapters.limit=1`
     );
     return rows ?? [];
   }
@@ -296,14 +343,17 @@ export default async function handler(req, res) {
   let ogType = "website";
 
   if (kind === "author" && params.username) {
+    // Follow username renames the same way the story handler does, so a
+    // renamed author does not 404 here while the SPA resolves it.
+    const currentUsername = await resolveUsername(params.username);
     const profiles = await get(
-      `profiles?username=eq.${encodeURIComponent(params.username)}&select=id,username,display_name,bio,avatar_path`
+      `profiles?username=eq.${encodeURIComponent(currentUsername)}&select=id,username,display_name,bio,avatar_path`
     );
     const profile = profiles?.[0] ?? null;
     if (profile) {
       const display = profile.display_name || profile.username;
       const stories = await get(
-        `stories?author_id=eq.${encodeURIComponent(profile.id)}&status=in.(ongoing,complete)&order=published_at.desc&select=id,title,slug,genre,author_id,published_at&limit=50`
+        `stories?author_id=eq.${encodeURIComponent(profile.id)}&status=in.(ongoing,complete)&order=published_at.desc.nullslast,id.asc&select=id,title,slug,genre,author_id,published_at,origin_type,original_author,translator_name,summary,tags,language,cover_path,chapters!inner(id)&chapters.status=eq.published&chapters.limit=1&limit=50`
       );
       const genres = [...new Set((stories ?? []).map((r) => r.genre))].slice(0, 3);
       const isAuthor = (stories ?? []).length > 0;
@@ -318,11 +368,8 @@ export default async function handler(req, res) {
         );
         desc = `${display} is an author on GolpoNeer writing ${labels.join(", ")} stories. Read them free, no account needed.`;
       }
-      if (profile.avatar_path && !String(profile.avatar_path).startsWith("data:")) {
-        image = String(profile.avatar_path).startsWith("http")
-          ? profile.avatar_path
-          : `${base}/storage/v1/object/public/avatars/${profile.avatar_path}`;
-      }
+      const avatarUrl = publicAvatarUrl(profile.avatar_path);
+      if (avatarUrl) image = avatarUrl;
       canonical = `https://golponeer.com/authors/${encPath(profile.username)}`;
       const graph = [
         {
@@ -331,9 +378,7 @@ export default async function handler(req, res) {
           url: canonical,
           description: profile.bio || undefined,
           ...(isAuthor ? { jobTitle: "Author" } : {}),
-          ...(profile.avatar_path && !String(profile.avatar_path).startsWith("data:")
-            ? { image }
-            : {}),
+          ...(avatarUrl ? { image } : {}),
         },
         breadcrumbList([
           ["Home", "https://golponeer.com/"],
@@ -363,6 +408,12 @@ export default async function handler(req, res) {
       const books = await booksFor(stories);
       if (books.length > 0) graph.push(itemList(books));
       jsonLd = { "@context": "https://schema.org", "@graph": graph };
+    } else {
+      // Taxonomy-drift safety net: a genre the SPA knows but this file
+      // does not (see the parity check) must not 404 a live page.
+      // Generic meta + 200; the parity check is the primary guard.
+      found = true;
+      canonical = `https://golponeer.com/genres/${encPath(String(params.slug).trim().toLowerCase())}`;
     }
   } else if (kind === "shelf" && params.slug) {
     const shelves = await get(
@@ -382,7 +433,7 @@ export default async function handler(req, res) {
       let stories = [];
       if (idSet.length > 0) {
         const rows = await get(
-          `stories?id=in.(${idSet.map((x) => encodeURIComponent(x)).join(",")})&status=in.(ongoing,complete)&select=id,title,slug,author_id,published_at`
+          `stories?id=in.(${idSet.map((x) => encodeURIComponent(x)).join(",")})&status=in.(ongoing,complete)&select=id,title,slug,author_id,published_at,origin_type,original_author,translator_name,summary,genre,tags,language,cover_path,chapters!inner(id)&chapters.status=eq.published&chapters.limit=1`
         );
         const byId = new Map((rows ?? []).map((r) => [r.id, r]));
         stories = order.map((id) => byId.get(id)).filter(Boolean);
@@ -421,6 +472,10 @@ export default async function handler(req, res) {
       const books = await booksFor(stories);
       if (books.length > 0) graph.push(itemList(books));
       jsonLd = { "@context": "https://schema.org", "@graph": graph };
+    } else {
+      // Taxonomy-drift safety net (see the genre branch above).
+      found = true;
+      canonical = `https://golponeer.com/subcategories/${encPath(String(params.slug).trim().toLowerCase())}`;
     }
   } else if (kind === "tag" && params.slug) {
     const tag = TAG_PAGES[String(params.slug).trim().toLowerCase()];
@@ -434,9 +489,18 @@ export default async function handler(req, res) {
         const rows = await listStories(`tags=cs.{${encodeURIComponent(match)}}`, 100);
         for (const r of rows) merged.set(r.id, r);
       }
-      const stories = [...merged.values()].sort((a, b) =>
-        (b.published_at ?? "").localeCompare(a.published_at ?? "")
-      );
+      const stories = [...merged.values()].sort((a, b) => {
+        // Match the listStories order: published_at desc, NULLS LAST,
+        // id asc tie-breaker (the old localeCompare put nulls first).
+        if (a.published_at == null && b.published_at == null)
+          return (a.id ?? "").localeCompare(b.id ?? "");
+        if (a.published_at == null) return 1;
+        if (b.published_at == null) return -1;
+        return (
+          b.published_at.localeCompare(a.published_at) ||
+          (a.id ?? "").localeCompare(b.id ?? "")
+        );
+      });
       const graph = [
         breadcrumbList([
           ["Home", "https://golponeer.com/"],
@@ -446,6 +510,10 @@ export default async function handler(req, res) {
       const books = await booksFor(stories);
       if (books.length > 0) graph.push(itemList(books));
       jsonLd = { "@context": "https://schema.org", "@graph": graph };
+    } else {
+      // Taxonomy-drift safety net (see the genre branch above).
+      found = true;
+      canonical = `https://golponeer.com/tags/${encPath(String(params.slug).trim().toLowerCase())}`;
     }
   }
 
@@ -475,3 +543,9 @@ ${found
   : `<p>This page is not public. <a href="https://golponeer.com/">Visit GolpoNeer</a></p>`}
 </body></html>`);
 }
+
+// Named exports for scripts/check-taxonomy-parity.mjs (CI guard): the
+// taxonomy tables above are hand-synced copies of src/lib/ — the parity
+// script imports them to prove they still match. Vercel only uses the
+// default handler export; these add nothing to the served response.
+export { GENRES, TAXONOMY_META, SUBCATEGORIES, SUBCATEGORY_GROUPS, TAG_PAGES };

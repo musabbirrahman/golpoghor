@@ -51,11 +51,20 @@ const esc = (s) =>
   String(s ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 const seg = (s) => encodeURIComponent(s);
+
+// Cover paths are always <author-uuid>/<safe filename> (see uploadCover).
+// Only that shape is trusted — the same strict regex as COVER_PATH_RE in
+// api/og-story.js — so a crafted cover_path can never smuggle characters
+// into a built URL.
+const COVER_PATH_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[A-Za-z0-9._-]+$/i;
 
 async function get(path) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: AbortSignal.timeout(3500),
     headers: { apikey: KEY, Authorization: `Bearer ${KEY}` },
   });
   if (!res.ok) throw new Error(`${path} -> HTTP ${res.status}`);
@@ -119,9 +128,9 @@ const SUBCATEGORY_ORDER = [
 ];
 
 async function buildSitemapXml() {
-  const stories = await get(
+  const stories = await getAll(
     "stories?select=id,slug,genre,subcategories,tags,cover_path,updated_at,author:profiles!stories_author_id_fkey(username)" +
-      "&status=in.(ongoing,complete)&order=updated_at.desc"
+      "&status=in.(ongoing,complete)&order=updated_at.desc,id.asc"
   );
   const publishedRows = await getAll(
     "chapters?select=story_id&status=eq.published"
@@ -129,7 +138,7 @@ async function buildSitemapXml() {
   const publishedStoryIds = new Set(publishedRows.map((c) => c.story_id));
   const publicStories = stories.filter((s) => publishedStoryIds.has(s.id));
 
-  const profiles = await get("profiles?select=username,updated_at&order=username");
+  const profiles = await getAll("profiles?select=username,updated_at&order=username");
   const authorNames = new Set(publicStories.map((s) => s.author.username));
   const publicProfiles = profiles.filter((p) => authorNames.has(p.username));
 
@@ -153,10 +162,9 @@ async function buildSitemapXml() {
   ];
   for (const s of publicStories) {
     let image;
-    if (s.cover_path && s.cover_path.includes("/")) {
-      const i = s.cover_path.lastIndexOf("/");
-      const thumb = s.cover_path.slice(0, i + 1) + "thumb-" + s.cover_path.slice(i + 1);
-      image = `${SUPABASE_URL}/storage/v1/object/public/cover-thumbs/${thumb}`;
+    if (s.cover_path && COVER_PATH_RE.test(s.cover_path)) {
+      const [uid, file] = s.cover_path.split("/");
+      image = `${SUPABASE_URL}/storage/v1/object/public/cover-thumbs/${encodeURIComponent(uid)}/thumb-${encodeURIComponent(file)}`;
     }
     urls.push({
       loc: `${BASE}/stories/${seg(s.author.username)}/${seg(s.slug)}`,
@@ -238,6 +246,12 @@ export default async function handler(req, res) {
     );
     res.status(200).send(xml);
   } catch (err) {
-    res.status(500).send(`Sitemap generation failed: ${err.message}`);
+    // Never echo internal details (PostgREST query strings) to the
+    // response — log server-side and return a generic message.
+    console.error("Sitemap generation failed:", err);
+    res.status(500).send("Sitemap generation failed");
   }
 }
+
+// Named exports for scripts/check-taxonomy-parity.mjs (CI guard).
+export { GENRE_SLUGS, GENRE_ALIASES, SUBCATEGORY_ORDER };
