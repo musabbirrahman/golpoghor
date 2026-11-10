@@ -28,18 +28,19 @@ function linkifyContact(text: string) {
   });
 }
 
-/** About page only: the founder's name links to his portfolio —
- *  LinkedIn gates profile viewing behind a login, so most readers
- *  who click it land on a sign-in page. The portfolio is his own
- *  site, viewable by anyone, and shows his work. LinkedIn stays
- *  linked in the founder JSON-LD sameAs (for search engines).
- *  Other pages keep names as plain text. */
+/** About page only: the founder's name links to his GitHub profile.
+ *  LinkedIn and Facebook both gate profile viewing behind a login,
+ *  so most readers who click them land on a sign-in page. The
+ *  portfolio times out sometimes (slow to wake after idle). GitHub
+ *  is viewable by anyone and reliable. LinkedIn stays linked in
+ *  the founder JSON-LD sameAs (for search engines). Other pages
+ *  keep names as plain text. */
 function linkifyFounder(text: string) {
   const parts = text.split(/(মুসাব্বির রহমান|Musabbir Rahman)/g);
   if (parts.length === 1) return text;
   return parts.map((part, i) =>
     part === "মুসাব্বির রহমান" || part === "Musabbir Rahman" ? (
-      <a key={i} href="https://musabbirrahman.vercel.app" target="_blank" rel="noreferrer" className="font-medium text-river hover:underline">
+      <a key={i} href="https://github.com/musabbirrahman" target="_blank" rel="noreferrer" className="font-medium text-river hover:underline">
         {part}
       </a>
     ) : (

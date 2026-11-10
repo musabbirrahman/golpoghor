@@ -75,12 +75,12 @@ function esc(s) {
     .replace(/'/g, "&#39;");
 }
 
-/** About page only: the founder's name links to his portfolio,
+/** About page only: the founder's name links to his GitHub profile,
  *  exactly as the SPA's linkifyFounder does. */
 function linkifyFounder(text) {
   return esc(text).replace(
     /(মুসাব্বির রহমান|Musabbir Rahman)/g,
-    '<a href="https://musabbirrahman.vercel.app" target="_blank" rel="noreferrer">$1</a>',
+    '<a href="https://github.com/musabbirrahman" target="_blank" rel="noreferrer">$1</a>',
   );
 }
 
