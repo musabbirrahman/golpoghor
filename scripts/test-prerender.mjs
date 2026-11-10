@@ -44,7 +44,7 @@ check("about: meta description is shell description", about.body.includes("read 
 check("about: h1", about.body.includes("<h1>গল্পনীড় সম্পর্কে</h1>"));
 check("about: section heading", about.body.includes("<h2>গল্পের জন্য একটি বাসা</h2>"));
 check("about: founder name present", about.body.includes("মুসাব্বির রহমান"));
-check("about: founder links to GitHub", about.body.includes('href="https://github.com/musabbirrahman"'));
+check("about: founder links to portfolio", about.body.includes('href="https://musabbirrahman.vercel.app"'));
 check("about: FAQ section", about.body.includes("<h2>সাধারণ প্রশ্ন</h2>") && about.body.includes("গল্পনীড় কী?"));
 check("about: FAQPage JSON-LD", about.body.includes('"@type":"FAQPage"') && about.body.includes("data-page-jsonld"));
 check("about: nav to other pages", about.body.includes('href="https://golponeer.com/terms"'));

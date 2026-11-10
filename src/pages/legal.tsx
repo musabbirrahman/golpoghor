@@ -40,7 +40,7 @@ function linkifyFounder(text: string) {
   if (parts.length === 1) return text;
   return parts.map((part, i) =>
     part === "মুসাব্বির রহমান" || part === "Musabbir Rahman" ? (
-      <a key={i} href="https://github.com/musabbirrahman" target="_blank" rel="noreferrer" className="font-medium text-river hover:underline">
+      <a key={i} href="https://musabbirrahman.vercel.app" target="_blank" rel="noreferrer" className="font-medium text-river hover:underline">
         {part}
       </a>
     ) : (
