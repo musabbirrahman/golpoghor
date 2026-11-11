@@ -1530,6 +1530,70 @@ let appealId;
   await dp.signOut();
 }
 
+// Perf: extra-small card-size (320px) thumbnails — derivation,
+// moderator backfill, and the Argon checklist: a 440px done-set must
+// never suppress the xs generation for the same cover.
+{
+  const { thumbXsPath } = utils;
+  check("xs: derives thumb-xs- name", thumbXsPath("11111111-1111-4111-8111-111111111111/1699999-abc.jpeg") === "11111111-1111-4111-8111-111111111111/thumb-xs-1699999-abc.jpeg");
+  check("xs: data: URL has no xs thumb", thumbXsPath("data:image/png;base64,AAA") === null);
+  check("xs: existing thumb is not re-derived", thumbXsPath("uid123/thumb-1699999-abc.jpeg") === null);
+  check("xs: existing xs thumb is not re-derived", thumbXsPath("uid123/thumb-xs-1699999-abc.jpeg") === null);
+  await dp.signUp({ email: "thumbxs@example.com", password: "secret12", username: "thumb_xs", displayName: "Thumb Xs" });
+  const story = await dp.createStory({ title: "Thumb Xs Story", summary: "x", language: "en", genre: "Mystery", tags: [] });
+  const dataCover = "data:image/png;base64,THUMBXS-UNIQUE-20261112";
+  await dp.updateStory(story.id, { cover_path: dataCover });
+  const authorId = (await dp.getSession()).user.id;
+  await dp.signOut();
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  const pub = { id: story.id, author_id: authorId, cover_path: dataCover, status: "ongoing" };
+  check("xs: non-owner without moderator flag is refused",
+    (await dp.ensureCoverThumbnailXs(pub)) === "refused");
+  check("xs: moderator backfills a public story",
+    (await dp.ensureCoverThumbnailXs(pub, { moderator: true })) === "created");
+  check("xs: second backfill without force is already",
+    (await dp.ensureCoverThumbnailXs(pub, { moderator: true })) === "already");
+  check("xs: force re-runs after done",
+    (await dp.ensureCoverThumbnailXs(pub, { moderator: true, force: true })) === "created");
+  check("xs: xs public URL returns the recorded thumb",
+    dp.coverThumbXsPublicUrl(dataCover) === dataCover);
+  check("xs: xs URL helpers null-guard",
+    dp.coverThumbXsPublicUrl(null) === null && (await dp.coverThumbXsUrl(null)) === null);
+  // Same cover, all three sizes recorded, so the cleanup check below
+  // is meaningful for every size (not just xs).
+  check("xs: 640px and small backfill for the same cover",
+    (await dp.ensureCoverThumbnail(pub, { moderator: true })) === "created" &&
+    (await dp.ensureCoverThumbnailSmall(pub, { moderator: true })) === "created");
+  check("xs: moderateStory returns cleanup status",
+    (await dp.moderateStory(story.id, "hidden")) === true);
+  await dp.signOut();
+  await dp.signIn("thumbxs@example.com", "secret12");
+  // A cover never backfilled before: 640px first, then small, then xs
+  // must still create (separate done-sets — the Argon checklist item).
+  const freshCover = "data:image/png;base64,THUMBXS-FRESH-20261112";
+  check("xs: 640px/small done does not suppress xs generation",
+    (await dp.ensureCoverThumbnail({ id: story.id, author_id: authorId, cover_path: freshCover, status: "ongoing" })) === "created" &&
+    (await dp.ensureCoverThumbnailSmall({ id: story.id, author_id: authorId, cover_path: freshCover, status: "ongoing" })) === "created" &&
+    (await dp.ensureCoverThumbnailXs({ id: story.id, author_id: authorId, cover_path: freshCover, status: "ongoing" })) === "created");
+  check("xs: xs signed URL readable after backfill",
+    (await dp.coverThumbXsUrl(dataCover)) === dataCover);
+  // retryPublicThumbCleanup is moderator-only: switch to the
+  // moderator session for the cleanup check, then back to the author
+  // for the delete.
+  await dp.signOut();
+  await dp.signIn("moderator@golpoghor.demo", "golpoghor-demo-2026");
+  check("xs: retryPublicThumbCleanup clears all three sizes",
+    (await dp.retryPublicThumbCleanup(story.id)) === true &&
+    (await dp.coverThumbUrl(dataCover)) === null &&
+    (await dp.coverThumbSmallUrl(dataCover)) === null &&
+    (await dp.coverThumbXsUrl(dataCover)) === null);
+  await dp.signOut();
+  await dp.signIn("thumbxs@example.com", "secret12");
+  check("xs: deleteStory returns cleanup status",
+    (await dp.deleteStory(story.id)) === true);
+  await dp.signOut();
+}
+
 console.log("");
 for (const [st, name] of results) console.log(`${st}  ${name}`);
 const fails = results.filter((r) => r[0] === "FAIL").length;

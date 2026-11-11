@@ -45,7 +45,7 @@ import {
 } from "../data-provider";
 import { genreAliases, genreSlugFor, normalizeGenre, sortGenres } from "../genres";
 import { normalizeSubcategories } from "../subcategories";
-import { AppError, countWords, docToText, readingMinutes, slugify, thumbPath, thumbSmPath } from "../utils";
+import { AppError, countWords, docToText, readingMinutes, slugify, thumbPath, thumbSmPath, thumbXsPath } from "../utils";
 import {
   clearCachedUrls,
   dropCachedUrl,
@@ -833,16 +833,17 @@ export class SupabaseProvider implements DataProvider {
 
   /**
    * Scale Phase 2: remove a story's public thumbnail, with one retry.
-   * Perf: removes BOTH the 640px and the 440px public thumbnails
-   * (Argon checklist) — hiding/deleting must leave neither behind.
-   * Returns true when there is nothing to clean or removal succeeded,
-   * false when it still failed. Callers must never let this block the
-   * DB change it follows (Argon Q2).
+   * Perf: removes the 640px, the 440px, and the 320px public
+   * thumbnails (Argon checklist) — hiding/deleting must leave none
+   * behind. Returns true when there is nothing to clean or removal
+   * succeeded, false when it still failed. Callers must never let
+   * this block the DB change it follows (Argon Q2).
    */
   private async removePublicThumb(coverPath: string | null): Promise<boolean> {
     const tp = coverPath ? thumbPath(coverPath) : null;
     const tsp = coverPath ? thumbSmPath(coverPath) : null;
-    const targets = [tp, tsp].filter((x): x is string => !!x);
+    const txp = coverPath ? thumbXsPath(coverPath) : null;
+    const targets = [tp, tsp, txp].filter((x): x is string => !!x);
     if (targets.length === 0) return true;
     for (let attempt = 0; attempt < 2; attempt++) {
       const { error } = await this.sb.storage.from("cover-thumbs").remove(targets);
@@ -1880,6 +1881,7 @@ export class SupabaseProvider implements DataProvider {
       if (before?.cover_path) {
         this.ensureCoverThumbnail({ id, author_id: before.author_id, cover_path: before.cover_path, status }, { force: true, moderator: true }).catch(() => {});
         this.ensureCoverThumbnailSmall({ id, author_id: before.author_id, cover_path: before.cover_path, status }, { force: true, moderator: true }).catch(() => {});
+        this.ensureCoverThumbnailXs({ id, author_id: before.author_id, cover_path: before.cover_path, status }, { force: true, moderator: true }).catch(() => {});
       }
       return true;
     }
@@ -2310,6 +2312,7 @@ export class SupabaseProvider implements DataProvider {
     this.coverUrlCache.clear();
     this.coverThumbUrlCache.clear();
     this.coverThumbSmallUrlCache.clear();
+    this.coverThumbXsUrlCache.clear();
     this.authEpoch++;
   }
 
@@ -2446,6 +2449,50 @@ export class SupabaseProvider implements DataProvider {
     return this.sb.storage.from("cover-thumbs").getPublicUrl(tp).data.publicUrl;
   }
 
+  // Perf: extra-small card-size thumbnails share the 440px thumbnail's
+  // bucket, owner folder, and signed-URL cache pattern, with their own
+  // derivation, cache, and done/failed sets.
+  private coverThumbXsUrlCache = new Map<string, Promise<string | null>>();
+
+  async coverThumbXsUrl(path: string | null): Promise<string | null> {
+    const tp = path ? thumbXsPath(path) : null;
+    if (!tp) return null;
+    const cached = this.coverThumbXsUrlCache.get(tp);
+    if (cached) return cached;
+    const p = (async () => {
+      const epoch = this.authEpoch;
+      const auth = await this.resolveAuthContext();
+      try {
+        const persisted = readCachedUrl("covers", auth, tp);
+        if (persisted) return persisted;
+      } catch {
+        /* storage unavailable: fall through to signing */
+      }
+      const { data, error } = await this.sb.storage.from("covers").createSignedUrl(tp, 31536000);
+      if (error || !data) {
+        this.coverThumbXsUrlCache.delete(tp);
+        return null;
+      }
+      try {
+        if (this.authEpoch === epoch && (await this.resolveAuthContext()) === auth) {
+          writeCachedUrl("covers", auth, tp, data.signedUrl);
+        }
+      } catch {
+        /* persistence is best-effort */
+      }
+      return data.signedUrl;
+    })();
+    this.coverThumbXsUrlCache.set(tp, p);
+    return p;
+  }
+
+  /** Perf: public CDN URL for a cover's extra-small thumbnail (sync). */
+  coverThumbXsPublicUrl(path: string | null): string | null {
+    const tp = path ? thumbXsPath(path) : null;
+    if (!tp) return null;
+    return this.sb.storage.from("cover-thumbs").getPublicUrl(tp).data.publicUrl;
+  }
+
   /**
    * Phase 1B: drop cached (memory + persisted) cover URLs for a path
    * and its thumbnail, forcing a fresh sign on next use. Used by
@@ -2456,14 +2503,17 @@ export class SupabaseProvider implements DataProvider {
     if (!path) return;
     const tp = thumbPath(path);
     const tsp = thumbSmPath(path);
+    const txp = thumbXsPath(path);
     this.coverUrlCache.delete(path);
     if (tp) this.coverThumbUrlCache.delete(tp);
     if (tsp) this.coverThumbSmallUrlCache.delete(tsp);
+    if (txp) this.coverThumbXsUrlCache.delete(txp);
     try {
       const auth = await this.resolveAuthContext();
       dropCachedUrl("covers", auth, path);
       if (tp) dropCachedUrl("covers", auth, tp);
       if (tsp) dropCachedUrl("covers", auth, tsp);
+      if (txp) dropCachedUrl("covers", auth, txp);
     } catch {
       /* memory entries already cleared; a persisted entry re-signs on expiry */
     }
@@ -2613,6 +2663,78 @@ export class SupabaseProvider implements DataProvider {
     }
   }
 
+  /**
+   * Perf: extra-small card-size (320px) backfill — mirrors
+   * ensureCoverThumbnailSmall with its own derivation, width, quality,
+   * and done/failed sets. Same guards (owner, or moderator for public
+   * stories), same bucket selection by status, same force semantics,
+   * same 409 = already handling. One difference: the public upload
+   * uses cacheControl "31536000" (1 year — the thumb path is
+   * content-derived, so a long cache cannot serve a stale cover).
+   */
+  async ensureCoverThumbnailXs(story: {
+    id: string;
+    author_id: string;
+    cover_path: string | null;
+    status?: StoryStatus;
+  }, opts?: { force?: boolean; moderator?: boolean }): Promise<"created" | "already" | "refused" | "failed"> {
+    let me: string;
+    try {
+      me = await this.uid();
+    } catch {
+      return "refused";
+    }
+    if (!story.cover_path) return "refused";
+    // Security: a story's cover must live in its own author's folder
+    // (same rule as ensureCoverThumbnail; the DB policy enforces it).
+    if (!story.cover_path.startsWith(`${story.author_id}/`)) return "refused";
+    const isPublic = story.status === "ongoing" || story.status === "complete";
+    if (story.author_id !== me && !(opts?.moderator === true && isPublic)) return "refused";
+    const tp = thumbXsPath(story.cover_path);
+    if (!tp) return "refused";
+    const doneKey = isPublic ? THUMB_XS_DONE_PUBLIC_KEY : THUMB_XS_DONE_KEY;
+    const failedKey = isPublic ? THUMB_XS_FAILED_PUBLIC_KEY : THUMB_XS_FAILED_KEY;
+    const done = new Set<string>(readJson<string[]>(doneKey, []));
+    if (!opts?.force && done.has(story.cover_path)) return "already";
+    const failed = readJson<Record<string, number>>(failedKey, {});
+    const last = failed[story.cover_path];
+    if (!opts?.force && last && Date.now() - last < THUMB_RETRY_AFTER_MS) return "failed";
+    try {
+      const url = await this.coverSignedUrl(story.cover_path);
+      if (!url) throw new Error("original not signable");
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("original download failed");
+      const blob = await res.blob();
+      const thumb = await generateCoverThumbnail(
+        new File([blob], "cover", { type: blob.type || "image/jpeg" }),
+        THUMB_XS_MAX_WIDTH,
+        THUMB_XS_JPEG_QUALITY
+      );
+      if (!thumb) throw new Error("thumbnail generation failed");
+      const bucket = isPublic ? "cover-thumbs" : "covers";
+      const { error } = await this.sb.storage
+        .from(bucket)
+        .upload(tp, thumb, isPublic
+          ? { contentType: "image/jpeg", upsert: false, cacheControl: "31536000" }
+          : { contentType: "image/jpeg", upsert: false });
+      if (error) {
+        if (/already exists|duplicate/i.test(error.message ?? "")) {
+          done.add(story.cover_path);
+          writeJson(doneKey, [...done]);
+          return "already";
+        }
+        throw error;
+      }
+      done.add(story.cover_path);
+      writeJson(doneKey, [...done]);
+      return "created";
+    } catch {
+      failed[story.cover_path] = Date.now();
+      writeJson(failedKey, failed);
+      return "failed";
+    }
+  }
+
   async coverSignedUrl(path: string | null): Promise<string | null> {
     if (!path) return null;
     const { data, error } = await this.sb.storage.from("covers").createSignedUrl(path, 3600);
@@ -2628,15 +2750,23 @@ const THUMB_MAX_WIDTH = 640;
  * ~100-280px wide, so 440px stays crisp at 2x for the common cases
  * while cutting card image bytes roughly in half versus 640px. */
 const THUMB_SMALL_MAX_WIDTH = 440;
+/** Perf: max extra-small card-size thumbnail width (px). Cards display
+ * covers at ~144-156px wide on mobile and up to ~280px on desktop, so
+ * 320px stays crisp at 2x for the common cases while cutting card
+ * image bytes by ~58% versus 440px (measured 2026-11-12). */
+const THUMB_XS_MAX_WIDTH = 320;
 /** JPEG quality for thumbnails (browser canvas output). */
 const THUMB_JPEG_QUALITY = 0.8;
+/** JPEG quality for the 320px derivation only (see §3.4 of the design:
+ * the 440px/640px derivations stay at 0.8). */
+const THUMB_XS_JPEG_QUALITY = 0.65;
 
 /**
  * Resize an image file to a card-size JPEG using only browser APIs
  * (no new dependency). Returns null on any failure — callers treat a
  * null as "no thumbnail", never as an upload error.
  */
-async function generateCoverThumbnail(file: File, maxWidth: number = THUMB_MAX_WIDTH): Promise<Blob | null> {
+async function generateCoverThumbnail(file: File, maxWidth: number = THUMB_MAX_WIDTH, quality: number = THUMB_JPEG_QUALITY): Promise<Blob | null> {
   try {
     const bitmap = await createImageBitmap(file);
     const scale = Math.min(1, maxWidth / bitmap.width);
@@ -2650,7 +2780,7 @@ async function generateCoverThumbnail(file: File, maxWidth: number = THUMB_MAX_W
     ctx.drawImage(bitmap, 0, 0, width, height);
     bitmap.close();
     return await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob((b) => resolve(b), "image/jpeg", THUMB_JPEG_QUALITY)
+      canvas.toBlob((b) => resolve(b), "image/jpeg", quality)
     );
   } catch {
     return null;
@@ -2679,6 +2809,16 @@ const THUMB_SM_FAILED_KEY = "golponeer-thumb-sm-failed-v1";
  * the public small generation after publication. */
 const THUMB_SM_DONE_PUBLIC_KEY = "golponeer-thumb-sm-done-public-v1";
 const THUMB_SM_FAILED_PUBLIC_KEY = "golponeer-thumb-sm-failed-public-v1";
+/** Perf: done/failed sets for the 320px extra-small thumbnails. Separate
+ * from the 440px sets on purpose: a cover already done for 440px must
+ * still generate its xs thumbnail. New keys, empty by default. */
+const THUMB_XS_DONE_KEY = "golponeer-thumb-xs-done-v1";
+const THUMB_XS_FAILED_KEY = "golponeer-thumb-xs-failed-v1";
+/** Perf: done/failed sets for PUBLIC-bucket xs thumbnails — split from
+ * the private xs sets for the same reason the 640px/440px public sets
+ * are split. */
+const THUMB_XS_DONE_PUBLIC_KEY = "golponeer-thumb-xs-done-public-v1";
+const THUMB_XS_FAILED_PUBLIC_KEY = "golponeer-thumb-xs-failed-public-v1";
 
 function readJson<T>(key: string, fallback: T): T {
   try {

@@ -404,6 +404,27 @@ export interface DataProvider {
     cover_path: string | null;
     status?: StoryStatus;
   }, opts?: { force?: boolean; moderator?: boolean }): Promise<"created" | "already" | "refused" | "failed">;
+  /** Perf: extra-small card-size (320px) signed thumbnail URL for a
+   * cover path (`thumb-xs-` derivation); null when no xs thumbnail
+   * exists. */
+  coverThumbXsUrl(path: string | null): Promise<string | null>;
+  /** Perf: extra-small card-size (320px) public CDN URL for a cover's
+   * xs thumbnail (sync). Only meaningful for public stories. */
+  coverThumbXsPublicUrl(path: string | null): string | null;
+  /**
+   * Perf: extra-small card-size (320px) backfill — mirrors
+   * ensureCoverThumbnailSmall with its own done/failed sets, so a
+   * cover already done for 440px still generates its xs thumbnail
+   * (Argon checklist). Same guards: owner, or moderator for public
+   * stories; same bucket selection by status; same force semantics.
+   * Public uploads use cacheControl "31536000" (1 year).
+   */
+  ensureCoverThumbnailXs(story: {
+    id: string;
+    author_id: string;
+    cover_path: string | null;
+    status?: StoryStatus;
+  }, opts?: { force?: boolean; moderator?: boolean }): Promise<"created" | "already" | "refused" | "failed">;
 
   // -------------------------------------------------------- moderation ux
   /** Human label + deep link + current status for a report/appeal target (moderators only). */

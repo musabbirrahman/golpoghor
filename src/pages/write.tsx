@@ -276,6 +276,7 @@ export function StoryFormPage() {
       if (updated && (updated.status === "ongoing" || updated.status === "complete") && updated.cover_path) {
         dp.ensureCoverThumbnail(updated).catch(() => {});
         dp.ensureCoverThumbnailSmall(updated).catch(() => {});
+        dp.ensureCoverThumbnailXs(updated).catch(() => {});
       }
     },
     onError: (err) => setError(errText(err)),

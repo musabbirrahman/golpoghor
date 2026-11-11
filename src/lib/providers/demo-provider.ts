@@ -504,10 +504,17 @@ export class DemoProvider implements DataProvider {
     this.db.users = this.db.users.filter((u) => u.id !== uid);
     // Phase 1A: demo thumbnails are keyed by original cover path, so
     // they go with the account like the real prefix-listed objects.
+    // Perf: the xs stores are cleared here too (the 640px behaviour).
+    // Note: the 440px stores are NOT cleared on this path — a
+    // pre-existing gap from the 440px rollout, left untouched here
+    // as out of scope for the 320px change (Argon Finding 3).
     for (const c of myCovers) {
       this.thumbStore.delete(c);
       this.thumbDone.delete(c);
       this.thumbFailed.delete(c);
+      this.thumbXsStore.delete(c);
+      this.thumbXsDone.delete(c);
+      this.thumbXsFailed.delete(c);
     }
     this.db.sessionUserId = null;
     this.persist();
@@ -2167,7 +2174,7 @@ export class DemoProvider implements DataProvider {
   }
 
   /** Demo parity for retryPublicThumbCleanup: drop the story's recorded
-   * thumbs (both sizes) and report success — demo storage never fails. */
+   * thumbs (all three sizes) and report success — demo storage never fails. */
   async retryPublicThumbCleanup(id: string): Promise<boolean> {
     const me = await this.requireUid();
     this.requireModerator(me);
@@ -2175,6 +2182,7 @@ export class DemoProvider implements DataProvider {
     if (s?.cover_path) {
       this.thumbStore.delete(s.cover_path);
       this.thumbSmStore.delete(s.cover_path);
+      this.thumbXsStore.delete(s.cover_path);
       this.persist();
     }
     return true;
@@ -2574,6 +2582,23 @@ export class DemoProvider implements DataProvider {
     return this.thumbSmStore.get(path) ?? null;
   }
 
+  // Perf (demo parity): extra-small card-size thumbnails are recorded
+  // separately from the 440px ones, so a 440px done never suppresses
+  // the xs generation.
+  private thumbXsStore = new Map<string, string>();
+  private thumbXsDone = new Set<string>();
+  private thumbXsFailed = new Map<string, number>();
+
+  async coverThumbXsUrl(path: string | null): Promise<string | null> {
+    if (!path) return null;
+    return this.thumbXsStore.get(path) ?? null;
+  }
+
+  coverThumbXsPublicUrl(path: string | null): string | null {
+    if (!path) return null;
+    return this.thumbXsStore.get(path) ?? null;
+  }
+
   async invalidateCoverUrl(_path: string | null): Promise<void> {
     // Phase 1B (demo parity): demo URLs are never signed and never
     // expire, so there is nothing to evict.
@@ -2639,6 +2664,36 @@ export class DemoProvider implements DataProvider {
     }
     this.thumbSmStore.set(story.cover_path, story.cover_path);
     this.thumbSmDone.add(story.cover_path);
+    return "created";
+  }
+
+  async ensureCoverThumbnailXs(story: {
+    id: string;
+    author_id: string;
+    cover_path: string | null;
+    status?: StoryStatus;
+  }, opts?: { force?: boolean; moderator?: boolean }): Promise<"created" | "already" | "refused" | "failed"> {
+    const s = this.sessionSync();
+    if (!s || !story.cover_path) return "refused";
+    const isPublic = story.status === "ongoing" || story.status === "complete";
+    let isMod = false;
+    try {
+      this.requireModerator(s.user.id);
+      isMod = true;
+    } catch {
+      /* not a moderator */
+    }
+    if (story.author_id !== s.user.id && !(opts?.moderator === true && isMod && isPublic)) return "refused";
+    if (story.cover_path.startsWith("demo:")) return "refused";
+    if (!opts?.force && this.thumbXsDone.has(story.cover_path)) return "already";
+    const last = this.thumbXsFailed.get(story.cover_path);
+    if (!opts?.force && last && Date.now() - last < 7 * 24 * 3600 * 1000) return "failed";
+    if (!story.cover_path.startsWith("data:")) {
+      this.thumbXsFailed.set(story.cover_path, Date.now());
+      return "failed";
+    }
+    this.thumbXsStore.set(story.cover_path, story.cover_path);
+    this.thumbXsDone.add(story.cover_path);
     return "created";
   }
 }

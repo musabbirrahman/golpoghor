@@ -37,13 +37,30 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
   // render below shows a transparent box, never the letter.
   const [exhausted, setExhausted] = useState(false);
   const [showingOriginal, setShowingOriginal] = useState(false);
-  const [phase, setPhase] = useState<"small-public" | "small-signed" | "public" | "signed" | "original">("original");
+  const [phase, setPhase] = useState<"xs-public" | "xs-signed" | "small-public" | "small-signed" | "public" | "signed" | "original">("original");
   const backfillFired = useRef(false);
   const backfillSmallFired = useRef(false);
+  const backfillXsFired = useRef(false);
   const retriedThumb = useRef(false);
   const retriedOriginal = useRef(false);
   const retriedPublic = useRef(false);
   const retriedSmall = useRef(false);
+  const retriedXs = useRef(false);
+  // The 440px chain (public → signed), shared by the mount effect
+  // and by the xs-mode error fallback below.
+  const resolveSmall = async () => {
+    let su: string | null = null;
+    let smallPublic = false;
+    if (story.status === "ongoing" || story.status === "complete") {
+      su = dp.coverThumbSmallPublicUrl(story.cover_path);
+      smallPublic = !!su;
+    }
+    if (!su) su = await dp.coverThumbSmallUrl(story.cover_path).catch(() => null);
+    return {
+      su,
+      phase: (smallPublic ? "small-public" : "small-signed") as "small-public" | "small-signed",
+    };
+  };
   // The 640px chain (public → signed → original), shared by the
   // mount effect and by the small-mode error fallback below.
   // Preserves the original semantics exactly: non-thumb mode skips
@@ -69,10 +86,12 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
     let cancelled = false;
     backfillFired.current = false;
     backfillSmallFired.current = false;
+    backfillXsFired.current = false;
     retriedThumb.current = false;
     retriedOriginal.current = false;
     retriedPublic.current = false;
     retriedSmall.current = false;
+    retriedXs.current = false;
     setShowingOriginal(false);
     setExhausted(false);
     if (!story.cover_path) {
@@ -80,10 +99,30 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
       return;
     }
     (async () => {
-      // Perf: cards try the 440px thumbnail first; any miss falls
-      // back to the 640px chain, then the original — never a broken
-      // image. Heroes (small unset) use the 640px chain directly.
+      // Perf: cards try the 320px thumbnail first, then the 440px
+      // one, then the 640px chain — never a broken image. Heroes
+      // (small unset) use the 640px chain directly.
       if (thumb && small) {
+        let xu: string | null = null;
+        let xsPublic = false;
+        if (story.status === "ongoing" || story.status === "complete") {
+          xu = dp.coverThumbXsPublicUrl(story.cover_path);
+          xsPublic = !!xu;
+        }
+        if (!xu) xu = await dp.coverThumbXsUrl(story.cover_path).catch(() => null);
+        if (xu) {
+          if (cancelled) return;
+          setShowingOriginal(false);
+          setPhase(xsPublic ? "xs-public" : "xs-signed");
+          setUrl(xu);
+          return;
+        }
+        // 320px missing: best-effort xs backfill, then fall through
+        // to the 440px step below.
+        if (!backfillXsFired.current) {
+          backfillXsFired.current = true;
+          dp.ensureCoverThumbnailXs(story).catch(() => {});
+        }
         let su: string | null = null;
         let smallPublic = false;
         if (story.status === "ongoing" || story.status === "complete") {
@@ -155,6 +194,54 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
       fetchPriority={eager ? "high" : undefined}
       className={`object-cover ${className}`}
       onError={async () => {
+        // Perf: a 320px thumbnail that fails to load self-heals
+        // like the 440px one — regenerate (owner/moderator sessions
+        // only; guests are refused silently), then fall to the 440px
+        // chain first, and only then to the 640px chain. At most once
+        // per mount.
+        if ((phase === "xs-public" || phase === "xs-signed") && !retriedXs.current) {
+          retriedXs.current = true;
+          if (phase === "xs-signed") {
+            // A signed xs URL may just have expired: retry it fresh
+            // once before falling back.
+            await dp.invalidateCoverUrl(story.cover_path).catch(() => {});
+            const fresh = await dp.coverThumbXsUrl(story.cover_path).catch(() => null);
+            if (fresh) {
+              setUrl(fresh);
+              return;
+            }
+          }
+          dp.ensureCoverThumbnailXs(story, { force: true, moderator: isModerator }).catch(() => {});
+          // Argon Finding 2 (2026-11-12, verified): fall back to the
+          // 440px tier FIRST, not straight to the 640px chain. For
+          // public stories the xs public URL is always constructed
+          // (never null), so the mount effect always returns on xs
+          // and the 440px step is unreachable at mount — if xs fails
+          // here and we jump to resolveMain(), the 440px thumb
+          // becomes dead code for public stories: cards would serve
+          // 640px thumbs during rollout (bigger than today's 440px),
+          // and a hide → restore would never regenerate the 440px
+          // thumb.
+          const sr = await resolveSmall();
+          if (sr.su) {
+            setPhase(sr.phase);
+            setShowingOriginal(false);
+            setUrl(sr.su);
+            return;
+          }
+          // No 440px URL resolves: fire its backfill and fall to the
+          // 640px chain.
+          if (!backfillSmallFired.current) {
+            backfillSmallFired.current = true;
+            dp.ensureCoverThumbnailSmall(story).catch(() => {});
+          }
+          const r = await resolveMain();
+          setPhase(r.phase);
+          setShowingOriginal(r.showingOriginal);
+          setUrl(r.u);
+          if (!r.u) setExhausted(true);
+          return;
+        }
         // Perf: a card-size thumbnail that fails to load self-heals
         // like the 640px one — regenerate (owner/moderator sessions
         // only; guests are refused silently), then fall to the 640px

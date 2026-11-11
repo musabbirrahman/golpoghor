@@ -166,6 +166,20 @@ export function thumbSmPath(coverPath: string): string | null {
   return `${coverPath.slice(0, slash)}/thumb-sm-${file}`;
 }
 
+/** Perf: extra-small card-size (320px) derivation. Same guards as
+ * thumbPath ("thumb-xs-" starts with "thumb-", so already-derived
+ * paths are rejected by the same check). */
+export function thumbXsPath(coverPath: string): string | null {
+  if (coverPath.startsWith("data:") || coverPath.startsWith("demo:")) return null;
+  const slash = coverPath.indexOf("/");
+  if (slash <= 0) return null;
+  const file = coverPath.slice(slash + 1);
+  if (!file || file.startsWith("thumb-")) return null;
+  // Security: same strict path guard as thumbPath (see above).
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[A-Za-z0-9._-]+$/i.test(coverPath)) return null;
+  return `${coverPath.slice(0, slash)}/thumb-xs-${file}`;
+}
+
 export class AppError extends Error {
   code: string;
   constructor(code: string, message: string) {

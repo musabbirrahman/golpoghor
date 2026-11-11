@@ -155,6 +155,7 @@ const files = [
   "supabase/migrations/20261031160000_phase2_dwell.sql",
   "supabase/migrations/20261103140000_story_ranking_guards.sql",
   "supabase/migrations/20261105170000_rename_history_genre.sql",
+  "supabase/migrations/20261112090000_cover_thumbs_xs.sql",
   "supabase/seed.sql",
 ];
 
