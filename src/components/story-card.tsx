@@ -99,10 +99,34 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
       return;
     }
     (async () => {
-      // Perf: cards try the 320px thumbnail first, then the 440px
-      // one, then the 640px chain — never a broken image. Heroes
-      // (small unset) use the 640px chain directly.
+      // Card covers use the 440px thumbnail first: the 320px tier
+      // proved too soft on high-DPI phone screens (a card shown at
+      // ~170px needs ~340px at 2x, and 320px falls just short), so
+      // covers looked blurry. The 320px tier is kept only as a
+      // fallback when the 440px one is missing. Heroes (small unset)
+      // use the 640px chain directly.
       if (thumb && small) {
+        let su: string | null = null;
+        let smallPublic = false;
+        if (story.status === "ongoing" || story.status === "complete") {
+          su = dp.coverThumbSmallPublicUrl(story.cover_path);
+          smallPublic = !!su;
+        }
+        if (!su) su = await dp.coverThumbSmallUrl(story.cover_path).catch(() => null);
+        if (su) {
+          if (cancelled) return;
+          setShowingOriginal(false);
+          setPhase(smallPublic ? "small-public" : "small-signed");
+          setUrl(su);
+          return;
+        }
+        // 440px missing: best-effort small backfill (the provider
+        // refuses non-owners and signed-out viewers before any
+        // network use), then fall through to the 320px step below.
+        if (!backfillSmallFired.current) {
+          backfillSmallFired.current = true;
+          dp.ensureCoverThumbnailSmall(story).catch(() => {});
+        }
         let xu: string | null = null;
         let xsPublic = false;
         if (story.status === "ongoing" || story.status === "complete") {
@@ -118,31 +142,10 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
           return;
         }
         // 320px missing: best-effort xs backfill, then fall through
-        // to the 440px step below.
+        // to the 640px chain below.
         if (!backfillXsFired.current) {
           backfillXsFired.current = true;
           dp.ensureCoverThumbnailXs(story).catch(() => {});
-        }
-        let su: string | null = null;
-        let smallPublic = false;
-        if (story.status === "ongoing" || story.status === "complete") {
-          su = dp.coverThumbSmallPublicUrl(story.cover_path);
-          smallPublic = !!su;
-        }
-        if (!su) su = await dp.coverThumbSmallUrl(story.cover_path).catch(() => null);
-        if (su) {
-          if (cancelled) return;
-          setShowingOriginal(false);
-          setPhase(smallPublic ? "small-public" : "small-signed");
-          setUrl(su);
-          return;
-        }
-        // Small missing: best-effort small backfill (the provider
-        // refuses non-owners and signed-out viewers before any
-        // network use), then fall through to the 640px chain.
-        if (!backfillSmallFired.current) {
-          backfillSmallFired.current = true;
-          dp.ensureCoverThumbnailSmall(story).catch(() => {});
         }
       }
       // Scale Phase 2: public stories use the public CDN thumbnail
