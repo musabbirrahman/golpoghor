@@ -45,7 +45,11 @@ function ContinueCard({ story, progress }: { story: Story; progress: ReadingProg
   }
   return (
     <Link to={storyPath(story)} className="flex h-full gap-4 rounded-xl bg-white p-4 shadow-card hover:shadow-lift">
-      <Cover story={story} className="aspect-[3/4] w-20 shrink-0 rounded-lg" thumb small />
+      {/* self-start: the flex row's default stretch would pull the cover
+          to the text column's height, squashing 3:4 into ~0.55 and
+          cropping the cover's sides (title text cut off). Pinning the
+          cover to the top keeps its true 3:4 box (80x106.7px). */}
+      <Cover story={story} className="aspect-[3/4] w-20 shrink-0 self-start rounded-lg" thumb small />
       <div className="min-w-0 flex-1">
         <p className="clamp-2 font-serif text-lg font-semibold leading-snug">{story.title}</p>
         <p className="mt-0.5 truncate text-sm text-ink-faint">{story.original_author ?? story.author?.display_name}</p>
