@@ -82,7 +82,10 @@ function StartHere({ stories }: { stories: Story[] }) {
       <div className="overflow-hidden rounded-2xl bg-river-soft/60 p-5 shadow-card sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:gap-8">
           <div className="relative mx-auto aspect-[3/4] w-full max-w-[280px] shrink-0 overflow-hidden rounded-xl bg-river-soft sm:mx-0 sm:w-[240px] sm:self-start lg:w-[280px]">
-            <Cover story={featured} className="h-full w-full" thumb small eager />
+            {/* Large spotlight cover loads the 640px thumb first (no `small`):
+                at 280px CSS wide on mobile it needs 560px at 2x, so the
+                440px tier is still 27% short there. Heroes use the same path. */}
+            <Cover story={featured} className="h-full w-full" thumb eager />
             {minutes > 0 && (
               <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
                 ~{minutes} {t("story", "minRead")}
