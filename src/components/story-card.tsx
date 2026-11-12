@@ -337,7 +337,7 @@ export function Cover({ story, className = "", thumb = false, small = false, eag
   );
 }
 
-export function StoryCard({ story, compact = false, eager = false }: { story: Story; compact?: boolean; eager?: boolean }) {
+export function StoryCard({ story, compact = false, eager = false, minutesBadge = false }: { story: Story; compact?: boolean; eager?: boolean; minutesBadge?: boolean }) {
   const { t, locale } = useApp();
   // Shared estimate from the story's real published word count (see utils).
   const minutes = readingMinutes(story.word_count ?? 0, story.language);
@@ -351,6 +351,11 @@ export function StoryCard({ story, compact = false, eager = false }: { story: St
         <div className="absolute left-2 top-2 flex gap-1.5">
           <LanguageBadge language={story.language} />
         </div>
+        {minutesBadge && minutes > 0 && (
+          <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
+            ~{minutes} {t("story", "minRead")}
+          </span>
+        )}
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-4">
         <h3 className={`font-serif font-semibold leading-snug clamp-2 group-hover:text-river-dark ${compact ? "text-base sm:text-lg" : "text-lg"}`}>

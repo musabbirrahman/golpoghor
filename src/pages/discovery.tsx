@@ -18,6 +18,111 @@ import type { Story, StoryLanguage } from "../lib/types";
 
 const PAGE_SIZE = 24;
 
+/** Start Here spotlight: six short, complete, single-chapter stories,
+ *  each finishable in about ten minutes. The hook is the story's real
+ *  opening line, stored here (not fetched from the chapter text at
+ *  render time). Reading times come from the site's shared
+ *  readingMinutes() over each story's real word count — 220 wpm for
+ *  English, 180 wpm for Bangla — so the badge matches every other
+ *  reading-time display on the site. Verified against the live
+ *  database 2026-11-12: Tell-Tale 2,102w/10min, Kabuliwala 2,344w/13min,
+ *  Magi 2,084w/9min, Chuti 1,891w/11min, Open Window 1,235w/6min,
+ *  Postmaster 1,651w/9min. */
+const START_HERE: { id: string; hook: string }[] = [
+  {
+    id: "ef49b1ef-324f-4eb3-8f27-4b94f8561c7b",
+    hook: "True! — nervous — very, very dreadfully nervous I had been and am; but why will you say that I am mad?",
+  },
+  {
+    id: "54f38a8a-239d-44ad-b9b6-3b44804cbfd2",
+    hook: "আমার পাঁচ বছর বয়সের ছোটো মেয়ে মিনি এক দণ্ড কথা না কহিয়া থাকিতে পারে না।",
+  },
+  {
+    id: "fdd099f5-ae37-4b62-88b6-6791dd99a2fc",
+    hook: "One dollar and eighty-seven cents. That was all.",
+  },
+  {
+    id: "563d7805-869c-43fe-af57-2593c09cbadd",
+    hook: "বালকদিগের সর্দার ফটিক চক্রবর্তীর মাথায় চট করিয়া একটা নূতন ভাবোদয় হইল।",
+  },
+  {
+    id: "9e617bdf-c7b2-478d-9733-949657e9a699",
+    hook: "My aunt will be down presently, Mr. Nuttel, said a very self-possessed young lady of fifteen.",
+  },
+  {
+    id: "c92dde30-067b-4f82-ae03-f93f9eb3e3ee",
+    hook: "প্রথম কাজ আরম্ভ করিয়াই উলাপুর গ্রামে পোস্ট্‌মাস্টারকে আসিতে হয়।",
+  },
+];
+
+/** Start Here spotlight (v2): one story featured large — big cover,
+ *  its real opening line as the hook, reading time, one "Start reading"
+ *  button — with the other five as small cards below. The featured
+ *  story rotates daily (day number mod 6), so there is always a fresh
+ *  pick. A plain shelf would not pull a cold visitor in; this is the
+ *  section that has to do that job. */
+function StartHere({ stories }: { stories: Story[] }) {
+  const { t } = useApp();
+  const dayNum = Math.floor(Date.now() / 86400000);
+  const featuredIdx = stories.length ? dayNum % stories.length : 0;
+  const featured = stories[featuredIdx];
+  const rest = stories.filter((_, i) => i !== featuredIdx);
+  if (!featured) return null;
+  const minutes = readingMinutes(featured.word_count ?? 0, featured.language);
+  return (
+    <section className="mt-10">
+      <div className="mb-4">
+        <h2 className="font-serif text-2xl font-bold">{t("home", "startHereTitle")}</h2>
+        <p className="mt-2 text-ink-soft">{t("home", "startHereSub")}</p>
+        <div className="mt-2 h-0.5 w-10 bg-gold" aria-hidden />
+      </div>
+      {/* Spotlight panel: a soft tint sets it apart from the plain page
+          without shouting. Two columns on desktop (image left, text
+          right); stacked on mobile with a full-width button. */}
+      <div className="overflow-hidden rounded-2xl bg-river-soft/60 p-5 shadow-card sm:p-6">
+        <div className="flex flex-col gap-5 sm:flex-row sm:gap-8">
+          <div className="relative mx-auto aspect-[3/4] w-full max-w-[280px] shrink-0 overflow-hidden rounded-xl bg-river-soft sm:mx-0 sm:w-[240px] sm:self-start lg:w-[280px]">
+            <Cover story={featured} className="h-full w-full" thumb small eager />
+            {minutes > 0 && (
+              <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
+                ~{minutes} {t("story", "minRead")}
+              </span>
+            )}
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col justify-center gap-3">
+            <p className="font-serif text-xl italic leading-relaxed sm:text-2xl">
+              “{START_HERE.find((c) => c.id === featured.id)?.hook ?? ""}”
+            </p>
+            <h3 className="font-serif text-2xl font-bold leading-snug">
+              {featured.title}
+            </h3>
+            <p className="text-sm text-ink-soft">
+              {t("story", "by")} {featured.original_author ?? featured.author?.display_name}
+            </p>
+            <div>
+              <ButtonLink to={storyPath(featured)} variant="gold" className="w-full sm:w-auto">
+                {t("story", "startReading")} →
+              </ButtonLink>
+            </div>
+          </div>
+        </div>
+      </div>
+      {rest.length > 0 && (
+        <>
+          <p className="mt-6 text-sm font-medium text-ink-soft">{t("home", "startHereMore")}</p>
+          <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-5">
+            {rest.map((s) => (
+              <div key={s.id} className="min-w-0">
+                <StoryCard story={s} compact minutesBadge />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 /** Paged story list (V4-09): "Load more" over the provider's offset support,
  *  so results never silently stop at the first page. */
 function useStoryPages(filters: import("../lib/data-provider").StoryFilters, enabled = true) {
@@ -82,6 +187,13 @@ export function HomePage() {
   const moreRotated = moreList.length > 12
     ? Array.from({ length: 12 }, (_, i) => moreList[(moreStart + i) % moreList.length])
     : moreList;
+  // Start Here spotlight: the six curated stories, in the curated order,
+  // picked out of the same base fetch that feeds More stories — no extra
+  // network call, and the same derivation pattern the Discover shelves
+  // use. A story missing from the fetch (unpublished, hidden) simply
+  // drops out of the list; the spotlight hides entirely if none load.
+  const startHereById = new Map(moreList.map((s) => [s.id, s]));
+  const startHereStories = START_HERE.map((c) => startHereById.get(c.id)).filter((s): s is Story => !!s);
   const keepsakes = useQuery({ queryKey: ["public-keepsakes"], queryFn: () => dp.listPublicKeepsakes(8) });
 
   return (
@@ -116,6 +228,14 @@ export function HomePage() {
           </div>
         )}
       </Shelf>
+
+      {/* Start Here spotlight — one short story featured large, daily
+          rotation, the rest as small cards. It shows once the base
+          fetch lands; while loading it renders nothing (no skeleton —
+          the section must not hold a blank gap on first paint). */}
+      {!more.isLoading && startHereStories.length > 0 && (
+        <StartHere stories={startHereStories} />
+      )}
 
       {/* Public keepsakes strip — hidden entirely once loaded with
           nothing public, so it never shows an empty box on the home

@@ -52,6 +52,18 @@ const dict = {
     startReading: { bn: "পড়া শুরু করুন", en: "Start reading" },
     startWriting: { bn: "লেখা শুরু করুন", en: "Start writing" },
     featured: { bn: "নির্বাচিত গল্প", en: "Featured stories" },
+    startHereTitle: {
+      bn: "একটি গল্প। দশ মিনিট।",
+      en: "One story. Ten minutes.",
+    },
+    startHereSub: {
+      bn: "আজকের গল্পটি শেষ করুন এক বসায় — অ্যাকাউন্ট লাগবে না।",
+      en: "Finish today's pick in a single sitting — no account needed.",
+    },
+    startHereMore: {
+      bn: "অথবা আরেকটি ছোট গল্প বেছে নিন",
+      en: "Or pick another quick read",
+    },
     recentBn: { bn: "সাম্প্রতিক বাংলা গল্প", en: "Recent in Bangla" },
     recentEn: { bn: "সাম্প্রতিক ইংরেজি গল্প", en: "Recent in English" },
     moreStories: { bn: "আরও গল্প পড়ুন", en: "More stories to read" },
